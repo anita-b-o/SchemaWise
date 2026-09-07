@@ -1,6 +1,7 @@
 export { attributeClosure } from "./algorithms/attribute-closure.js";
 export { findCandidateKeys } from "./algorithms/candidate-key-discovery.js";
 export { findMinimalCover } from "./algorithms/minimal-cover.js";
+export { projectFunctionalDependencies } from "./algorithms/functional-dependency-projection.js";
 export { findPrimeAttributes } from "./algorithms/prime-attributes.js";
 export {
   analyzeSecondNormalForm,
