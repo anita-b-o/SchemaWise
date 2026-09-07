@@ -9,5 +9,12 @@ export function isSuperkeyWithinValidatedScope(
   dependencies: readonly FunctionalDependency[],
 ): boolean {
   const closure = attributeClosure(attributes, dependencies);
+  return isClosureSuperkeyWithinValidatedScope(closure, relation);
+}
+
+export function isClosureSuperkeyWithinValidatedScope(
+  closure: AttributeSet,
+  relation: Relation,
+): boolean {
   return relation.attributes.isSubsetOf(closure);
 }

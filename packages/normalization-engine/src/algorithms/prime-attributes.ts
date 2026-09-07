@@ -8,7 +8,13 @@ export function findPrimeAttributes(
   relation: Relation,
   dependencies: Iterable<FunctionalDependency>,
 ): AttributeSet {
-  return findCandidateKeys(relation, dependencies).reduce(
+  return primeAttributesFromCandidateKeys(findCandidateKeys(relation, dependencies));
+}
+
+export function primeAttributesFromCandidateKeys(
+  candidateKeys: readonly AttributeSet[],
+): AttributeSet {
+  return candidateKeys.reduce(
     (primeAttributes, candidateKey) => primeAttributes.union(candidateKey),
     new AttributeSet(),
   );

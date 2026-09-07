@@ -2,7 +2,17 @@ export { attributeClosure } from "./algorithms/attribute-closure.js";
 export { findCandidateKeys } from "./algorithms/candidate-key-discovery.js";
 export { findMinimalCover } from "./algorithms/minimal-cover.js";
 export { findPrimeAttributes } from "./algorithms/prime-attributes.js";
+export {
+  analyzeSecondNormalForm,
+  type SecondNormalFormAnalysis,
+  type SecondNormalFormViolation,
+} from "./algorithms/second-normal-form.js";
 export { isSuperkey } from "./algorithms/superkey-detection.js";
+export {
+  analyzeThirdNormalForm,
+  type ThirdNormalFormAnalysis,
+  type ThirdNormalFormViolation,
+} from "./algorithms/third-normal-form.js";
 export { Attribute } from "./domain/attribute.js";
 export { AttributeSet } from "./domain/attribute-set.js";
 export { FunctionalDependency } from "./domain/functional-dependency.js";
