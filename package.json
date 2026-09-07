@@ -1,0 +1,21 @@
+{
+  "name": "schemawise",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Monorepo baseline for SchemaWise, a relational database schema analysis application.",
+  "workspaces": [
+    "apps/*",
+    "packages/*"
+  ],
+  "scripts": {
+    "build": "npm run build --workspaces --if-present",
+    "test": "npm run test --workspace @schemawise/normalization-engine",
+    "typecheck": "npm run typecheck --workspaces --if-present"
+  },
+  "devDependencies": {
+    "typescript": "^5.9.2"
+  },
+  "engines": {
+    "node": ">=20"
+  }
+}
