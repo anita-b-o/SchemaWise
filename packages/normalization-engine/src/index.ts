@@ -13,6 +13,11 @@ export {
   type ThirdNormalFormAnalysis,
   type ThirdNormalFormViolation,
 } from "./algorithms/third-normal-form.js";
+export {
+  analyzeBoyceCoddNormalForm,
+  type BoyceCoddNormalFormAnalysis,
+  type BoyceCoddNormalFormViolation,
+} from "./algorithms/boyce-codd-normal-form.js";
 export { Attribute } from "./domain/attribute.js";
 export { AttributeSet } from "./domain/attribute-set.js";
 export { FunctionalDependency } from "./domain/functional-dependency.js";
