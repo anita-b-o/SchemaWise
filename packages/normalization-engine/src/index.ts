@@ -25,6 +25,12 @@ export {
   type BoyceCoddNormalFormAnalysis,
   type BoyceCoddNormalFormViolation,
 } from "./algorithms/boyce-codd-normal-form.js";
+export {
+  decomposeToBoyceCoddNormalForm,
+  type BcnfDecompositionStep,
+  type BcnfRelation,
+  type BoyceCoddDecomposition,
+} from "./algorithms/boyce-codd-decomposition.js";
 export { Attribute } from "./domain/attribute.js";
 export { AttributeSet } from "./domain/attribute-set.js";
 export { FunctionalDependency } from "./domain/functional-dependency.js";
