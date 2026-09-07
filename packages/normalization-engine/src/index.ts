@@ -1,6 +1,4 @@
-/**
- * Public entrypoint for the domain engine.
- *
- * Normalization algorithms are intentionally not implemented in this baseline.
- */
-export {};
+export { Attribute } from "./domain/attribute.js";
+export { AttributeSet } from "./domain/attribute-set.js";
+export { FunctionalDependency } from "./domain/functional-dependency.js";
+export { Relation } from "./domain/relation.js";
