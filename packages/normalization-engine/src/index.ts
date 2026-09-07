@@ -14,6 +14,12 @@ export {
   type ThirdNormalFormViolation,
 } from "./algorithms/third-normal-form.js";
 export {
+  synthesizeThirdNormalForm,
+  type SynthesizedRelation,
+  type SynthesizedRelationSource,
+  type ThirdNormalFormSynthesis,
+} from "./algorithms/third-normal-form-synthesis.js";
+export {
   analyzeBoyceCoddNormalForm,
   type BoyceCoddNormalFormAnalysis,
   type BoyceCoddNormalFormViolation,
