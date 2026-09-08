@@ -22,4 +22,5 @@ npm test
 npm run build
 ```
 
-Esta baseline no implementa algoritmos de normalización, persistencia, autenticación ni una UI funcional.
+El core matemático Normalization Engine v1 está implementado. La API, la
+persistencia, la autenticación y la UI funcional todavía están pendientes.
