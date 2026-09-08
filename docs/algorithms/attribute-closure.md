@@ -34,6 +34,8 @@ el cálculo parte de `{A}`, incorpora sucesivamente `B`, `C` y `D`:
 A+ = {A, B, C, D}
 ```
 
-## Relación futura con Superkey Detection
+## Relación con Superkey Detection
 
-Para una relación `R`, un conjunto `X` será superkey cuando `X+` incluya todos los atributos de `R`. Esa comparación pertenece al algoritmo futuro de Superkey Detection; este algoritmo sólo calcula el cierre y no recibe una relación.
+Para una relación `R`, un conjunto `X` es superkey cuando `X+` incluye todos
+los atributos de `R`. La API pública `isSuperkey` realiza esa comparación; este
+algoritmo sólo calcula el cierre y no recibe una relación.

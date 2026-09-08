@@ -56,9 +56,9 @@ es una key del esquema. El paso de contención sólo conserva un esquema mayor e
 el que las dependencias cubiertas siguen siendo locales. La relación adicional
 contiene únicamente una candidate key mínima, por lo que una dependencia
 proyectada no trivial no puede hacer redundante uno de sus atributos. Ésta es
-la garantía estructural del algoritmo clásico. Los tests además enumeran la
-proyección de FDs para casos representativos y ejecutan `analyzeThirdNormalForm`
-sobre cada esquema; no se agrega una API pública de proyección general.
+la garantía estructural del algoritmo clásico. Los tests además obtienen la
+proyección con la API pública `projectFunctionalDependencies` y ejecutan
+`analyzeThirdNormalForm` sobre cada esquema.
 
 ## Determinismo y complejidad práctica
 

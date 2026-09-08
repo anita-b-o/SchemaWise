@@ -9,6 +9,8 @@ export class FunctionalDependency {
   }
 
   static create(left: AttributeSet, right: AttributeSet): FunctionalDependency {
+    // Validate identity compatibility across both sides at the domain boundary.
+    left.union(right);
     return new FunctionalDependency(left, right);
   }
 }

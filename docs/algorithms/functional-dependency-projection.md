@@ -59,14 +59,14 @@ uno. A ese coste exponencial se suma la construcción y reducción del conjunto
 descubierto mediante Minimal Cover. Es una decisión consciente del MVP: evita
 heurísticas incompletas y está dirigida a subesquemas pequeños.
 
-## Uso futuro en BCNF Decomposition
+## Uso en BCNF Decomposition
 
-Una futura descomposición BCNF podrá conservar `R` y `F` originales y, para cada
-subrelación con atributos `S`, invocar:
+La descomposición BCNF conserva `R` y `F` originales y, para cada subrelación
+con atributos `S`, invoca:
 
 ```ts
 projectFunctionalDependencies(originalRelation, originalDependencies, S)
 ```
 
-El analizador BCNF recibirá así dependencias explícitas e inferidas válidas en
-la subrelación. Esta iteración no implementa el algoritmo de descomposición.
+El analizador BCNF recibe así dependencias explícitas e inferidas válidas en la
+subrelación.

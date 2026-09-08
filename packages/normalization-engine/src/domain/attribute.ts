@@ -14,7 +14,15 @@ export class Attribute {
   }
 
   equals(other: Attribute): boolean {
-    return this.id === other.id;
+    if (this.id !== other.id) {
+      return false;
+    }
+    if (this.name !== other.name) {
+      throw new Error(
+        `Attribute identity conflict for id "${this.id}": names "${this.name}" and "${other.name}" differ`,
+      );
+    }
+    return true;
   }
 }
 

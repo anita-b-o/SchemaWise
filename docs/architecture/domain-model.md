@@ -7,9 +7,11 @@ forman parte de este modelo.
 ## Attribute
 
 Un `Attribute` representa una propiedad atómica mediante un `id` string interno
-no vacío y un `name` visible no vacío. El `id` es la identidad lógica; el nombre
-puede cambiar sin cambiar esa identidad. La instancia se crea con
-`Attribute.create` y sus propiedades son de sólo lectura.
+no vacío y un `name` visible no vacío. El `id` es la identidad lógica. Dos
+representaciones con el mismo `id` son compatibles sólo si también conservan el
+mismo `name`; comparar versiones con nombres distintos produce un conflicto de
+identidad. La instancia se crea con `Attribute.create` y sus propiedades son de
+sólo lectura.
 
 ## AttributeSet
 
@@ -17,12 +19,13 @@ Un `AttributeSet` encapsula una colección indexada por `id` y elimina duplicado
 identidad lógica. Expone membership, tamaño, subset, igualdad, unión, diferencia y una
 vista ordenada de lectura (`toArray`). La igualdad de atributos se basa en `id`,
 por lo que las operaciones usan esa identidad lógica. No se expone la colección
-interna mutable.
+interna mutable: el backing store usa encapsulación privada de runtime y la
+instancia queda congelada al construirse.
 
 La identidad tiene una invariante adicional: un mismo `id` debe conservar el mismo
 `name` visible dentro de una operación o conjunto. Dos atributos con el mismo `id` y
 el mismo `name` son compatibles y se deduplican; si comparten `id` pero sus nombres
-difieren, la construcción o combinación falla con un error de conflicto de identidad.
+difieren, la construcción, comparación o combinación falla con un error de conflicto de identidad.
 Así se evita elegir silenciosamente uno de los nombres.
 
 ## Relation
@@ -42,7 +45,8 @@ right: AttributeSet
 
 Una `FunctionalDependency` contiene dos `AttributeSet` inmutables (`left` y
 `right`). Acepta lados simples, compuestos y conjuntos vacíos; no realiza
-inferencia, cierre, minimal cover ni reglas de Armstrong.
+inferencia, cierre, minimal cover ni reglas de Armstrong. Su factory sí valida
+que no exista una colisión de identidad entre ambos lados.
 
 ## Decisiones de representación
 

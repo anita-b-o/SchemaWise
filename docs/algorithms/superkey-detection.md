@@ -41,4 +41,6 @@ Los conflictos de identidad (`same id / different name`) mantienen la política 
 
 Una superclave determina todos los atributos de la relación, pero puede contener atributos redundantes. Una candidate key es una superclave mínima: si se elimina cualquiera de sus atributos, deja de ser superclave.
 
-Toda candidate key es superkey, pero no toda superkey es candidate key. Candidate Key Discovery queda fuera del alcance de esta implementación.
+Toda candidate key es superkey, pero no toda superkey es candidate key. La API
+pública `findCandidateKeys` enumera precisamente las superkeys mínimas por
+inclusión.

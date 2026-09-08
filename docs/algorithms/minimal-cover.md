@@ -82,7 +82,12 @@ G = { A → B, A → C, C → D }
 
 ## Complejidad práctica
 
-El costo dominante son los cierres repetidos. Un cierre es aproximadamente `O(|F| · |R|)` con las estructuras actuales. Se calcula uno por atributo candidato del lado izquierdo y uno por dependencia al comprobar redundancia, por lo que el comportamiento práctico es aproximadamente `O((L + |F|) · |F| · |R|)`, donde `L` es el número total de apariciones de atributos en los LHS después de descomponer. La canonicalización añade ordenamientos de costo menor para conjuntos habituales.
+El costo dominante son los cierres repetidos: se calcula uno por atributo
+candidato del lado izquierdo y uno por dependencia al comprobar redundancia.
+Cada cierre alcanza un punto fijo en una cantidad de expansiones acotada por el
+universo de atributos y recorre el cover en cada pasada. Por tanto, Minimal
+Cover es polinómico en el tamaño del cover descompuesto y del esquema; la
+canonicalización añade ordenamientos de costo menor para conjuntos habituales.
 
 ## Relación con otros algoritmos
 
@@ -92,4 +97,7 @@ Minimal Cover ≠ Candidate Keys
 
 Minimal Cover simplifica un conjunto de dependencias sin cambiar lo que implica. Candidate Key Discovery busca conjuntos mínimos de atributos cuyo cierre cubre toda la relación. Ambas operaciones usan Attribute Closure, pero resuelven problemas distintos.
 
-Una futura síntesis a 3NF podrá consumir un minimal cover para construir esquemas a partir de dependencias con RHS unitario y sin redundancias. Esa síntesis, al igual que el análisis de 2NF/3NF, queda fuera de este algoritmo.
+La síntesis pública a 3NF consume este minimal cover para construir esquemas a
+partir de dependencias con RHS unitario y sin redundancias. Los análisis de
+2NF/3NF también reutilizan Attribute Closure, pero conservan contratos
+independientes de este algoritmo.

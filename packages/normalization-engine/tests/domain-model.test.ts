@@ -12,12 +12,18 @@ const attributeC = Attribute.create("c", "C");
 
 describe("Attribute", () => {
   it("keeps internal identity separate from visible name", () => {
-    const renamed = Attribute.create("a", "Account number");
+    const equivalent = Attribute.create("a", "A");
     const sameName = Attribute.create("different-id", "A");
 
-    expect(attributeA.equals(renamed)).toBe(true);
+    expect(attributeA.equals(equivalent)).toBe(true);
     expect(attributeA.name).toBe("A");
     expect(attributeA.equals(sameName)).toBe(false);
+  });
+
+  it("rejects an identity collision during equality", () => {
+    const conflictingA = Attribute.create("a", "Account number");
+
+    expect(() => attributeA.equals(conflictingA)).toThrow(/Attribute identity conflict/);
   });
 
   it("rejects blank identity and names", () => {
@@ -43,13 +49,21 @@ describe("AttributeSet", () => {
 
   it("rejects attributes with the same identity and different visible names", () => {
     const conflictingA = Attribute.create("a", "Account number");
+    const original = new AttributeSet([attributeA, attributeB]);
+    const conflicting = new AttributeSet([conflictingA]);
 
     expect(() => new AttributeSet([attributeA, conflictingA])).toThrow(
       /Attribute identity conflict/,
     );
-    expect(() => new AttributeSet([attributeA]).union(new AttributeSet([conflictingA]))).toThrow(
+    expect(() => original.has(conflictingA)).toThrow(/Attribute identity conflict/);
+    expect(() => original.isSubsetOf(new AttributeSet([conflictingA, attributeB])))
+      .toThrow(/Attribute identity conflict/);
+    expect(() => original.equals(new AttributeSet([conflictingA, attributeB])))
+      .toThrow(/Attribute identity conflict/);
+    expect(() => original.union(conflicting)).toThrow(
       /Attribute identity conflict/,
     );
+    expect(() => original.difference(conflicting)).toThrow(/Attribute identity conflict/);
   });
 
   it("does not expose a mutable backing collection", () => {
@@ -57,6 +71,7 @@ describe("AttributeSet", () => {
     const exported = set.toArray();
 
     expect(() => (exported as Attribute[]).push(attributeB)).not.toThrow();
+    expect(Object.isFrozen(set)).toBe(true);
     expect(set.size).toBe(1);
     expect(set.has(attributeB)).toBe(false);
   });
@@ -91,5 +106,27 @@ describe("FunctionalDependency", () => {
     expect(simple.right.equals(new AttributeSet([attributeB]))).toBe(true);
     expect(composite.left.size).toBe(2);
     expect(composite.right.size).toBe(2);
+  });
+
+  it("supports empty sides and rejects identity collisions across both sides", () => {
+    const emptyToA = FunctionalDependency.create(
+      new AttributeSet(),
+      new AttributeSet([attributeA]),
+    );
+    const aToEmpty = FunctionalDependency.create(
+      new AttributeSet([attributeA]),
+      new AttributeSet(),
+    );
+    const emptyToEmpty = FunctionalDependency.create(new AttributeSet(), new AttributeSet());
+    const conflictingA = Attribute.create("a", "Account number");
+
+    expect(emptyToA.left.size).toBe(0);
+    expect(aToEmpty.right.size).toBe(0);
+    expect(emptyToEmpty.left.size).toBe(0);
+    expect(emptyToEmpty.right.size).toBe(0);
+    expect(() => FunctionalDependency.create(
+      new AttributeSet([attributeA]),
+      new AttributeSet([conflictingA]),
+    )).toThrow(/Attribute identity conflict/);
   });
 });
