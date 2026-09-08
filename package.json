@@ -9,6 +9,7 @@
   ],
   "scripts": {
     "build": "npm run build --workspaces --if-present",
+    "bench:engine": "npm run build --workspace @schemawise/normalization-engine && node packages/normalization-engine/bench/benchmark.mjs",
     "test": "npm run test --workspace @schemawise/normalization-engine",
     "typecheck": "npm run typecheck --workspaces --if-present"
   },
