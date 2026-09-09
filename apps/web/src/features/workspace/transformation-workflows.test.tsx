@@ -105,6 +105,7 @@ describe("normalization transformations", () => {
     expect(within(section).getByText(/none of the synthesized relations contained a candidate key/)).toBeTruthy();
     expect(within(section).getByText(/preserves the functional dependencies and produces a lossless decomposition/)).toBeTruthy();
     expect(within(section).getByText("Minimal cover used").closest("details")?.open).toBe(false);
+    expect(screen.getByText("3NF synthesis complete.", { selector: ".transformation-live-status" })).toBeTruthy();
   });
 
   it("does not render an empty candidate-key section when none was added", async () => {
@@ -150,6 +151,7 @@ describe("normalization transformations", () => {
     expect(within(section).getByText("Dependency preservation is not guaranteed by BCNF decomposition.")).toBeTruthy();
     expect(within(section).getByText(/reconstructed without losing information/)).toBeTruthy();
     expect(within(section).getByText(/checked locally without recomposing relations/)).toBeTruthy();
+    expect(screen.getByText("BCNF decomposition complete.", { selector: ".transformation-live-status" })).toBeTruthy();
   });
 
   it("uses BCNF leaf relations for an explicit preservation request and renders preserved", async () => {
@@ -164,6 +166,7 @@ describe("normalization transformations", () => {
     expect(request.decomposition).toEqual([[request.relation.attributes[1]!.id, request.relation.attributes[2]!.id], [request.relation.attributes[0]!.id, request.relation.attributes[1]!.id]]);
     expect(await screen.findByText("✓ Preserved")).toBeTruthy();
     expect(screen.getByText(/remain derivable from the projected dependencies/)).toBeTruthy();
+    expect(screen.getByText("Dependency preservation check complete.", { selector: ".transformation-live-status" })).toBeTruthy();
   });
 
   it("renders lost dependencies first without describing data loss", async () => {

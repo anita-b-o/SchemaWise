@@ -46,7 +46,7 @@ export function ClosureTool({ attributes, issues, state, onCalculate }: ClosureT
             </div>
             <p>Select a set of attributes to calculate its closure under the current functional dependencies.</p>
           </div>
-          <p className="field-help"><code>X⁺</code> is calculated from the current draft. Select none to calculate the valid empty set, written mathematically as empty set.</p>
+          <p className="field-help"><code>X⁺</code> is calculated from the current draft. Select none to calculate the empty-set closure, <code>∅⁺</code>.</p>
           <fieldset className="closure-attributes">
             <legend>Starting attributes</legend>
             <div className="attribute-options">

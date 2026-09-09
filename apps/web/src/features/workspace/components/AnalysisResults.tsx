@@ -83,7 +83,7 @@ export function AnalysisResults({ result, analyzedSnapshot, outOfDate, synthesis
                   {synthesis.status === "loading" ? "Generating 3NF synthesis…" : synthesis.data ? "Generate 3NF synthesis again" : "Generate 3NF synthesis"}
                 </button>
               </div>
-              <div className="transformation-live-status" role="status" aria-live="polite">{synthesis.status === "loading" ? (synthesis.data ? "Updating synthesis…" : "Generating 3NF synthesis…") : ""}</div>
+              <div className="transformation-live-status" role="status" aria-live="polite">{synthesis.status === "loading" ? (synthesis.data ? "Updating synthesis…" : "Generating 3NF synthesis…") : synthesis.status === "success" ? "3NF synthesis complete." : ""}</div>
               {synthesisError ? <div className="transformation-error" role="alert"><strong>Unable to generate 3NF synthesis.</strong><p>{synthesisError}</p></div> : null}
               {synthesis.data ? <SynthesisResult result={synthesis.data} snapshot={analyzedSnapshot} /> : null}
             </div>
@@ -97,7 +97,7 @@ export function AnalysisResults({ result, analyzedSnapshot, outOfDate, synthesis
                   {bcnf.status === "loading" ? "Generating BCNF decomposition…" : bcnf.data ? "Generate BCNF decomposition again" : "Generate BCNF decomposition"}
                 </button>
               </div>
-              <div className="transformation-live-status" role="status" aria-live="polite">{bcnf.status === "loading" ? (bcnf.data ? "Updating decomposition…" : "Generating BCNF decomposition…") : ""}</div>
+              <div className="transformation-live-status" role="status" aria-live="polite">{bcnf.status === "loading" ? (bcnf.data ? "Updating decomposition…" : "Generating BCNF decomposition…") : bcnf.status === "success" ? "BCNF decomposition complete." : ""}</div>
               {bcnfError ? <div className="transformation-error" role="alert"><strong>Unable to generate BCNF decomposition.</strong><p>{bcnfError}</p></div> : null}
               {bcnf.data ? <BcnfResult result={bcnf.data} snapshot={analyzedSnapshot} outOfDate={outOfDate} preservation={preservation} preservationError={preservationError} onCheckPreservation={onCheckPreservation} /> : null}
             </div>

@@ -55,7 +55,7 @@ export function BcnfResult({ result, snapshot, outOfDate, preservation, preserva
         <button className="button button--secondary" type="button" onClick={onCheckPreservation} disabled={outOfDate} aria-describedby={outOfDate ? "stale-transformation-help" : undefined}>
           {isLoading ? "Checking dependency preservation…" : preservation.data ? "Check dependency preservation again" : "Check dependency preservation"}
         </button>
-        <div className="transformation-live-status" role="status" aria-live="polite">{isLoading ? (preservation.data ? "Updating dependency preservation…" : "Checking dependency preservation…") : ""}</div>
+        <div className="transformation-live-status" role="status" aria-live="polite">{isLoading ? (preservation.data ? "Updating dependency preservation…" : "Checking dependency preservation…") : preservation.status === "success" ? "Dependency preservation check complete." : ""}</div>
         {preservationError ? <div className="transformation-error" role="alert"><strong>Unable to check dependency preservation.</strong><p>{preservationError}</p></div> : null}
       </div>
       {preservation.data ? <DependencyPreservationResult result={preservation.data} snapshot={snapshot} /> : null}
