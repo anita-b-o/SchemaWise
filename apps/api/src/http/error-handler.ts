@@ -1,4 +1,4 @@
-import type { FastifyError, FastifyInstance } from "fastify";
+import type { FastifyError, FastifyInstance, FastifyRequest } from "fastify";
 import { authInternalError, isAuthApplicationError } from "../auth/errors/auth-error.js";
 import { isApplicationError, applicationError } from "../errors/application-error.js";
 import { statusForApplicationError, statusForAuthError } from "./http-status.js";
@@ -29,12 +29,15 @@ export function registerErrorHandler(server: FastifyInstance): void {
       return reply.code(403).send(envelope(error.code, error.message));
     }
     if (isAuthApplicationError(error)) {
+      if (statusForAuthError(error.code) >= 500) logInternalError(request, error);
       return reply.code(statusForAuthError(error.code)).send(envelope(error.code, error.message, error.details));
     }
     if (isProjectApplicationError(error)) {
+      if (statusForProjectError(error.code) >= 500) logInternalError(request, error);
       return reply.code(statusForProjectError(error.code)).send(envelope(error.code, error.message, error.details));
     }
     if (isApplicationError(error)) {
+      if (statusForApplicationError(error.code) >= 500) logInternalError(request, error);
       return reply.code(statusForApplicationError(error.code)).send(envelope(error.code, error.message, error.details));
     }
     if (error.code === "FST_ERR_CTP_INVALID_MEDIA_TYPE") {
@@ -56,13 +59,26 @@ export function registerErrorHandler(server: FastifyInstance): void {
       return reply.code(400).send(envelope("INVALID_REQUEST", "Request body contains invalid JSON."));
     }
     if (isAuthRoute) {
+      logInternalError(request, error);
       const internal = authInternalError();
       return reply.code(500).send(envelope(internal.code, internal.message));
     }
     if (isProjectRoute) {
+      logInternalError(request, error);
       return reply.code(500).send(envelope("PERSISTENCE_ERROR", "The project persistence operation failed."));
     }
+    logInternalError(request, error);
     const internal = applicationError("INTERNAL_ERROR", "The request could not be completed.");
     return reply.code(500).send(envelope(internal.code, internal.message));
   });
+}
+
+function logInternalError(request: FastifyRequest, error: FastifyError): void {
+  request.log.error(
+    {
+      errorType: error.name,
+      errorCode: typeof error.code === "string" ? error.code : undefined,
+    },
+    "Request failed with an internal error",
+  );
 }

@@ -4,10 +4,26 @@ info:
   version: 1.0.0
   description: HTTP contract v1 for synchronous normalization analysis, authentication, and authenticated owner-scoped project persistence. This describes the HTTP contract, not the engine package version.
 tags:
+  - { name: Operations, description: Unauthenticated process liveness and PostgreSQL readiness probes; separate from computational behavior. }
   - { name: Auth, description: Server-side opaque session authentication with session-bound CSRF, credentialed CORS, and auth-specific rate limits. }
   - { name: Projects, description: Authenticated owner-scoped project snapshots with optimistic concurrency control. }
   - { name: Computation, description: Public stateless normalization computations. }
 paths:
+  /health:
+    get:
+      tags: [Operations]
+      operationId: getHealth
+      security: []
+      responses:
+        '200': { $ref: '#/components/responses/HealthSuccess' }
+  /ready:
+    get:
+      tags: [Operations]
+      operationId: getReadiness
+      security: []
+      responses:
+        '200': { $ref: '#/components/responses/ReadinessSuccess' }
+        '503': { $ref: '#/components/responses/ReadinessUnavailable' }
   /api/v1/auth/register:
     post:
       tags: [Auth]
@@ -212,6 +228,9 @@ components:
       required: true
       content: { application/json: { schema: { $ref: '#/components/schemas/DependencyPreservationRequestDto' } } }
   responses:
+    HealthSuccess: { description: The HTTP process is accepting requests; this probe does not access PostgreSQL., content: { application/json: { schema: { $ref: '#/components/schemas/HealthResponse' } } } }
+    ReadinessSuccess: { description: The API completed a minimal PostgreSQL SELECT 1 check., content: { application/json: { schema: { $ref: '#/components/schemas/ReadinessResponse' } } } }
+    ReadinessUnavailable: { description: PostgreSQL readiness failed; no database or connection details are exposed., content: { application/json: { schema: { $ref: '#/components/schemas/NotReadyResponse' } } } }
     AuthCreated:
       description: User registered and signed in. The raw session token is returned only in Set-Cookie; the session-bound CSRF token is in the JSON response.
       headers: { Set-Cookie: { schema: { type: string }, description: 'schemawise_session with HttpOnly, Path=/, SameSite=Lax, Max-Age=2592000, Expires, and environment-configured Secure.' } }
@@ -253,6 +272,9 @@ components:
     LimitExceeded: { description: Product limit exceeded (cardinality/length uses 422; payload bytes uses 413 in the future HTTP adapter), content: { application/json: { schema: { $ref: '#/components/schemas/ErrorEnvelope' } } } }
     InternalError: { description: Internal error, content: { application/json: { schema: { $ref: '#/components/schemas/ErrorEnvelope' } } } }
   schemas:
+    HealthResponse: { type: object, required: [status], additionalProperties: false, properties: { status: { type: string, const: ok } } }
+    ReadinessResponse: { type: object, required: [status], additionalProperties: false, properties: { status: { type: string, const: ready } } }
+    NotReadyResponse: { type: object, required: [status], additionalProperties: false, properties: { status: { type: string, const: not-ready } } }
     AuthRequestDto:
       type: object
       required: [email, password]

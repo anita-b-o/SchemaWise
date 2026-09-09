@@ -11,6 +11,8 @@ import { registerAuthRoutes } from "./auth-routes.js";
 import { registerErrorHandler } from "./error-handler.js";
 import { registerRoutes, type HttpUseCases } from "./routes.js";
 import { registerProjectRoutes } from "./project-routes.js";
+import { registerOperationsRoutes, type ReadinessCheck } from "./operations-routes.js";
+import { readRuntimeConfig } from "../runtime/config.js";
 import {
   DEFAULT_AUTH_RATE_LIMITS,
   parseCorsOrigins,
@@ -30,13 +32,20 @@ export interface ServerOptions {
   readonly trustProxy?: boolean;
   readonly authRateLimits?: AuthRateLimitConfig;
   readonly projectRepository?: ProjectRepository;
+  readonly readinessCheck?: ReadinessCheck;
 }
 
 export function createServer(options: ServerOptions = {}): FastifyInstance {
   const allowedOrigins = parseCorsOrigins(options.corsOrigins?.join(",") ?? process.env.CORS_ORIGINS);
   const server = Fastify({
     bodyLimit: 64 * 1024,
-    logger: options.logger ?? false,
+    logger: options.logger === true ? {
+      level: "info",
+      redact: {
+        paths: ["req.headers.authorization", "req.headers.cookie", "req.headers.x-csrf-token"],
+        censor: "[REDACTED]",
+      },
+    } : false,
     trustProxy: options.trustProxy ?? readTrustProxy(),
   });
   server.register(cookie);
@@ -47,6 +56,7 @@ export function createServer(options: ServerOptions = {}): FastifyInstance {
     credentials: true,
   });
   registerErrorHandler(server);
+  registerOperationsRoutes(server, options.readinessCheck);
   server.addHook("onRequest", async (request, reply) => {
     const requiresJson = (request.method === "POST" && request.url !== "/api/v1/auth/logout") || request.method === "PUT";
     if (requiresJson && request.url.startsWith("/api/v1/") && !/^application\/json(?:\s*;|$)/i.test(request.headers["content-type"] ?? "")) {
@@ -75,22 +85,45 @@ export function createServer(options: ServerOptions = {}): FastifyInstance {
 }
 
 export async function startServer(): Promise<void> {
-  const authCookie = readAuthCookieConfig();
-  const pool = createProjectPool();
+  const config = readRuntimeConfig();
+  const pool = createProjectPool(config.database);
   const server = createServer({
     logger: true,
     auth: createPostgresAuthRuntime(pool),
     projectRepository: new PostgresProjectRepository(pool),
-    authCookie,
-    csrfSecret: readCsrfSecret(),
+    readinessCheck: pool,
+    authCookie: config.authCookie,
+    csrfSecret: config.csrfSecret,
+    corsOrigins: config.corsOrigins,
+    trustProxy: config.trustProxy,
   });
   server.addHook("onClose", async () => closeProjectPool(pool));
-  const port = Number(process.env.PORT ?? 3000);
-  const host = process.env.HOST ?? "0.0.0.0";
+  const shutdown = createGracefulShutdown(server);
+  const handleSignal = (signal: NodeJS.Signals) => {
+    server.log.info({ signal }, "Shutdown requested");
+    void shutdown().catch((error: unknown) => {
+      server.log.error({ errorType: error instanceof Error ? error.name : typeof error }, "Graceful shutdown failed");
+      process.exitCode = 1;
+    });
+  };
+  process.once("SIGTERM", handleSignal);
+  process.once("SIGINT", handleSignal);
+  server.addHook("onClose", async () => {
+    process.off("SIGTERM", handleSignal);
+    process.off("SIGINT", handleSignal);
+  });
   try {
-    await server.listen({ port, host });
+    await server.listen({ port: config.port, host: config.host });
   } catch (error) {
-    await server.close();
+    await shutdown();
     throw error;
   }
+}
+
+export function createGracefulShutdown(server: FastifyInstance): () => Promise<void> {
+  let closing: Promise<void> | undefined;
+  return () => {
+    closing ??= server.close();
+    return closing;
+  };
 }
