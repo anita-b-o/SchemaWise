@@ -14,10 +14,11 @@ Browser
              -> TLS or provider private network -> PostgreSQL
 ```
 
-Production should use `app.schemawise.example` (or the apex domain) for Web and
-`api.schemawise.example` for API. Staging should use
-`staging.schemawise.example` and `api.staging.schemawise.example`. The exact
-domain will be chosen later; these names express the required relationship.
+Production may use `app.schemawise.example` (or the apex domain) for Web and
+`api.schemawise.example` for API. Those are future production placeholders, not
+the active staging topology. The accepted Free demo/staging topology is
+defined exclusively in [ADR 016](../adr/016-free-staging-topology.md) and uses a
+same-origin Vercel Function proxy; it has no custom domain requirement.
 
 This is cross-origin but same-site. It preserves the current host-only,
 `Secure`, `HttpOnly`, `SameSite=Lax`, `Path=/` API cookie: the browser sends the
@@ -33,9 +34,10 @@ Web routing to API availability and must preserve cookies and forwarded client
 metadata. Distinct same-site subdomains are preferred because ownership and
 operational boundaries remain explicit.
 
-`VITE_SCHEMAWISE_API_URL` is embedded at Web build time. It is the environment's
-absolute API origin; staging and production therefore use different Web
-artifacts.
+`VITE_SCHEMAWISE_API_URL` is embedded at Web build time. Production can use an
+absolute origin; the Free staging build uses `/` so its trailing-slash
+normalization produces an empty base and exactly `/api/v1/...` (the client
+appends `/api/v1` itself). Setting `/api` would produce `/api/api/v1/...`.
 
 ## Runtime and artifacts
 
@@ -57,9 +59,9 @@ artifacts.
 ## Provider capabilities required
 
 The Web provider must support static artifacts, HTTPS, build-time variables and
-optional custom domains. The API provider must support a persistent Node 22
-process, HTTPS/proxying, secret environment variables, an explicit pre-deploy
-command, HTTP health checks and an enforced replica count of one. PostgreSQL
+optional custom domains. The production API provider must support a persistent
+Node 22 process, HTTPS/proxying, secret environment variables, an explicit
+pre-deploy command, HTTP health checks and an enforced replica count of one. PostgreSQL
 must support TLS, backups, restore, connection limits, migrations and preferably
 private networking to the API.
 
