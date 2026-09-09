@@ -1,6 +1,6 @@
 # Free staging provisioning plan
 
-Status: **ready for provisioning**. ADR 016's proxy/IP security implementation and local tests pass. Cloud behavior remains a post-deploy gate. This replaces the former paid/custom-domain staging plan. No resource, DNS, secret, deploy or push has been created.
+Status: **Neon provisioned; Render is next**. The isolated Neon Free staging database is migrated and validated. No Render/Vercel resource, DNS, application deploy, production resource, or push has been created.
 
 ## Topology
 
@@ -20,9 +20,11 @@ ADR 016 accepts the implemented Vercel Function proxy. It reads Vercel's sanitiz
 
 ### Neon Free
 
-- Separate `schemawise_staging` project/database, no production data; prefer N. Virginia with Render Virginia.
-- Runtime uses generated pooled URL and `DATABASE_POOL_MAX=5`; controlled migrations use direct URL. Retain `sslmode=verify-full` and `channel_binding=require`.
-- Current Free allowance: 100 CU-hours/month/project, 0.5 GB storage/project, 5 GB public egress/month, ten branches, maximum 2 CU, and up to six-hour restore history. Scale-to-zero is fixed after five inactive minutes. This is disposable staging, not recovery validation.
+- Project `schemawise-staging`, branch `main`, database `schemawise_staging`; AWS N. Virginia (`aws-us-east-1`), PostgreSQL 17.11. This is isolated from production and contains no application data.
+- Runtime uses the pooled host pattern `ep-***-pooler.c-11.us-east-1.aws.neon.tech`; controlled migrations use the direct `ep-***.c-11.us-east-1.aws.neon.tech` endpoint. Both use `sslmode=verify-full` and `channel_binding=require`; credentials remain outside Git.
+- Keep `DATABASE_POOL_MAX=5`. The pooled endpoint is for the single future Render API; the direct endpoint is only for migrations and administrative operations.
+- Verified 2026-09-09: migrations 001–004 passed, `pgmigrations` contains exactly those four names, `projects`/`users`/`sessions` each contain zero rows, and a pooled `SELECT 1` through `createProjectPool` passed.
+- Current Free allowance: 100 CU-hours/month/project, 0.5 GB storage/project, 5 GB public egress/month, ten branches, maximum 2 CU, and restore history up to six hours or 1 GB of changes, whichever is reached first. Scale-to-zero is fixed after five inactive minutes; the first connection after suspension has wake-up latency. This is disposable staging, not a production backup or latency benchmark.
 
 ### Render Free Web Service
 
@@ -38,14 +40,14 @@ ADR 016 accepts the implemented Vercel Function proxy. It reads Vercel's sanitiz
 
 ## Controlled manual migration
 
-Before first API deploy, source the direct Neon URL from a local secret manager or mode-600 untracked file (not shell history), then execute:
+The initial staging migration was completed on 2026-09-09. For future controlled migrations, source the direct Neon URL from a local secret manager or mode-600 untracked file (not shell history), then execute:
 
 ```bash
 DATABASE_MIGRATION_URL='<direct Neon URL>' \
   npm run db:migrate --workspace @schemawise/api -- --database-url-var DATABASE_MIGRATION_URL
 ```
 
-Do not keep `DATABASE_MIGRATION_URL` in Render runtime configuration. Verify read-only via Neon SQL editor or direct secure client: migrations 001–004 in `pgmigrations`, then zero `users` and `projects`. The SQL editor is not the migration runner.
+Do not keep `DATABASE_MIGRATION_URL` in Render runtime configuration. Verify read-only via Neon SQL editor or direct secure client. The SQL editor is not the migration runner.
 
 ## Provisioning order
 

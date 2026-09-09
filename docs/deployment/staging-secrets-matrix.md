@@ -1,6 +1,6 @@
 # Free staging environment matrix
 
-Status: **ready for provisioning**. No value has been entered. No `VITE_*` variable may contain a secret.
+Status: **Neon provisioned; Render/Vercel values remain unset**. Neon connection strings were handled ephemerally and are not stored in this repository. No `VITE_*` variable may contain a secret.
 
 ## Render Free API
 
@@ -17,7 +17,7 @@ Status: **ready for provisioning**. No value has been entered. No `VITE_*` varia
 | `PORT` | Provider | leave unset; Render injects it |
 | `NODE_ENV` | No | `production` |
 
-`DATABASE_MIGRATION_URL` is direct Neon access for the local controlled migration only; it is not a required API runtime variable.
+`DATABASE_URL` must use the Neon pooled hostname (`ep-***-pooler...`) with `sslmode=verify-full` and `channel_binding=require`. `DATABASE_MIGRATION_URL` uses the matching direct hostname (`ep-***...`) for controlled local migrations only; it is not a Render runtime variable. Neither URL belongs in tracked files, command-line arguments, or shell history.
 
 ## Vercel Hobby Web/proxy
 
