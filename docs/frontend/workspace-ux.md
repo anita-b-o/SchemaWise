@@ -132,7 +132,7 @@ summary only when multiple errors exist.
 | --- | --- |
 | Idle invalid | Disabled; nearby text names the next required correction. |
 | Idle valid | Primary label `Analyze schema`. |
-| Loading | Label `Analyzing…`, small spinner, controls remain readable but repeat submission is disabled. |
+| Loading | Label `Analyzing…`; controls remain readable. Repeating the action restarts analysis with the current snapshot and aborts the prior request. |
 | Success | Results update; a polite live message says `Analysis complete`. Button returns to its normal label. |
 | API validation error | Map stable error code/details to the relevant section when possible; retain input and show the server message as supporting detail. |
 | Unexpected/network error | Inline banner: `We couldn't analyze this schema. Try again.` with `Retry`; retain any previous result. |

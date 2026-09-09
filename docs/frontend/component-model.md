@@ -20,7 +20,7 @@ App
    └─ ResultsWorkspace
       ├─ AnalysisOverview
       ├─ NormalFormSummary
-      │  └─ ViolationDetails
+      ├─ ViolationDetails
       ├─ MinimalCover
       ├─ SynthesisResult
       └─ BcnfResult
