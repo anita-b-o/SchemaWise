@@ -2,6 +2,7 @@ import { useEffect, useReducer, useRef, useState } from "react";
 import { schemawiseApi, SchemaWiseApiError, type SchemaWiseApi } from "../../../api/schemawise-api";
 import type { ErrorCode } from "../../../api/schemawise-contracts";
 import { AttributeList } from "./AttributeList";
+import { ClosureTool } from "./ClosureTool";
 import { FunctionalDependencyEditor } from "./FunctionalDependencyEditor";
 import { RelationEditor } from "./RelationEditor";
 import { AnalysisResults } from "./AnalysisResults";
@@ -48,6 +49,7 @@ export function SchemaWorkspace({ api = schemawiseApi }: SchemaWorkspaceProps) {
   const activeSynthesis = useRef<AbortController | undefined>(undefined);
   const activeBcnf = useRef<AbortController | undefined>(undefined);
   const activePreservation = useRef<AbortController | undefined>(undefined);
+  const activeClosure = useRef<AbortController | undefined>(undefined);
   const issues = validateDraft(state.draft);
   const isAnalyzing = state.analysis.status === "loading";
   const hasResult = state.analysis.data !== undefined && state.analysis.inputSnapshot !== undefined;
@@ -72,7 +74,29 @@ export function SchemaWorkspace({ api = schemawiseApi }: SchemaWorkspaceProps) {
     activeSynthesis.current?.abort();
     activeBcnf.current?.abort();
     activePreservation.current?.abort();
+    activeClosure.current?.abort();
   }, []);
+
+  async function calculateClosure(selectedAttributes: readonly string[]) {
+    const currentIssues = validateDraft(state.draft);
+    if (currentIssues.length > 0) return;
+    activeClosure.current?.abort();
+    const controller = new AbortController();
+    activeClosure.current = controller;
+    const requestId = crypto.randomUUID();
+    const inputRevision = state.revision;
+    const inputSnapshot = draftToSchemaRequest(state.draft);
+    dispatch({ type: "closureRequestStart", requestId, inputRevision, inputSnapshot, selectedAttributes });
+    try {
+      const data = await api.calculateClosure({ ...inputSnapshot, attributes: [...selectedAttributes] }, controller.signal);
+      dispatch({ type: "closureSuccess", requestId, data });
+    } catch (error) {
+      if (error instanceof SchemaWiseApiError && error.kind === "aborted") dispatch({ type: "closureAborted", requestId });
+      else dispatch({ type: "closureError", requestId, error });
+    } finally {
+      if (activeClosure.current === controller) activeClosure.current = undefined;
+    }
+  }
 
   async function analyze() {
     const currentIssues = validateDraft(state.draft);
@@ -166,6 +190,7 @@ export function SchemaWorkspace({ api = schemawiseApi }: SchemaWorkspaceProps) {
 
   return (
     <div className="workspace-layout">
+      <div className="workspace-primary">
       <section className="schema-editor" aria-label="Schema editor">
         <div className="editor-toolbar">
           <div>
@@ -218,6 +243,8 @@ export function SchemaWorkspace({ api = schemawiseApi }: SchemaWorkspaceProps) {
           ) : null}
         </div>
       </section>
+      <ClosureTool attributes={state.draft.attributes} issues={issues} state={state.closure} onCalculate={calculateClosure} />
+      </div>
       <aside className="results-region" aria-label="Analysis results" aria-busy={isAnalyzing}>
         <div className="analysis-live-status" role="status" aria-live="polite">
           {isAnalyzing ? (hasResult ? "Updating analysis…" : "Analyzing schema…") : state.analysis.status === "success" ? "Analysis complete." : ""}

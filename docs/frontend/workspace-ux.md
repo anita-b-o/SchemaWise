@@ -317,6 +317,11 @@ same schema validation as Analyze. A closure result becomes `Out of date` after
 any input edit. It does not require a prior analysis and never occupies the
 main results summary.
 
+The panel preserves `selectedAttributes`, `inputRevision`, the exact
+`inputSnapshot` and the response in the workspace resource. Recalculation
+aborts the previous request and request IDs prevent late responses from
+replacing a newer result. Errors remain local to the tool; an abort is silent.
+
 ## Mobile
 
 At narrow widths, the page becomes one column in task order: header, editor,

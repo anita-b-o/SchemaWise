@@ -42,6 +42,7 @@ h1, h2, h3, p { margin-top: 0; }
 h1 { max-width: 38rem; margin-bottom: var(--space-3); font-size: clamp(2rem, 5vw, 3.75rem); line-height: 1.02; letter-spacing: -0.045em; font-weight: 690; }
 .page-introduction > p:last-child { max-width: 42rem; margin-bottom: 0; color: var(--text-secondary); font-size: 1.05rem; }
 .workspace-layout { display: grid; grid-template-columns: minmax(22rem, 0.8fr) minmax(0, 1.2fr); gap: clamp(1.5rem, 3vw, 3rem); align-items: start; }
+.workspace-primary { min-width: 0; }
 .schema-editor { background: var(--surface-raised); border: 1px solid var(--border-default); border-radius: var(--radius-md); }
 .editor-toolbar { display: flex; justify-content: space-between; align-items: center; gap: var(--space-4); padding: var(--space-4) var(--space-6); border-bottom: 1px solid var(--border-default); }
 .editor-toolbar p { margin-bottom: 0; }
@@ -108,6 +109,20 @@ summary { width: fit-content; cursor: pointer; font-weight: 650; }
 .analyze-action h2 { margin-bottom: var(--space-1); font-size: 1.08rem; }
 .analyze-action > div:first-child > p, .analyze-help { margin-bottom: 0; color: var(--text-secondary); font-size: 0.82rem; }
 .analyze-button { min-width: 9rem; }
+.closure-tool { margin-top: var(--space-6); border-top: 1px solid var(--border-strong); }
+.closure-tool > details > summary { padding: var(--space-4) 0; color: var(--accent); }
+.closure-tool__content { padding: 0 0 var(--space-4); }
+.closure-tool .section-heading { margin-bottom: var(--space-4); }
+.closure-tool .section-heading h2 { font-size: 1.05rem; }
+.closure-tool .section-heading > p { font-size: 0.82rem; }
+.closure-attributes { margin: var(--space-4) 0; padding: var(--space-3); border: 1px solid var(--border-default); }
+.closure-attributes legend { padding-inline: var(--space-1); font-size: 0.82rem; font-weight: 750; }
+.closure-tool .button { margin-top: var(--space-2); }
+.closure-help { margin: var(--space-3) 0 0; color: var(--text-secondary); font-size: 0.8rem; }
+.closure-status { margin: var(--space-3) 0 0; color: var(--text-secondary); font-size: 0.82rem; }
+.closure-stale { margin-top: var(--space-4); }
+.closure-error { margin-top: var(--space-4); }
+.closure-result { margin: var(--space-4) 0 0; padding-top: var(--space-4); border-top: 1px solid var(--border-default); }
 .analyze-help, .analysis-error { grid-column: 1 / -1; }
 .analysis-error { padding: var(--space-3) var(--space-4); color: #76271f; background: var(--danger-surface); border-left: 3px solid var(--danger); }
 .analysis-error strong, .analysis-error p { display: block; margin-bottom: var(--space-1); }
@@ -217,6 +232,7 @@ summary { width: fit-content; cursor: pointer; font-weight: 650; }
   .dependency-actions { align-self: stretch; justify-content: flex-end; }
   .analyze-action { grid-template-columns: 1fr; }
   .analyze-button { width: 100%; }
+  .closure-tool .button { width: 100%; }
   .key-facts { grid-template-columns: 1fr; gap: var(--space-6); }
   .normal-form-row { grid-template-columns: 3.5rem minmax(7rem, 1fr); }
   .normal-form-count { grid-column: 2; padding-bottom: var(--space-2); }

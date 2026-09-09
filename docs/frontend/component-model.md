@@ -51,8 +51,10 @@ stable API; initial styles can use semantic classes and tokens.
 - `SynthesisResult`, `BcnfResult` and preservation result render separate
   asynchronous resources. `BcnfResult` owns the contextual preservation action,
   which consumes its leaf attribute sets plus the immutable analysis snapshot.
-- `ClosureTool` is independent of analysis but consumes the same draft snapshot
-  and API boundary.
+- `ClosureTool` is independent of analysis but consumes the current draft
+  snapshot and API boundary. Its checkbox selection is local visual state; the
+  reducer owns request status, selected input, response snapshot and stale
+  state.
 
 ## Feature-oriented source layout
 
@@ -110,7 +112,8 @@ type Resource<T> =
 
 Analysis, synthesis, BCNF, preservation and closure each use a separate
 `Resource<T>`. A successful analysis also stores the exact normalized request
-snapshot. Transformations consume that snapshot. `sourceRevision !==
+snapshot. Transformations consume that snapshot; closure consumes a separately
+captured current-draft snapshot and does not require analysis. `sourceRevision !==
 draft.revision` means stale. Editing the draft invalidates transformation
 eligibility and preservation context but does not discard useful visible data.
 Only analysis success for a new input revision resets all three transformation
