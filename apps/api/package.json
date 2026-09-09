@@ -6,6 +6,13 @@
   "scripts": {
     "build": "tsc",
     "typecheck": "tsc --noEmit",
-    "test": "vitest run tests"
+    "test": "vitest run tests",
+    "start": "node dist/main.js"
+  },
+  "dependencies": {
+    "fastify": "^5.12.3"
+  },
+  "devDependencies": {
+    "@types/node": "^22.20.1"
   }
 }

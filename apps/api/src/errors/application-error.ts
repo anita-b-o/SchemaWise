@@ -47,3 +47,7 @@ export function translateEngineError(error: unknown): ApplicationError {
   }
   return applicationError("INTERNAL_ERROR", "The normalization operation failed.");
 }
+
+export function isApplicationError(error: unknown): error is ApplicationError {
+  return error instanceof ApplicationError;
+}
