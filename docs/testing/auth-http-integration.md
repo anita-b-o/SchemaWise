@@ -6,13 +6,14 @@ set/clear attributes, secure configuration, absent and inactive sessions,
 multiple independent sessions, response redaction and idempotent logout.
 
 `tests/integration/auth-http-postgres.test.ts` creates a random PostgreSQL
-schema, applies the real migrations and injects HTTP through Fastify wired to
+schema, applies the real migrations and starts Fastify on an ephemeral loopback
+TCP port wired to
 `PostgresAuthRegistrationRepository`, `PostgresUserRepository`,
 `PostgresSessionRepository`, Argon2id and cryptographic session tokens. It
 proves that register atomically persists a user and session, the browser-facing
 cookie contains the raw token while PostgreSQL contains only its SHA-256 digest,
-both register and login sessions authenticate, and logout deletes only the
-presented session.
+both register and login sessions authenticate with distinct CSRF tokens, a
+cross-session token is rejected, and logout deletes only the presented session.
 
 Run against a dedicated local/test database:
 
@@ -21,7 +22,7 @@ DATABASE_URL=postgresql://USER:PASSWORD@HOST:PORT/TEST_DATABASE \
   npm run test:integration --workspace @schemawise/api
 ```
 
-The manual network smoke starts the built Fastify server against an isolated
-migrated database and uses a temporary curl cookie jar for register (201), me
-(200), logout (204), and me again (401). The jar must remain outside the repo
-and be deleted after the run.
+The same automated integration is the real-network smoke: it uses Node `fetch`
+for register (201), me (200), missing/wrong/cross-session CSRF failures (403),
+matching logout (204), and me after revocation (401). Cookie and CSRF values stay
+in process memory and are not written into the repository.

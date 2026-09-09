@@ -325,9 +325,12 @@ describe("session authentication", () => {
     return { dependencies, userRepository };
   }
 
-  it("returns only public user data for an active session", async () => {
+  it("returns public user data and internal session identity for an active session", async () => {
     const { dependencies } = setup();
-    await expect(authenticateSession(dependencies, RAW_TOKEN)).resolves.toEqual({ id: user().id, email: user().email });
+    await expect(authenticateSession(dependencies, RAW_TOKEN)).resolves.toEqual({
+      user: { id: user().id, email: user().email },
+      sessionId: "6227a806-660b-4544-82bf-3bea326a75fa",
+    });
   });
 
   it("maps expired, malformed, and empty tokens to unauthenticated", async () => {

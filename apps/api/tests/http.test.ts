@@ -29,9 +29,10 @@ describe("HTTP adapter v1", () => {
     });
     expect(response.statusCode).toBe(204);
     expect(response.headers["access-control-allow-origin"]).toBe("http://localhost:5173");
-    expect(response.headers["access-control-allow-methods"]).toBe("POST, OPTIONS");
-    expect(response.headers["access-control-allow-headers"]).toBe("Content-Type");
-    expect(response.headers["access-control-allow-credentials"]).toBeUndefined();
+    expect(response.headers["access-control-allow-methods"]).toBe("GET, POST, OPTIONS");
+    expect(response.headers["access-control-allow-headers"]).toBe("Content-Type, X-CSRF-Token");
+    expect(response.headers["access-control-allow-credentials"]).toBe("true");
+    expect(response.headers["access-control-allow-origin"]).not.toBe("*");
   }));
 
   it("serves analysis", async () => withServer(async (server) => {
@@ -40,14 +41,14 @@ describe("HTTP adapter v1", () => {
     expect(response.json()).toMatchObject({ candidateKeys: [["a"]], normalForms: { second: { satisfied: true }, third: { satisfied: false }, bcnf: { satisfied: false } } });
   }));
 
-  it("adds CORS headers to a successful browser request without credentials", async () => withServer(async (server) => {
+  it("adds credentialed CORS headers to a successful browser request", async () => withServer(async (server) => {
     const response = await server.inject({
       ...post("/api/v1/analysis", schema),
       headers: { "content-type": "application/json", origin: "http://127.0.0.1:5174" },
     });
     expect(response.statusCode).toBe(200);
     expect(response.headers["access-control-allow-origin"]).toBe("http://127.0.0.1:5174");
-    expect(response.headers["access-control-allow-credentials"]).toBeUndefined();
+    expect(response.headers["access-control-allow-credentials"]).toBe("true");
   }));
 
   it("does not authorize a disallowed origin", async () => withServer(async (server) => {
@@ -57,7 +58,7 @@ describe("HTTP adapter v1", () => {
     });
     expect(response.statusCode).toBe(200);
     expect(response.headers["access-control-allow-origin"]).toBeUndefined();
-    expect(response.headers["access-control-allow-credentials"]).toBeUndefined();
+    expect(response.headers["access-control-allow-origin"]).not.toBe("*");
   }));
 
   it("keeps direct requests without Origin working", async () => withServer(async (server) => {

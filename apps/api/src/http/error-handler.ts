@@ -2,6 +2,7 @@ import type { FastifyError, FastifyInstance } from "fastify";
 import { authInternalError, isAuthApplicationError } from "../auth/errors/auth-error.js";
 import { isApplicationError, applicationError } from "../errors/application-error.js";
 import { statusForApplicationError, statusForAuthError } from "./http-status.js";
+import { isHttpSecurityError } from "./security-error.js";
 
 interface ErrorEnvelope {
   readonly error: {
@@ -21,6 +22,9 @@ export function registerErrorHandler(server: FastifyInstance): void {
   });
   server.setErrorHandler((error: FastifyError, request, reply) => {
     const isAuthRoute = request.url.startsWith("/api/v1/auth/");
+    if (isHttpSecurityError(error)) {
+      return reply.code(403).send(envelope(error.code, error.message));
+    }
     if (isAuthApplicationError(error)) {
       return reply.code(statusForAuthError(error.code)).send(envelope(error.code, error.message, error.details));
     }

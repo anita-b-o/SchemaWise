@@ -1,6 +1,6 @@
 # Authentication and project ownership architecture
 
-Status: Auth HTTP v1 functional and owner-scoped project persistence implemented; public HTTP security boundary pending.
+Status: Auth HTTP v1 public-ready and owner-scoped project persistence implemented; Project HTTP routes pending.
 
 ## System flows
 
@@ -44,7 +44,7 @@ and immediate server-side revocation on logout.
 The HTTP adapter turns an active session into the minimal application value:
 
 ```text
-AuthContext { userId: UserId, user: PublicUser }
+AuthContext { userId: UserId, user: PublicUser, sessionId: SessionId }
 ```
 
 No Fastify request, cookie or session object enters project use cases. Auth
@@ -97,21 +97,21 @@ likewise owner-scoped.
 
 ## HTTP security boundary
 
-Cookie authentication requires changing the future Fastify configuration from
-the currently verified `credentials: false` posture to explicit credentialed
-CORS. The allowlist remains exact; methods add `GET`, `PUT` and `DELETE`, and
-headers add `X-CSRF-Token`. Browser requests use `credentials: "include"`.
+Cookie authentication uses credentialed CORS with exact origins, `GET`, `POST`,
+`OPTIONS`, and `X-CSRF-Token`. Browser requests use `credentials: "include"`.
+`PUT` and `DELETE` remain deferred until Project routes are implemented.
 
 The host-only session cookie uses `HttpOnly`, production `Secure`,
 `SameSite=Lax`, `Path=/` and a 30-day expiry. Local UI and API use the same
-hostname consistently. Authenticated state changes require exact Origin (or
-strict Referer fallback) validation and a session-bound CSRF token. Register and
-login require Origin validation plus rate limits. No token is kept in browser
-storage.
+hostname consistently. Authenticated state changes validate exact Origin (or
+strict Referer fallback) whenever provenance is present and require a
+session-bound CSRF token. Register and login apply the same provenance policy
+plus rate limits. Headerless direct clients remain supported. No token is kept
+in browser storage.
 
-Project routes are a deployment gate: they are not publicly registered until
-auth resolution, owner-scoped persistence, authorization tests, CSRF,
-credentialed CORS and basic auth rate limiting are all operational.
+Auth resolution, owner-scoped persistence, CSRF, credentialed CORS, and basic
+auth rate limiting are operational. Project routes are still not registered and
+will reuse these controls in the next tranche.
 
 ## Persistence model
 
@@ -180,10 +180,9 @@ the same outcome; create assigns only the supplied server identity; owner-scoped
 ordering/total remain unchanged; and OCC succeeds/conflicts correctly only
 inside the owner's scope.
 
-Current HTTP tests cover register/login/`me`/logout, response redaction, cookie
-set and clear flags, session rotation, multiple-session independence and
-inactive-cookie behavior. The next security tranche adds CSRF Origin/header
-acceptance and rejection plus credentialed CORS preflights. Later Project HTTP
+Current HTTP tests additionally cover CSRF Origin/header acceptance and
+rejection, cross-session tokens, credentialed CORS preflights, rate-limit
+buckets, and a real-TCP PostgreSQL flow. Later Project HTTP
 tests will require `401 UNAUTHENTICATED` without an active session and repeat
 cross-owner `404` behavior through `GET`, `PUT` and `DELETE`.
 
@@ -201,7 +200,7 @@ cross-owner `404` behavior through `GET`, `PUT` and `DELETE`.
    predicate.
 6. Completed: add cross-user ownership and owner-scoped OCC integration tests.
 7. Completed: add the Fastify auth/session adapter and auth endpoints.
-8. Add CSRF validation, credentialed CORS, cookie policy and auth rate limiting.
+8. Completed: add CSRF validation, credentialed CORS, cookie policy and auth rate limiting.
 9. Add authenticated Project HTTP routes and their full HTTP authorization
    tests.
 10. Add frontend login and project persistence UX in a later tranche.

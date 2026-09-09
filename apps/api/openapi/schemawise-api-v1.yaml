@@ -2,9 +2,9 @@ openapi: 3.1.0
 info:
   title: SchemaWise API
   version: 1.0.0
-  description: HTTP contract v1 for synchronous normalization analysis and the functional, not-yet-public-ready authentication adapter. This describes the HTTP contract, not the engine package version.
+  description: HTTP contract v1 for synchronous normalization analysis and the public-ready authentication adapter. This describes the HTTP contract, not the engine package version.
 tags:
-  - { name: Auth, description: Server-side opaque session authentication. CSRF, credentialed CORS, and rate limiting are pending. }
+  - { name: Auth, description: Server-side opaque session authentication with session-bound CSRF, credentialed CORS, and auth-specific rate limits. }
   - { name: Computation, description: Public stateless normalization computations. }
 paths:
   /api/v1/auth/register:
@@ -15,7 +15,9 @@ paths:
       responses:
         '201': { $ref: '#/components/responses/AuthCreated' }
         '400': { $ref: '#/components/responses/AuthBadRequest' }
+        '403': { $ref: '#/components/responses/AuthForbidden' }
         '409': { $ref: '#/components/responses/AuthConflict' }
+        '429': { $ref: '#/components/responses/AuthRateLimited' }
         '500': { $ref: '#/components/responses/AuthInternalError' }
   /api/v1/auth/login:
     post:
@@ -26,6 +28,8 @@ paths:
         '200': { $ref: '#/components/responses/AuthLoginSuccess' }
         '400': { $ref: '#/components/responses/AuthBadRequest' }
         '401': { $ref: '#/components/responses/AuthUnauthorized' }
+        '403': { $ref: '#/components/responses/AuthForbidden' }
+        '429': { $ref: '#/components/responses/AuthRateLimited' }
         '500': { $ref: '#/components/responses/AuthInternalError' }
   /api/v1/auth/me:
     get:
@@ -40,9 +44,12 @@ paths:
     post:
       tags: [Auth]
       operationId: logoutUser
-      security: [{ sessionCookie: [] }]
+      description: A valid session requires exact browser provenance when supplied and a matching X-CSRF-Token. Missing or inactive sessions remain idempotent.
+      security: [{ sessionCookie: [] }, {}]
+      parameters: [{ $ref: '#/components/parameters/CsrfHeader' }]
       responses:
         '204': { description: Session revoked when present and cookie cleared idempotently. }
+        '403': { $ref: '#/components/responses/AuthForbidden' }
         '500': { $ref: '#/components/responses/AuthInternalError' }
   /api/v1/analysis:
     post:
@@ -81,6 +88,13 @@ components:
       in: cookie
       name: schemawise_session
       description: Opaque 256-bit session token. The server stores only its SHA-256 digest.
+  parameters:
+    CsrfHeader:
+      name: X-CSRF-Token
+      in: header
+      required: false
+      description: Required when logout presents an active session; value returned by register, login, or me for that same session.
+      schema: { type: string, pattern: '^[A-Za-z0-9_-]{43}$' }
   requestBodies:
     AuthRequest:
       required: true
@@ -96,20 +110,25 @@ components:
       content: { application/json: { schema: { $ref: '#/components/schemas/DependencyPreservationRequestDto' } } }
   responses:
     AuthCreated:
-      description: User registered and signed in. The raw session token is returned only in Set-Cookie; no CSRF token is returned in this tranche.
+      description: User registered and signed in. The raw session token is returned only in Set-Cookie; the session-bound CSRF token is in the JSON response.
       headers: { Set-Cookie: { schema: { type: string }, description: 'schemawise_session with HttpOnly, Path=/, SameSite=Lax, Max-Age=2592000, Expires, and environment-configured Secure.' } }
       content: { application/json: { schema: { $ref: '#/components/schemas/AuthResponseDto' } } }
     AuthSuccess:
-      description: Authentication succeeded; me does not replace an active cookie.
+      description: Authentication succeeded; me returns the stable CSRF token for the active session without replacing its cookie.
       content: { application/json: { schema: { $ref: '#/components/schemas/AuthResponseDto' } } }
     AuthLoginSuccess:
-      description: Authentication succeeded with a new independent session. The raw token is returned only in Set-Cookie.
+      description: Authentication succeeded with a new independent session and CSRF token. The raw session token is returned only in Set-Cookie.
       headers: { Set-Cookie: { schema: { type: string }, description: 'schemawise_session with HttpOnly, Path=/, SameSite=Lax, Max-Age=2592000, Expires, and environment-configured Secure.' } }
       content: { application/json: { schema: { $ref: '#/components/schemas/AuthResponseDto' } } }
     AuthBadRequest: { description: Invalid authentication DTO or input policy, content: { application/json: { schema: { $ref: '#/components/schemas/AuthErrorEnvelope' } } } }
     AuthUnauthorized: { description: Invalid credentials, content: { application/json: { schema: { $ref: '#/components/schemas/AuthErrorEnvelope' } } } }
     AuthUnauthenticated: { description: Missing or inactive session; an invalid presented cookie is cleared, content: { application/json: { schema: { $ref: '#/components/schemas/AuthErrorEnvelope' } } } }
     AuthConflict: { description: Canonical email already exists, content: { application/json: { schema: { $ref: '#/components/schemas/AuthErrorEnvelope' } } } }
+    AuthForbidden: { description: Browser provenance or session-bound CSRF validation failed with INVALID_CSRF_TOKEN, content: { application/json: { schema: { $ref: '#/components/schemas/AuthErrorEnvelope' } } } }
+    AuthRateLimited:
+      description: An authentication attempt exceeded an applicable IP or email-and-IP limit; the bucket is not disclosed.
+      headers: { Retry-After: { schema: { type: integer, minimum: 1 }, description: Seconds until this request can be retried. } }
+      content: { application/json: { schema: { $ref: '#/components/schemas/AuthErrorEnvelope' } } }
     AuthInternalError: { description: Sanitized authentication infrastructure failure, content: { application/json: { schema: { $ref: '#/components/schemas/AuthErrorEnvelope' } } } }
     AnalysisResponse: { description: Successful analysis, content: { application/json: { schema: { $ref: '#/components/schemas/AnalysisResponseDto' } } } }
     ClosureResponse: { description: Successful closure, content: { application/json: { schema: { $ref: '#/components/schemas/ClosureResponseDto' } } } }
@@ -138,10 +157,12 @@ components:
         email: { type: string, maxLength: 254 }
     AuthResponseDto:
       type: object
-      required: [user]
+      required: [user, csrfToken]
       additionalProperties: false
-      properties: { user: { $ref: '#/components/schemas/PublicUserDto' } }
-    AuthErrorCode: { type: string, enum: [INVALID_AUTH_REQUEST, EMAIL_ALREADY_EXISTS, INVALID_CREDENTIALS, UNAUTHENTICATED, AUTH_RATE_LIMITED, AUTH_INTERNAL_ERROR] }
+      properties:
+        user: { $ref: '#/components/schemas/PublicUserDto' }
+        csrfToken: { type: string, pattern: '^[A-Za-z0-9_-]{43}$', description: HMAC-SHA-256 value bound to the current session; keep in memory and send as X-CSRF-Token on authenticated mutations. }
+    AuthErrorCode: { type: string, enum: [INVALID_AUTH_REQUEST, EMAIL_ALREADY_EXISTS, INVALID_CREDENTIALS, UNAUTHENTICATED, INVALID_CSRF_TOKEN, AUTH_RATE_LIMITED, AUTH_INTERNAL_ERROR] }
     AuthErrorEnvelope: { type: object, required: [error], properties: { error: { type: object, required: [code, message], properties: { code: { $ref: '#/components/schemas/AuthErrorCode' }, message: { type: string }, details: { type: object, additionalProperties: true } } } } }
     AttributeDto:
       type: object

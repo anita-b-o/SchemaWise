@@ -9,8 +9,7 @@ import {
 } from "../application/auth-use-cases.js";
 import { Argon2idPasswordHasher } from "../crypto/argon2id-password-hasher.js";
 import { CryptoSessionTokenGenerator } from "../crypto/crypto-session-token-generator.js";
-import type { AuthenticatedSession } from "../model/authenticated-session.js";
-import type { PublicUser } from "../model/user.js";
+import type { AuthenticatedSession, AuthenticatedSessionContext } from "../model/authenticated-session.js";
 import type { AuthRegistrationRepository } from "../ports/auth-registration-repository.js";
 import type { Clock } from "../ports/clock.js";
 import type { PasswordHasher } from "../ports/password-hasher.js";
@@ -24,7 +23,7 @@ import { PostgresUserRepository } from "../postgres/postgres-user-repository.js"
 export interface AuthRuntime {
   register(input: RegisterUserInput): Promise<AuthenticatedSession>;
   login(input: LoginUserInput): Promise<AuthenticatedSession>;
-  authenticate(rawToken: unknown): Promise<PublicUser>;
+  authenticate(rawToken: unknown): Promise<AuthenticatedSessionContext>;
   logout(rawToken: unknown): Promise<void>;
 }
 

@@ -174,7 +174,10 @@ describe.sequential("PostgreSQL authentication adapters", () => {
     expect(loggedIn.user).toEqual(registered.user);
     expect(loggedIn.session.token).not.toBe(registered.session.token);
     expect((await pool.query("SELECT id FROM sessions WHERE user_id = $1", [registered.user.id])).rows).toHaveLength(2);
-    await expect(authenticateSession(sessionDependencies, loggedIn.session.token)).resolves.toEqual(registered.user);
+    await expect(authenticateSession(sessionDependencies, loggedIn.session.token)).resolves.toEqual({
+      user: registered.user,
+      sessionId: loggedIn.session.id,
+    });
     await logout({ sessionRepository: sessions, sessionTokenGenerator }, loggedIn.session.token);
     await expect(authenticateSession(sessionDependencies, loggedIn.session.token)).rejects.toMatchObject({ code: "UNAUTHENTICATED" });
   });

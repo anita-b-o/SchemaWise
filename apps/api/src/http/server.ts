@@ -8,35 +8,39 @@ import { readAuthCookieConfig, type AuthCookieConfig } from "./auth-cookie.js";
 import { registerAuthRoutes } from "./auth-routes.js";
 import { registerErrorHandler } from "./error-handler.js";
 import { registerRoutes, type HttpUseCases } from "./routes.js";
-
-const DEFAULT_CORS_ORIGINS = [
-  "http://localhost:5173",
-  "http://127.0.0.1:5173",
-  "http://localhost:5174",
-  "http://127.0.0.1:5174",
-];
-
-function getCorsOrigins(): string[] {
-  const configuredOrigins = process.env.CORS_ORIGINS;
-  if (configuredOrigins === undefined) return DEFAULT_CORS_ORIGINS;
-  return configuredOrigins.split(",").map((origin) => origin.trim()).filter(Boolean);
-}
+import {
+  DEFAULT_AUTH_RATE_LIMITS,
+  parseCorsOrigins,
+  readCsrfSecret,
+  readTrustProxy,
+  validateCsrfSecret,
+  type AuthRateLimitConfig,
+} from "./auth-security.js";
 
 export interface ServerOptions {
   readonly logger?: boolean;
   readonly useCases?: HttpUseCases;
   readonly auth?: AuthRuntime;
   readonly authCookie?: AuthCookieConfig;
+  readonly csrfSecret?: string;
+  readonly corsOrigins?: readonly string[];
+  readonly trustProxy?: boolean;
+  readonly authRateLimits?: AuthRateLimitConfig;
 }
 
 export function createServer(options: ServerOptions = {}): FastifyInstance {
-  const server = Fastify({ bodyLimit: 64 * 1024, logger: options.logger ?? false });
+  const allowedOrigins = parseCorsOrigins(options.corsOrigins?.join(",") ?? process.env.CORS_ORIGINS);
+  const server = Fastify({
+    bodyLimit: 64 * 1024,
+    logger: options.logger ?? false,
+    trustProxy: options.trustProxy ?? readTrustProxy(),
+  });
   server.register(cookie);
   server.register(cors, {
-    origin: getCorsOrigins(),
-    methods: ["POST", "OPTIONS"],
-    allowedHeaders: ["Content-Type"],
-    credentials: false,
+    origin: [...allowedOrigins],
+    methods: ["GET", "POST", "OPTIONS"],
+    allowedHeaders: ["Content-Type", "X-CSRF-Token"],
+    credentials: true,
   });
   registerErrorHandler(server);
   server.addHook("onRequest", async (request, reply) => {
@@ -50,7 +54,15 @@ export function createServer(options: ServerOptions = {}): FastifyInstance {
   });
   registerRoutes(server, options.useCases);
   if (options.auth !== undefined) {
-    registerAuthRoutes(server, options.auth, options.authCookie ?? readAuthCookieConfig());
+    const csrfSecret = options.csrfSecret === undefined ? readCsrfSecret() : validateCsrfSecret(options.csrfSecret);
+    registerAuthRoutes(
+      server,
+      options.auth,
+      options.authCookie ?? readAuthCookieConfig(),
+      csrfSecret,
+      allowedOrigins,
+      options.authRateLimits ?? DEFAULT_AUTH_RATE_LIMITS,
+    );
   }
   return server;
 }
@@ -62,6 +74,7 @@ export async function startServer(): Promise<void> {
     logger: true,
     auth: createPostgresAuthRuntime(pool),
     authCookie,
+    csrfSecret: readCsrfSecret(),
   });
   server.addHook("onClose", async () => closeProjectPool(pool));
   const port = Number(process.env.PORT ?? 3000);

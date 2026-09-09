@@ -3,7 +3,11 @@ import {
   AUTH_SESSION_COOKIE_NAME,
   createAuthRuntime,
   createServer,
+  DEFAULT_AUTH_RATE_LIMITS,
+  deriveCsrfToken,
+  readCsrfSecret,
   readAuthCookieConfig,
+  readTrustProxy,
   type AuthRegistrationRepository,
   type Clock,
   type PasswordHasher,
@@ -15,6 +19,7 @@ import {
 
 const START = new Date("2026-09-09T12:00:00.000Z");
 const PASSWORD = "correct password";
+const CSRF_SECRET = "deterministic-test-csrf-secret-32-bytes";
 
 class MutableClock implements Clock {
   value = new Date(START);
@@ -75,7 +80,7 @@ class SequencedTokenGenerator implements SessionTokenGenerator {
   async hash(rawToken: string): Promise<string> { return rawToken[0]!.toLowerCase().repeat(64); }
 }
 
-function setup(secure = false) {
+function setup(secure = false, authRateLimits = DEFAULT_AUTH_RATE_LIMITS) {
   const store = new MemoryStore();
   const clock = new MutableClock();
   const tokenGenerator = new SequencedTokenGenerator();
@@ -91,15 +96,15 @@ function setup(secure = false) {
     sessionTokenGenerator: tokenGenerator,
     clock,
   });
-  const server = createServer({ auth, authCookie: { secure } });
+  const server = createServer({ auth, authCookie: { secure }, csrfSecret: CSRF_SECRET, authRateLimits });
   return { server, store, clock };
 }
 
-function jsonPost(url: string, payload: unknown, cookie?: string) {
+function jsonPost(url: string, payload: unknown, cookie?: string, extraHeaders: Record<string, string> = {}) {
   return {
     method: "POST" as const,
     url,
-    headers: { "content-type": "application/json", ...(cookie === undefined ? {} : { cookie }) },
+    headers: { "content-type": "application/json", ...(cookie === undefined ? {} : { cookie }), ...extraHeaders },
     payload: JSON.stringify(payload),
   };
 }
@@ -119,12 +124,23 @@ describe("authentication HTTP v1", () => {
     expect(() => readAuthCookieConfig({ AUTH_COOKIE_SECURE: "1" })).toThrow("AUTH_COOKIE_SECURE is required");
   });
 
+  it("requires a strong CSRF secret and validates trust proxy as a boolean", () => {
+    expect(readCsrfSecret({ CSRF_SECRET })).toBe(CSRF_SECRET);
+    expect(() => readCsrfSecret({})).toThrow("CSRF_SECRET is required");
+    expect(() => readCsrfSecret({ CSRF_SECRET: "too-short" })).toThrow("at least 32 bytes");
+    expect(readTrustProxy({})).toBe(false);
+    expect(readTrustProxy({ TRUST_PROXY: "false" })).toBe(false);
+    expect(readTrustProxy({ TRUST_PROXY: "true" })).toBe(true);
+    expect(() => readTrustProxy({ TRUST_PROXY: "loopback" })).toThrow("true or false");
+  });
+
   it("registers, canonicalizes the public user, and sets the host-only session cookie", async () => {
     const { server } = setup();
     try {
       const response = await server.inject(jsonPost("/api/v1/auth/register", { email: " Person@Example.COM ", password: PASSWORD }));
       expect(response.statusCode).toBe(201);
       expect(response.json()).toMatchObject({ user: { email: "person@example.com" } });
+      expect(response.json().csrfToken).toMatch(/^[A-Za-z0-9_-]{43}$/);
       expect(response.json().user.id).toMatch(/^[0-9a-f-]{36}$/);
       expect(response.body).not.toContain("token");
       expect(response.body).not.toContain(PASSWORD);
@@ -145,7 +161,7 @@ describe("authentication HTTP v1", () => {
     try {
       const response = await server.inject(jsonPost("/api/v1/auth/register", { email: "person@example.com", password: PASSWORD }));
       expect(response.headers["set-cookie"]).toContain("Secure");
-      const logout = await server.inject({ method: "POST", url: "/api/v1/auth/logout", headers: { cookie: cookiePair(response) } });
+      const logout = await server.inject({ method: "POST", url: "/api/v1/auth/logout", headers: { cookie: cookiePair(response), "x-csrf-token": response.json().csrfToken } });
       expect(logout.headers["set-cookie"]).toContain("Secure");
     } finally { await server.close(); }
   });
@@ -177,7 +193,8 @@ describe("authentication HTTP v1", () => {
       const registered = await server.inject(jsonPost("/api/v1/auth/register", { email: "person@example.com", password: PASSWORD }));
       const loggedIn = await server.inject(jsonPost("/api/v1/auth/login", { email: "person@example.com", password: PASSWORD }));
       expect(loggedIn.statusCode).toBe(200);
-      expect(loggedIn.json()).toEqual(registered.json());
+      expect(loggedIn.json().user).toEqual(registered.json().user);
+      expect(loggedIn.json().csrfToken).not.toBe(registered.json().csrfToken);
       expect(cookiePair(loggedIn)).not.toBe(cookiePair(registered));
 
       const wrong = await server.inject(jsonPost("/api/v1/auth/login", { email: "person@example.com", password: "wrong password" }));
@@ -227,11 +244,12 @@ describe("authentication HTTP v1", () => {
       const loggedIn = await server.inject(jsonPost("/api/v1/auth/login", { email: "person@example.com", password: PASSWORD }));
       const cookie1 = cookiePair(registered);
       const cookie2 = cookiePair(loggedIn);
+      const csrf1 = registered.json().csrfToken;
       expect((await server.inject({ method: "GET", url: "/api/v1/auth/me", headers: { cookie: cookie1 } })).statusCode).toBe(200);
       expect((await server.inject({ method: "GET", url: "/api/v1/auth/me", headers: { cookie: cookie2 } })).statusCode).toBe(200);
       expect(store.sessions).toHaveLength(2);
 
-      const logout = await server.inject({ method: "POST", url: "/api/v1/auth/logout", headers: { cookie: cookie1 } });
+      const logout = await server.inject({ method: "POST", url: "/api/v1/auth/logout", headers: { cookie: cookie1, "x-csrf-token": csrf1 } });
       expect(logout.statusCode).toBe(204);
       expect(logout.body).toBe("");
       expect(logout.headers["set-cookie"]).toContain(`${AUTH_SESSION_COOKIE_NAME}=;`);
@@ -264,6 +282,7 @@ describe("authentication HTTP v1", () => {
         logout: async () => { throw new Error("unused"); },
       },
       authCookie: { secure: false },
+      csrfSecret: CSRF_SECRET,
     });
     try {
       const response = await failing.inject(jsonPost("/api/v1/auth/register", { email: "person@example.com", password: PASSWORD }));
@@ -272,5 +291,114 @@ describe("authentication HTTP v1", () => {
       expect(response.body).not.toContain("SQL");
       expect(response.body).not.toContain(PASSWORD);
     } finally { await failing.close(); }
+  });
+
+  it("binds CSRF to one session and enforces it only for a valid-session logout", async () => {
+    const { server } = setup();
+    try {
+      const registered = await server.inject(jsonPost("/api/v1/auth/register", { email: "person@example.com", password: PASSWORD }));
+      const loggedIn = await server.inject(jsonPost("/api/v1/auth/login", { email: "person@example.com", password: PASSWORD }));
+      const cookie1 = cookiePair(registered);
+      const cookie2 = cookiePair(loggedIn);
+      const csrf1 = registered.json().csrfToken as string;
+      const csrf2 = loggedIn.json().csrfToken as string;
+
+      expect(csrf1).not.toBe(csrf2);
+      expect((await server.inject({ method: "GET", url: "/api/v1/auth/me", headers: { cookie: cookie1 } })).json().csrfToken).toBe(csrf1);
+
+      for (const token of [undefined, "wrong", csrf2]) {
+        const response = await server.inject({
+          method: "POST",
+          url: "/api/v1/auth/logout",
+          headers: { cookie: cookie1, ...(token === undefined ? {} : { "x-csrf-token": token }) },
+        });
+        expect(response.statusCode).toBe(403);
+        expect(response.json()).toEqual({ error: { code: "INVALID_CSRF_TOKEN", message: "The CSRF validation failed." } });
+      }
+
+      expect((await server.inject({ method: "GET", url: "/api/v1/auth/me", headers: { cookie: cookie1 } })).statusCode).toBe(200);
+      expect((await server.inject({ method: "POST", url: "/api/v1/auth/logout", headers: { cookie: cookie1, "x-csrf-token": csrf1 } })).statusCode).toBe(204);
+      expect((await server.inject({ method: "GET", url: "/api/v1/auth/me", headers: { cookie: cookie2 } })).statusCode).toBe(200);
+      expect((await server.inject({ method: "POST", url: "/api/v1/auth/logout" })).statusCode).toBe(204);
+      expect((await server.inject({ method: "POST", url: "/api/v1/auth/logout", headers: { cookie: `${AUTH_SESSION_COOKIE_NAME}=bad` } })).statusCode).toBe(204);
+    } finally { await server.close(); }
+  });
+
+  it("validates Origin exactly, falls back to parsed Referer, and permits headerless direct clients", async () => {
+    const { server } = setup();
+    try {
+      const allowed = await server.inject(jsonPost("/api/v1/auth/register", { email: "one@example.com", password: PASSWORD }, undefined, { origin: "http://localhost:5173" }));
+      expect(allowed.statusCode).toBe(201);
+
+      const referer = await server.inject(jsonPost("/api/v1/auth/register", { email: "two@example.com", password: PASSWORD }, undefined, { referer: "http://localhost:5173/signup?from=test" }));
+      expect(referer.statusCode).toBe(201);
+
+      const allowedLogin = await server.inject(jsonPost("/api/v1/auth/login", { email: "one@example.com", password: PASSWORD }, undefined, { origin: "http://localhost:5173" }));
+      expect(allowedLogin.statusCode).toBe(200);
+
+      for (const headers of [
+        { origin: "http://evil-localhost:5173" },
+        { referer: "not a url" },
+        { origin: "https://evil.example", referer: "http://localhost:5173/signup" },
+      ]) {
+        const rejected = await server.inject(jsonPost("/api/v1/auth/login", { email: "one@example.com", password: PASSWORD }, undefined, headers));
+        expect(rejected.statusCode).toBe(403);
+        expect(rejected.json().error.code).toBe("INVALID_CSRF_TOKEN");
+      }
+
+      const direct = await server.inject(jsonPost("/api/v1/auth/login", { email: "two@example.com", password: PASSWORD }));
+      expect(direct.statusCode).toBe(200);
+    } finally { await server.close(); }
+  });
+
+  it("derives deterministic session-bound CSRF values without exposing session identity", () => {
+    const first = deriveCsrfToken(CSRF_SECRET, "session-a");
+    expect(first).toBe(deriveCsrfToken(CSRF_SECRET, "session-a"));
+    expect(first).not.toBe(deriveCsrfToken(CSRF_SECRET, "session-b"));
+    expect(first).not.toContain("session-a");
+  });
+
+  it("limits login by IP with a generic 429 and Retry-After", async () => {
+    const { server } = setup(false, { ...DEFAULT_AUTH_RATE_LIMITS, loginIpMax: 2, loginEmailIpMax: 20 });
+    try {
+      for (const email of ["one@example.com", "two@example.com"]) {
+        expect((await server.inject(jsonPost("/api/v1/auth/login", { email, password: "wrong" }))).statusCode).toBe(401);
+      }
+      const limited = await server.inject(jsonPost("/api/v1/auth/login", { email: "three@example.com", password: "wrong" }));
+      expect(limited.statusCode).toBe(429);
+      expect(limited.json()).toEqual({ error: { code: "AUTH_RATE_LIMITED", message: "Too many authentication attempts. Try again later." } });
+      expect(Number(limited.headers["retry-after"])).toBeGreaterThan(0);
+      expect(limited.headers["x-ratelimit-limit"]).toBeUndefined();
+      expect(limited.body).not.toContain("auth-login");
+      expect(limited.body).not.toContain("three@example.com");
+    } finally { await server.close(); }
+  });
+
+  it("shares the login email+IP bucket across canonical email spelling", async () => {
+    const { server } = setup(false, { ...DEFAULT_AUTH_RATE_LIMITS, loginIpMax: 20, loginEmailIpMax: 2 });
+    try {
+      for (const email of [" Person@Example.com ", "PERSON@example.COM"]) {
+        expect((await server.inject(jsonPost("/api/v1/auth/login", { email, password: "wrong" }))).statusCode).toBe(401);
+      }
+      const limited = await server.inject(jsonPost("/api/v1/auth/login", { email: "person@example.com", password: "wrong" }));
+      expect(limited.statusCode).toBe(429);
+      expect(limited.json().error.code).toBe("AUTH_RATE_LIMITED");
+      expect(limited.headers["retry-after"]).toBeDefined();
+    } finally { await server.close(); }
+  });
+
+  it("limits registration by IP without applying a global API limit", async () => {
+    const { server } = setup(false, { ...DEFAULT_AUTH_RATE_LIMITS, registerIpMax: 2 });
+    try {
+      for (const email of ["one@example.com", "two@example.com"]) {
+        expect((await server.inject(jsonPost("/api/v1/auth/register", { email, password: PASSWORD }))).statusCode).toBe(201);
+      }
+      const limited = await server.inject(jsonPost("/api/v1/auth/register", { email: "three@example.com", password: PASSWORD }));
+      expect(limited.statusCode).toBe(429);
+      expect(limited.json().error.code).toBe("AUTH_RATE_LIMITED");
+      expect(limited.headers["retry-after"]).toBeDefined();
+      const computation = await server.inject({ method: "POST", url: "/api/v1/analysis", headers: { "content-type": "application/json" }, payload: "{}" });
+      expect(computation.statusCode).not.toBe(429);
+    } finally { await server.close(); }
   });
 });

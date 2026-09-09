@@ -104,10 +104,10 @@ not part of `UserDto`.
 
 | Method and route | Request | Success |
 | --- | --- | --- |
-| `POST /api/v1/auth/register` | exact `{ email, password }` | `201`, set session cookie, return `{ user }` |
-| `POST /api/v1/auth/login` | exact `{ email, password }` | `200`, set session cookie, return `{ user }` |
-| `POST /api/v1/auth/logout` | no body | `204`, revoke current DB session and clear cookie |
-| `GET /api/v1/auth/me` | no body | `200 { user }` or `401 UNAUTHENTICATED` |
+| `POST /api/v1/auth/register` | exact `{ email, password }` | `201`, set session cookie, return `{ user, csrfToken }` |
+| `POST /api/v1/auth/login` | exact `{ email, password }` | `200`, set session cookie, return `{ user, csrfToken }` |
+| `POST /api/v1/auth/logout` | `X-CSRF-Token` when session is active | `204`, revoke current DB session and clear cookie |
+| `GET /api/v1/auth/me` | no body | `200 { user, csrfToken }` or `401 UNAUTHENTICATED` |
 
 Unknown request fields are rejected. Register creates the user and initial
 session as one application transaction. An email uniqueness race is resolved by
@@ -119,16 +119,16 @@ register or login issues a fresh session token. Replacing a browser cookie does
 not revoke its previous server-side session in v1; multiple sessions are
 intentional and each must be logged out independently. Logout-all is absent.
 
-The response temporarily omits the final-design `csrfToken` because CSRF
-runtime is not part of Auth HTTP v1. No placeholder is emitted. This adapter is
-functional for same-origin/inject/curl use but is not public-ready.
+The response includes a session-bound HMAC `csrfToken`; the frontend keeps it in
+memory and does not persist it in localStorage or another cookie.
 
 Logout is not implemented by cookie deletion alone. When a valid current token
 is present, its server-side session is deleted/revoked before the cookie is
 cleared. The adapter clears the cookie even when it is absent, expired or
 already revoked, and returns `204`; this makes logout cleanup idempotent without
-disclosing session state. The next security tranche makes a valid-cookie logout
-subject to CSRF controls; Auth HTTP v1 does not enforce them yet.
+disclosing session state. A valid-cookie logout is subject to Origin/Referer and
+CSRF controls. Missing or inactive cookies retain
+idempotent clear-and-204 behavior.
 
 ## Authentication resolution
 
@@ -140,7 +140,7 @@ raw cookie token
   -> SHA-256 token hash
   -> SessionRepository.findActiveByTokenHash(hash, now)
   -> userId
-  -> AuthContext { userId }
+  -> AuthContext { userId, user, sessionId }
 ```
 
 Missing, malformed, unknown, revoked and expired sessions all fail closed as
@@ -160,6 +160,7 @@ Auth errors use the existing JSON error envelope with this minimum catalogue:
 | `EMAIL_ALREADY_EXISTS` | 409 | Canonical email already registered |
 | `INVALID_CREDENTIALS` | 401 | Login email/password pair was not accepted |
 | `UNAUTHENTICATED` | 401 | Protected request has no active session |
+| `INVALID_CSRF_TOKEN` | 403 | Browser provenance or session-bound CSRF validation failed |
 | `AUTH_RATE_LIMITED` | 429 | Auth attempt exceeded an applicable limit |
 | `AUTH_INTERNAL_ERROR` | 500 | Unexpected auth/persistence failure |
 
@@ -178,24 +179,22 @@ dummy Argon2id PHC hash calibrated like normal hashes. This narrows timing
 differences without claiming perfect network-level timing equality. Code must
 not branch into an immediate unknown-email response.
 
-## Planned initial rate limits
+## Initial rate limits
 
-Rate limiting is not implemented in Auth HTTP v1. The next security tranche will
-enforce it before expensive password hashing while preserving a generic public
-response:
+Auth HTTP v1 enforces these limits before expensive password hashing while
+preserving a generic public response:
 
 - login: 20 attempts per 15 minutes per source IP;
 - login: 5 attempts per 15 minutes per canonical-email-and-IP pair;
 - register: 5 attempts per hour per source IP.
 
 All attempts count, not only failures, which keeps the first implementation
-simple and avoids outcome-dependent counters. A successful login may clear the
-email-and-IP bucket after the response. `429 AUTH_RATE_LIMITED` includes a
+simple and avoids outcome-dependent counters. `429 AUTH_RATE_LIMITED` includes a
 `Retry-After` header but does not identify which limiter fired or whether the
 email exists. Proxy-derived IPs are trusted only behind explicitly configured
-proxies. A single-instance in-memory store is acceptable only for local
-development; production limits need a store whose scope matches all API
-instances. Project-read rate limiting is not part of this tranche.
+proxies. The current in-memory store is acceptable only for single-instance
+operation; multi-instance production needs a shared store. Project-read rate
+limiting is not part of this tranche.
 
 ## Logging and secret handling
 
@@ -208,7 +207,8 @@ authentication, and privacy-reviewed/truncated network metadata.
 
 ## Public-exposure gate
 
-Project routes must not be registered in a public deployment until auth use
-cases and persistence, active-session resolution, owner-scoped repository
-queries, authorization tests, CSRF, credentialed CORS and basic auth rate
-limiting are in place. Computational endpoints remain a separate public path.
+The Auth HTTP routes satisfy their public-exposure gate: auth use cases and
+persistence, active-session resolution, CSRF, credentialed CORS, and basic auth
+rate limiting are in place. Project HTTP routes remain absent until their adapter
+and authorization tests reuse these controls. Computational endpoints remain a
+separate public path.

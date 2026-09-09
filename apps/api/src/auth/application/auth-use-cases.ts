@@ -1,6 +1,6 @@
 import { randomUUID } from "node:crypto";
 import { authError, authInternalError, isAuthApplicationError } from "../errors/auth-error.js";
-import type { AuthenticatedSession } from "../model/authenticated-session.js";
+import type { AuthenticatedSession, AuthenticatedSessionContext } from "../model/authenticated-session.js";
 import type { Session } from "../model/session.js";
 import { toPublicUser, type PublicUser, type User } from "../model/user.js";
 import type { AuthRegistrationRepository } from "../ports/auth-registration-repository.js";
@@ -130,7 +130,7 @@ export async function loginUser(
 export async function authenticateSession(
   dependencies: SessionAuthDependencies,
   rawToken: unknown,
-): Promise<PublicUser> {
+): Promise<AuthenticatedSessionContext> {
   if (!isStructurallyValidSessionToken(rawToken)) {
     throw authError("UNAUTHENTICATED", "Authentication is required.");
   }
@@ -141,7 +141,7 @@ export async function authenticateSession(
     if (session === null) throw authError("UNAUTHENTICATED", "Authentication is required.");
     const user = await dependencies.userRepository.findById(session.userId);
     if (user === null) throw authError("UNAUTHENTICATED", "Authentication is required.");
-    return toPublicUser(user);
+    return { user: toPublicUser(user), sessionId: session.id };
   });
 }
 

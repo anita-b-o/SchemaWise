@@ -15,9 +15,11 @@ rather than server-side authorization.
 
 Use a host-only session cookie with `HttpOnly`, production `Secure`,
 `SameSite=Lax`, `Path=/` and the session's 30-day absolute expiry. Authenticated
-mutations require both exact Origin allowlist validation (strict Referer fallback
-only when Origin is absent) and a session-bound HMAC CSRF token sent in
-`X-CSRF-Token`. Login/register require Origin validation and rate limiting.
+mutations validate an exact Origin allowlist (strict Referer fallback only when
+Origin is absent) whenever either provenance header is present, and require a
+session-bound HMAC CSRF token sent in `X-CSRF-Token`. Login/register use the same
+provenance policy and rate limiting. Headerless direct non-browser clients remain
+allowed in v1; authenticated mutations are still protected by the CSRF token.
 Enable credentialed CORS only for explicit origins and have the frontend use
 `credentials: "include"`.
 

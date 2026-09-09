@@ -11,3 +11,9 @@ export interface AuthenticatedSession {
   readonly user: PublicUser;
   readonly session: SessionCredential;
 }
+
+/** Internal result used by transport adapters; sessionId is never a public DTO field. */
+export interface AuthenticatedSessionContext {
+  readonly user: PublicUser;
+  readonly sessionId: string;
+}

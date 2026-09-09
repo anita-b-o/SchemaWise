@@ -14,8 +14,8 @@ CORS es responsabilidad de este HTTP Adapter y se implementa con
 Cuando no se define, el default local limitado permite `localhost` y
 `127.0.0.1` en los puertos Vite `5173` y `5174`. En producción se debe definir
 explícitamente la allowlist de origins; no se usa wildcard. Sólo se permiten
-`POST` y `OPTIONS`, y `Content-Type` como header solicitado. Las credenciales
-están deshabilitadas (`credentials: false`).
+`GET`, `POST` y `OPTIONS`; los headers permitidos son `Content-Type` y
+`X-CSRF-Token`. Las credenciales están habilitadas (`credentials: true`).
 
 El preflight `OPTIONS` es atendido por el plugin antes de las rutas y no entra
 en Application Layer. Un origin no autorizado no recibe headers CORS válidos;
@@ -37,5 +37,12 @@ No hay falsa preemption: el adapter no usa `Promise.race`, timers,
 `AbortController`, workers ni produce `OPERATION_TIMEOUT`. La protección v1
 depende de límites de input; la ejecución CPU-bound permanece síncrona.
 
-Los tests usan `fastify.inject()`, sin puertos reales. La factory acepta overrides
-de use cases únicamente para probar el mapping de errores inesperados.
+Los tests generales usan `fastify.inject()`. La integración de seguridad Auth
+abre además un puerto TCP efímero y usa `fetch` contra PostgreSQL real. La factory
+acepta overrides de use cases, configuración Auth, secreto CSRF, origins, límites
+y trust proxy para pruebas determinísticas.
+
+`TRUST_PROXY` sólo acepta `true` o `false` y por defecto es `false`; no se confía
+en `X-Forwarded-For` sin decisión explícita de despliegue. Los límites Auth son
+específicos de ruta y usan memoria local del proceso, no un límite global de la
+API.

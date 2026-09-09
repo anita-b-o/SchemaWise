@@ -36,3 +36,5 @@ export * from "./auth/postgres/postgres-auth-registration-repository.js";
 export * from "./auth/runtime/auth-runtime.js";
 export * from "./http/auth-cookie.js";
 export * from "./http/auth-context.js";
+export * from "./http/auth-security.js";
+export * from "./http/security-error.js";

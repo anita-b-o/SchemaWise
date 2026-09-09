@@ -1,5 +1,6 @@
 import { createHash, randomUUID } from "node:crypto";
 import { fileURLToPath } from "node:url";
+import type { AddressInfo } from "node:net";
 import path from "node:path";
 import { Pool } from "pg";
 import { runner } from "node-pg-migrate";
@@ -21,17 +22,25 @@ const schemaName = `schemawise_auth_http_${randomUUID().replaceAll("-", "")}`;
 const migrationsDirectory = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "../../migrations");
 const adminPool = new Pool({ connectionString: databaseUrl });
 let pool: Pool;
+const ORIGIN = "http://localhost:5173";
+const CSRF_SECRET = "postgres-integration-csrf-secret-32-bytes";
 
-function post(url: string, payload?: unknown, cookie?: string) {
-  return {
-    method: "POST" as const,
-    url,
+async function request(
+  baseUrl: string,
+  method: "GET" | "POST",
+  url: string,
+  options: { payload?: unknown; cookie?: string; csrfToken?: string } = {},
+): Promise<Response> {
+  return fetch(`${baseUrl}${url}`, {
+    method,
     headers: {
-      ...(payload === undefined ? {} : { "content-type": "application/json" }),
-      ...(cookie === undefined ? {} : { cookie }),
+      Origin: ORIGIN,
+      ...(options.payload === undefined ? {} : { "Content-Type": "application/json" }),
+      ...(options.cookie === undefined ? {} : { Cookie: options.cookie }),
+      ...(options.csrfToken === undefined ? {} : { "X-CSRF-Token": options.csrfToken }),
     },
-    ...(payload === undefined ? {} : { payload: JSON.stringify(payload) }),
-  };
+    ...(options.payload === undefined ? {} : { body: JSON.stringify(options.payload) }),
+  });
 }
 
 function cookieParts(setCookie: string | string[] | undefined): { pair: string; rawToken: string } {
@@ -64,20 +73,30 @@ describe.sequential("PostgreSQL authentication HTTP adapter", () => {
     await adminPool.end();
   });
 
-  it("persists register, supports two sessions, and revokes only the logged-out cookie through real HTTP", async () => {
-    const server = createServer({ auth: createPostgresAuthRuntime(pool), authCookie: { secure: false } });
+  it("binds CSRF to PostgreSQL sessions and enforces logout through real TCP HTTP", async () => {
+    const server = createServer({
+      auth: createPostgresAuthRuntime(pool),
+      authCookie: { secure: false },
+      csrfSecret: CSRF_SECRET,
+      corsOrigins: [ORIGIN],
+    });
     try {
+      await server.listen({ host: "127.0.0.1", port: 0 });
+      const address = server.server.address() as AddressInfo;
+      const baseUrl = `http://127.0.0.1:${address.port}`;
       const password = "real postgres password 🔐";
-      const registered = await server.inject(post("/api/v1/auth/register", { email: " HTTP@Example.COM ", password }));
-      expect(registered.statusCode).toBe(201);
-      expect(registered.json().user.email).toBe("http@example.com");
-      const cookie1 = cookieParts(registered.headers["set-cookie"]);
+      const registered = await request(baseUrl, "POST", "/api/v1/auth/register", { payload: { email: " HTTP@Example.COM ", password } });
+      expect(registered.status).toBe(201);
+      const registeredBody = await registered.json() as { user: { id: string; email: string }; csrfToken: string };
+      expect(registeredBody.user.email).toBe("http@example.com");
+      const cookie1 = cookieParts(registered.headers.get("set-cookie") ?? undefined);
+      const csrfToken1 = registeredBody.csrfToken;
 
       const persisted = await pool.query<{ password_hash: string; token_hash: Buffer }>(
         `SELECT u.password_hash, s.token_hash
          FROM users u JOIN sessions s ON s.user_id = u.id
          WHERE u.id = $1`,
-        [registered.json().user.id],
+        [registeredBody.user.id],
       );
       expect(persisted.rows).toHaveLength(1);
       expect(persisted.rows[0]!.password_hash).toMatch(/^\$argon2id\$/);
@@ -85,23 +104,35 @@ describe.sequential("PostgreSQL authentication HTTP adapter", () => {
       expect(persisted.rows[0]!.token_hash).toEqual(createHash("sha256").update(cookie1.rawToken).digest());
       expect(persisted.rows[0]!.token_hash).not.toEqual(Buffer.from(cookie1.rawToken));
 
-      const me1 = await server.inject({ method: "GET", url: "/api/v1/auth/me", headers: { cookie: cookie1.pair } });
-      expect(me1.statusCode).toBe(200);
-      expect(me1.json()).toEqual(registered.json());
+      const me1 = await request(baseUrl, "GET", "/api/v1/auth/me", { cookie: cookie1.pair });
+      expect(me1.status).toBe(200);
+      expect(await me1.json()).toEqual(registeredBody);
 
-      const loggedIn = await server.inject(post("/api/v1/auth/login", { email: "http@example.com", password }));
-      expect(loggedIn.statusCode).toBe(200);
-      const cookie2 = cookieParts(loggedIn.headers["set-cookie"]);
+      const loggedIn = await request(baseUrl, "POST", "/api/v1/auth/login", { payload: { email: "http@example.com", password } });
+      expect(loggedIn.status).toBe(200);
+      const loggedInBody = await loggedIn.json() as { user: { id: string; email: string }; csrfToken: string };
+      const cookie2 = cookieParts(loggedIn.headers.get("set-cookie") ?? undefined);
+      const csrfToken2 = loggedInBody.csrfToken;
       expect(cookie2.rawToken).not.toBe(cookie1.rawToken);
-      expect((await pool.query("SELECT id FROM sessions WHERE user_id = $1", [registered.json().user.id])).rows).toHaveLength(2);
-      expect((await server.inject({ method: "GET", url: "/api/v1/auth/me", headers: { cookie: cookie1.pair } })).statusCode).toBe(200);
-      expect((await server.inject({ method: "GET", url: "/api/v1/auth/me", headers: { cookie: cookie2.pair } })).statusCode).toBe(200);
+      expect(csrfToken2).not.toBe(csrfToken1);
+      expect((await pool.query("SELECT id FROM sessions WHERE user_id = $1", [registeredBody.user.id])).rows).toHaveLength(2);
 
-      const logout = await server.inject(post("/api/v1/auth/logout", undefined, cookie1.pair));
-      expect(logout.statusCode).toBe(204);
-      expect((await pool.query("SELECT id FROM sessions WHERE user_id = $1", [registered.json().user.id])).rows).toHaveLength(1);
-      expect((await server.inject({ method: "GET", url: "/api/v1/auth/me", headers: { cookie: cookie1.pair } })).statusCode).toBe(401);
-      expect((await server.inject({ method: "GET", url: "/api/v1/auth/me", headers: { cookie: cookie2.pair } })).statusCode).toBe(200);
+      const missingCsrf = await request(baseUrl, "POST", "/api/v1/auth/logout", { cookie: cookie1.pair });
+      expect(missingCsrf.status).toBe(403);
+      expect((await missingCsrf.json() as { error: { code: string } }).error.code).toBe("INVALID_CSRF_TOKEN");
+
+      const wrongCsrf = await request(baseUrl, "POST", "/api/v1/auth/logout", { cookie: cookie1.pair, csrfToken: "wrong" });
+      expect(wrongCsrf.status).toBe(403);
+
+      const crossSession = await request(baseUrl, "POST", "/api/v1/auth/logout", { cookie: cookie1.pair, csrfToken: csrfToken2 });
+      expect(crossSession.status).toBe(403);
+      expect((await request(baseUrl, "GET", "/api/v1/auth/me", { cookie: cookie1.pair })).status).toBe(200);
+
+      const logout = await request(baseUrl, "POST", "/api/v1/auth/logout", { cookie: cookie1.pair, csrfToken: csrfToken1 });
+      expect(logout.status).toBe(204);
+      expect((await pool.query("SELECT id FROM sessions WHERE user_id = $1", [registeredBody.user.id])).rows).toHaveLength(1);
+      expect((await request(baseUrl, "GET", "/api/v1/auth/me", { cookie: cookie1.pair })).status).toBe(401);
+      expect((await request(baseUrl, "GET", "/api/v1/auth/me", { cookie: cookie2.pair })).status).toBe(200);
     } finally { await server.close(); }
   });
 });
