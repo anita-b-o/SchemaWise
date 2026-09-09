@@ -1,0 +1,128 @@
+openapi: 3.1.0
+info:
+  title: SchemaWise API
+  version: 1.0.0
+  description: HTTP contract v1 for synchronous SchemaWise normalization analysis. This describes the HTTP contract, not the engine package version.
+paths:
+  /api/v1/analysis:
+    post:
+      operationId: analyzeSchema
+      requestBody: { $ref: '#/components/requestBodies/SchemaInput' }
+      responses: { '200': { $ref: '#/components/responses/AnalysisResponse' }, '400': { $ref: '#/components/responses/BadRequest' }, '413': { $ref: '#/components/responses/PayloadTooLarge' }, '415': { $ref: '#/components/responses/UnsupportedMediaType' }, '422': { $ref: '#/components/responses/LimitExceeded' }, '500': { $ref: '#/components/responses/InternalError' } }
+  /api/v1/closure:
+    post:
+      operationId: calculateClosure
+      requestBody: { $ref: '#/components/requestBodies/ClosureRequest' }
+      responses: { '200': { $ref: '#/components/responses/ClosureResponse' }, '400': { $ref: '#/components/responses/BadRequest' }, '413': { $ref: '#/components/responses/PayloadTooLarge' }, '415': { $ref: '#/components/responses/UnsupportedMediaType' }, '422': { $ref: '#/components/responses/LimitExceeded' }, '500': { $ref: '#/components/responses/InternalError' } }
+  /api/v1/synthesis/3nf:
+    post:
+      operationId: synthesizeThirdNormalForm
+      requestBody: { $ref: '#/components/requestBodies/SchemaInput' }
+      responses: { '200': { $ref: '#/components/responses/SynthesisResponse' }, '400': { $ref: '#/components/responses/BadRequest' }, '413': { $ref: '#/components/responses/PayloadTooLarge' }, '415': { $ref: '#/components/responses/UnsupportedMediaType' }, '422': { $ref: '#/components/responses/LimitExceeded' }, '500': { $ref: '#/components/responses/InternalError' } }
+  /api/v1/decomposition/bcnf:
+    post:
+      operationId: decomposeBoyceCodd
+      requestBody: { $ref: '#/components/requestBodies/SchemaInput' }
+      responses: { '200': { $ref: '#/components/responses/BcnfResponse' }, '400': { $ref: '#/components/responses/BadRequest' }, '413': { $ref: '#/components/responses/PayloadTooLarge' }, '415': { $ref: '#/components/responses/UnsupportedMediaType' }, '422': { $ref: '#/components/responses/LimitExceeded' }, '500': { $ref: '#/components/responses/InternalError' } }
+  /api/v1/analysis/dependency-preservation:
+    post:
+      operationId: analyzeDependencyPreservation
+      requestBody: { $ref: '#/components/requestBodies/DependencyPreservationRequest' }
+      responses: { '200': { $ref: '#/components/responses/DependencyPreservationResponse' }, '400': { $ref: '#/components/responses/BadRequest' }, '413': { $ref: '#/components/responses/PayloadTooLarge' }, '415': { $ref: '#/components/responses/UnsupportedMediaType' }, '422': { $ref: '#/components/responses/LimitExceeded' }, '500': { $ref: '#/components/responses/InternalError' }, 'default': { description: OPERATION_TIMEOUT status is selected by the future execution adapter; no status is frozen in v1., content: { application/json: { schema: { $ref: '#/components/schemas/ErrorEnvelope' } } } } }
+components:
+  requestBodies:
+    SchemaInput:
+      required: true
+      content: { application/json: { schema: { $ref: '#/components/schemas/SchemaInputDto' } } }
+    ClosureRequest:
+      required: true
+      content: { application/json: { schema: { $ref: '#/components/schemas/ClosureRequestDto' } } }
+    DependencyPreservationRequest:
+      required: true
+      content: { application/json: { schema: { $ref: '#/components/schemas/DependencyPreservationRequestDto' } } }
+  responses:
+    AnalysisResponse: { description: Successful analysis, content: { application/json: { schema: { $ref: '#/components/schemas/AnalysisResponseDto' } } } }
+    ClosureResponse: { description: Successful closure, content: { application/json: { schema: { $ref: '#/components/schemas/ClosureResponseDto' } } } }
+    SynthesisResponse: { description: Successful 3NF synthesis, content: { application/json: { schema: { $ref: '#/components/schemas/ThirdNormalFormSynthesisResponseDto' } } } }
+    BcnfResponse: { description: Successful BCNF decomposition, content: { application/json: { schema: { $ref: '#/components/schemas/BcnfDecompositionResponseDto' } } } }
+    DependencyPreservationResponse: { description: Successful dependency preservation analysis, content: { application/json: { schema: { $ref: '#/components/schemas/DependencyPreservationResponseDto' } } } }
+    BadRequest: { description: Invalid request or scope, content: { application/json: { schema: { $ref: '#/components/schemas/ErrorEnvelope' } } } }
+    PayloadTooLarge: { description: Payload exceeds 64 KiB; the future HTTP adapter returns ANALYSIS_LIMIT_EXCEEDED, content: { application/json: { schema: { $ref: '#/components/schemas/ErrorEnvelope' } } } }
+    UnsupportedMediaType: { description: Unsupported media type; the future HTTP adapter returns INVALID_REQUEST, content: { application/json: { schema: { $ref: '#/components/schemas/ErrorEnvelope' } } } }
+    LimitExceeded: { description: Product limit exceeded (cardinality/length uses 422; payload bytes uses 413 in the future HTTP adapter), content: { application/json: { schema: { $ref: '#/components/schemas/ErrorEnvelope' } } } }
+    InternalError: { description: Internal error, content: { application/json: { schema: { $ref: '#/components/schemas/ErrorEnvelope' } } } }
+  schemas:
+    AttributeDto:
+      type: object
+      required: [id, name]
+      additionalProperties: false
+      properties:
+        id: { type: string, minLength: 1, maxLength: 64 }
+        name: { type: string, minLength: 1, maxLength: 120 }
+      description: IDs are case-sensitive and stable per request; uniqueness is validated by Application Layer.
+    AttributeSetDto: { type: array, items: { type: string }, uniqueItems: true, description: An attribute ID set; the empty array is valid. }
+    RelationDto:
+      type: object
+      required: [name, attributes]
+      additionalProperties: false
+      properties:
+        name: { type: string, minLength: 1, maxLength: 120 }
+        attributes: { type: array, minItems: 1, maxItems: 6, items: { $ref: '#/components/schemas/AttributeDto' } }
+    FunctionalDependencyDto:
+      type: object
+      required: [left, right]
+      additionalProperties: false
+      properties: { left: { $ref: '#/components/schemas/AttributeSetDto' }, right: { $ref: '#/components/schemas/AttributeSetDto' } }
+    SchemaInputDto:
+      type: object
+      required: [relation, functionalDependencies]
+      additionalProperties: false
+      properties:
+        relation: { $ref: '#/components/schemas/RelationDto' }
+        functionalDependencies: { type: array, maxItems: 12, items: { $ref: '#/components/schemas/FunctionalDependencyDto' } }
+    ClosureRequestDto:
+      allOf:
+        - { $ref: '#/components/schemas/SchemaInputDto' }
+        - type: object
+          required: [attributes]
+          properties: { attributes: { $ref: '#/components/schemas/AttributeSetDto' } }
+    DependencyPreservationRequestDto:
+      allOf:
+        - { $ref: '#/components/schemas/SchemaInputDto' }
+        - type: object
+          required: [decomposition]
+          properties: { decomposition: { type: array, maxItems: 12, items: { $ref: '#/components/schemas/AttributeSetDto' } } }
+    AnalysisResponseDto:
+      type: object
+      required: [relation, candidateKeys, primeAttributes, minimalCover, normalForms]
+      properties:
+        relation: { $ref: '#/components/schemas/RelationDto' }
+        candidateKeys: { type: array, items: { $ref: '#/components/schemas/AttributeSetDto' } }
+        primeAttributes: { $ref: '#/components/schemas/AttributeSetDto' }
+        minimalCover: { type: array, items: { $ref: '#/components/schemas/FunctionalDependencyDto' } }
+        normalForms:
+          type: object
+          required: [second, third, bcnf]
+          properties:
+            second: { $ref: '#/components/schemas/SecondNormalFormDto' }
+            third: { $ref: '#/components/schemas/ThirdNormalFormDto' }
+            bcnf: { $ref: '#/components/schemas/BcnfNormalFormDto' }
+    SecondNormalFormViolationDto:
+      type: object
+      required: [candidateKey, determinant, dependent]
+      properties: { candidateKey: { $ref: '#/components/schemas/AttributeSetDto' }, determinant: { $ref: '#/components/schemas/AttributeSetDto' }, dependent: { type: string } }
+    ThirdNormalFormViolationDto:
+      type: object
+      required: [determinant, dependent]
+      properties: { determinant: { $ref: '#/components/schemas/AttributeSetDto' }, dependent: { type: string } }
+    SecondNormalFormDto: { type: object, required: [satisfied, violations], properties: { satisfied: { type: boolean }, violations: { type: array, items: { $ref: '#/components/schemas/SecondNormalFormViolationDto' } } } }
+    ThirdNormalFormDto: { type: object, required: [satisfied, violations], properties: { satisfied: { type: boolean }, violations: { type: array, items: { $ref: '#/components/schemas/ThirdNormalFormViolationDto' } } } }
+    BcnfNormalFormDto: { $ref: '#/components/schemas/ThirdNormalFormDto' }
+    ClosureResponseDto: { type: object, required: [closure], properties: { closure: { $ref: '#/components/schemas/AttributeSetDto' } } }
+    SynthesizedRelationDto: { type: object, required: [attributes, source], properties: { attributes: { $ref: '#/components/schemas/AttributeSetDto' }, source: { type: string, enum: [minimal-cover, candidate-key] } } }
+    ThirdNormalFormSynthesisResponseDto: { type: object, required: [relations, minimalCover, addedCandidateKey], properties: { relations: { type: array, items: { $ref: '#/components/schemas/SynthesizedRelationDto' } }, minimalCover: { type: array, items: { $ref: '#/components/schemas/FunctionalDependencyDto' } }, addedCandidateKey: { oneOf: [{ $ref: '#/components/schemas/AttributeSetDto' }, { type: 'null' }] } } }
+    BcnfStepDto: { type: object, required: [source, violation, result], properties: { source: { $ref: '#/components/schemas/AttributeSetDto' }, violation: { $ref: '#/components/schemas/ThirdNormalFormViolationDto' }, result: { type: array, minItems: 2, maxItems: 2, prefixItems: [{ $ref: '#/components/schemas/AttributeSetDto' }, { $ref: '#/components/schemas/AttributeSetDto' }], items: false } } }
+    BcnfDecompositionResponseDto: { type: object, required: [relations, steps], properties: { relations: { type: array, items: { type: object, required: [attributes], properties: { attributes: { $ref: '#/components/schemas/AttributeSetDto' } } } }, steps: { type: array, items: { $ref: '#/components/schemas/BcnfStepDto' } } } }
+    DependencyPreservationResponseDto: { type: object, required: [preserved, preservedDependencies, lostDependencies], properties: { preserved: { type: boolean }, preservedDependencies: { type: array, items: { $ref: '#/components/schemas/FunctionalDependencyDto' } }, lostDependencies: { type: array, items: { $ref: '#/components/schemas/FunctionalDependencyDto' } } } }
+    ErrorCode: { type: string, enum: [INVALID_REQUEST, INVALID_RELATION, INVALID_ATTRIBUTE, INVALID_FUNCTIONAL_DEPENDENCY, ATTRIBUTE_IDENTITY_COLLISION, UNKNOWN_ATTRIBUTE_REFERENCE, SCHEMA_SCOPE_VIOLATION, INCOMPLETE_DECOMPOSITION, ANALYSIS_LIMIT_EXCEEDED, OPERATION_TIMEOUT, INTERNAL_ERROR] }
+    ErrorEnvelope: { type: object, required: [error], properties: { error: { type: object, required: [code, message], properties: { code: { $ref: '#/components/schemas/ErrorCode' }, message: { type: string }, details: { type: object, additionalProperties: true } } } } }
