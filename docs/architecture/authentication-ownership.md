@@ -1,6 +1,6 @@
 # Authentication and project ownership architecture
 
-Status: accepted v1 design; no executable implementation is included.
+Status: accepted v1 design; Auth Application Layer contract and users/sessions migrations implemented.
 
 ## System flows
 

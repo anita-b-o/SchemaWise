@@ -33,12 +33,12 @@ function newProject(id = randomUUID(), name = "Draft"): NewProject {
   return { id, name, schema: emptySchema };
 }
 
-async function migrate(direction: "up" | "down"): Promise<void> {
+async function migrate(direction: "up" | "down", count?: number): Promise<void> {
   await runner({
     databaseUrl: { connectionString: databaseUrl, options: `-c search_path=${schemaName}` },
     dir: migrationsDirectory,
     direction,
-    count: direction === "down" ? 1 : undefined,
+    count: direction === "down" ? count ?? 1 : undefined,
     migrationsTable: "pgmigrations",
     migrationsSchema: schemaName,
     schema: schemaName,
@@ -72,7 +72,7 @@ describe.sequential("PostgreSQL project persistence", () => {
     await expect(pool.query("INSERT INTO projects (id, name, schema_json, revision) VALUES ($1, 'Valid', $2::jsonb, 0)", [randomUUID(), JSON.stringify(emptySchema)])).rejects.toMatchObject({ code: "23514" });
 
     await closeProjectPool(pool);
-    await migrate("down");
+    await migrate("down", 3);
     const absent = await adminPool.query<{ table_name: string }>("SELECT table_name FROM information_schema.tables WHERE table_schema = $1 AND table_name = 'projects'", [schemaName]);
     expect(absent.rows).toHaveLength(0);
     await migrate("up");
