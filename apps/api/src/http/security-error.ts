@@ -1,4 +1,4 @@
-export type HttpSecurityErrorCode = "INVALID_CSRF_TOKEN";
+export type HttpSecurityErrorCode = "INVALID_CSRF_TOKEN" | "INVALID_CLIENT_IP";
 
 export class HttpSecurityError extends Error {
   readonly code: HttpSecurityErrorCode;

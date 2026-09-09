@@ -12,7 +12,7 @@ const productionEnvironment = {
   AUTH_COOKIE_SECURE: "true",
   CSRF_SECRET: "a-production-csrf-secret-with-at-least-32-bytes",
   CORS_ORIGINS: "https://app.schemawise.example",
-  TRUST_PROXY: "false",
+  CLIENT_IP_MODE: "direct",
   HOST: "0.0.0.0",
   PORT: "3000",
 } satisfies NodeJS.ProcessEnv;
@@ -77,7 +77,7 @@ describe("runtime configuration", () => {
     expect(readRuntimeConfig(productionEnvironment)).toMatchObject({
       authCookie: { secure: true },
       corsOrigins: ["https://app.schemawise.example"],
-      trustProxy: false,
+      clientIpMode: "direct",
       host: "0.0.0.0",
       port: 3000,
       database: {
@@ -96,11 +96,14 @@ describe("runtime configuration", () => {
     expect(() => readRuntimeConfig({ ...productionEnvironment, AUTH_COOKIE_SECURE: "false" })).toThrow(
       "AUTH_COOKIE_SECURE must be true when NODE_ENV=production",
     );
+    expect(() => readRuntimeConfig({ ...productionEnvironment, CLIENT_IP_MODE: undefined })).toThrow(
+      "CLIENT_IP_MODE is required when NODE_ENV=production",
+    );
   });
 
   it("rejects invalid ports, proxy settings, database URLs, and pool sizes", () => {
     expect(() => readRuntimeConfig({ ...productionEnvironment, PORT: "3.5" })).toThrow("PORT");
-    expect(() => readRuntimeConfig({ ...productionEnvironment, TRUST_PROXY: "1" })).toThrow("TRUST_PROXY");
+    expect(() => readRuntimeConfig({ ...productionEnvironment, CLIENT_IP_MODE: "proxy" })).toThrow("CLIENT_IP_MODE");
     expect(() => readRuntimeConfig({ ...productionEnvironment, DATABASE_URL: "not-a-url" })).toThrow("DATABASE_URL");
     expect(() => readRuntimeConfig({ ...productionEnvironment, DATABASE_POOL_MAX: "21" })).toThrow("DATABASE_POOL_MAX");
   });

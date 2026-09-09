@@ -1,4 +1,5 @@
 import { createHash, createHmac, timingSafeEqual } from "node:crypto";
+import { isIP } from "node:net";
 import { normalizeIP } from "@fastify/rate-limit";
 import type { FastifyRequest } from "fastify";
 import { normalizeEmail } from "../auth/validation/email.js";
@@ -30,6 +31,28 @@ export const DEFAULT_AUTH_RATE_LIMITS: AuthRateLimitConfig = Object.freeze({
   registerIpMax: 5,
   registerWindowMs: 60 * 60 * 1_000,
 });
+
+export type ClientIpMode = "direct" | "render";
+
+export function readClientIpMode(environment: NodeJS.ProcessEnv = process.env): ClientIpMode {
+  const configured = environment.CLIENT_IP_MODE;
+  if (configured === undefined || configured === "direct") return "direct";
+  if (configured === "render") return "render";
+  throw new Error("CLIENT_IP_MODE must be either direct or render");
+}
+
+/**
+ * Resolve and normalize the security identity used by authentication limits.
+ * Render mode relies on Render's documented guarantee that its Cloudflare edge
+ * overwrites CF-Connecting-IP before every request reaches a web service.
+ */
+export function resolveClientIp(request: FastifyRequest, mode: ClientIpMode): string {
+  const candidate = mode === "direct" ? request.socket.remoteAddress : request.headers["cf-connecting-ip"];
+  if (typeof candidate !== "string" || isIP(candidate) === 0) {
+    throw httpSecurityError("INVALID_CLIENT_IP", "Request client identity could not be verified.");
+  }
+  return normalizeIP(candidate);
+}
 
 function invalidCsrf(): never {
   throw httpSecurityError("INVALID_CSRF_TOKEN", "The CSRF validation failed.");
@@ -91,13 +114,6 @@ export function assertAllowedRequestOrigin(request: FastifyRequest, allowedOrigi
   if (!allowedOrigins.includes(refererOrigin)) invalidCsrf();
 }
 
-export function readTrustProxy(environment: NodeJS.ProcessEnv = process.env): boolean {
-  const configured = environment.TRUST_PROXY;
-  if (configured === undefined || configured === "false") return false;
-  if (configured === "true") return true;
-  throw new Error("TRUST_PROXY must be either true or false");
-}
-
 function emailKeyMaterial(body: unknown): string {
   const email = typeof body === "object" && body !== null && !Array.isArray(body)
     ? (body as Record<string, unknown>).email
@@ -110,7 +126,7 @@ function emailKeyMaterial(body: unknown): string {
   }
 }
 
-export function loginEmailIpRateLimitKey(request: FastifyRequest): string {
+export function loginEmailIpRateLimitKey(request: FastifyRequest, mode: ClientIpMode = "direct"): string {
   const emailDigest = createHash("sha256").update(emailKeyMaterial(request.body), "utf8").digest("base64url");
-  return `${normalizeIP(request.ip)}:${emailDigest}`;
+  return `${resolveClientIp(request, mode)}:${emailDigest}`;
 }

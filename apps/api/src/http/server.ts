@@ -16,10 +16,11 @@ import { readRuntimeConfig } from "../runtime/config.js";
 import {
   DEFAULT_AUTH_RATE_LIMITS,
   parseCorsOrigins,
+  readClientIpMode,
   readCsrfSecret,
-  readTrustProxy,
   validateCsrfSecret,
   type AuthRateLimitConfig,
+  type ClientIpMode,
 } from "./auth-security.js";
 
 export interface ServerOptions {
@@ -29,7 +30,7 @@ export interface ServerOptions {
   readonly authCookie?: AuthCookieConfig;
   readonly csrfSecret?: string;
   readonly corsOrigins?: readonly string[];
-  readonly trustProxy?: boolean;
+  readonly clientIpMode?: ClientIpMode;
   readonly authRateLimits?: AuthRateLimitConfig;
   readonly projectRepository?: ProjectRepository;
   readonly readinessCheck?: ReadinessCheck;
@@ -46,7 +47,7 @@ export function createServer(options: ServerOptions = {}): FastifyInstance {
         censor: "[REDACTED]",
       },
     } : false,
-    trustProxy: options.trustProxy ?? readTrustProxy(),
+    trustProxy: false,
   });
   server.register(cookie);
   server.register(cors, {
@@ -76,6 +77,7 @@ export function createServer(options: ServerOptions = {}): FastifyInstance {
       csrfSecret,
       allowedOrigins,
       options.authRateLimits ?? DEFAULT_AUTH_RATE_LIMITS,
+      options.clientIpMode ?? readClientIpMode(),
     );
     if (options.projectRepository !== undefined) {
       registerProjectRoutes(server, options.auth, options.projectRepository, csrfSecret, allowedOrigins);
@@ -95,7 +97,7 @@ export async function startServer(): Promise<void> {
     authCookie: config.authCookie,
     csrfSecret: config.csrfSecret,
     corsOrigins: config.corsOrigins,
-    trustProxy: config.trustProxy,
+    clientIpMode: config.clientIpMode,
   });
   server.addHook("onClose", async () => closeProjectPool(pool));
   const shutdown = createGracefulShutdown(server);

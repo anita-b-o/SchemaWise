@@ -14,7 +14,9 @@ import {
   assertValidCsrfToken,
   deriveCsrfToken,
   loginEmailIpRateLimitKey,
+  resolveClientIp,
   type AuthRateLimitConfig,
+  type ClientIpMode,
 } from "./auth-security.js";
 
 interface AuthRequestDto {
@@ -41,6 +43,7 @@ export function registerAuthRoutes(
   csrfSecret: string,
   allowedOrigins: readonly string[],
   limits: AuthRateLimitConfig,
+  clientIpMode: ClientIpMode,
 ): void {
   server.register(async (authServer) => {
     await authServer.register(rateLimit, {
@@ -64,15 +67,17 @@ export function registerAuthRoutes(
     const loginIpLimiter = authServer.createRateLimit({
       max: limits.loginIpMax,
       timeWindow: limits.loginWindowMs,
+      keyGenerator: (request) => resolveClientIp(request, clientIpMode),
     });
     const loginEmailIpLimiter = authServer.createRateLimit({
       max: limits.loginEmailIpMax,
       timeWindow: limits.loginWindowMs,
-      keyGenerator: loginEmailIpRateLimitKey,
+      keyGenerator: (request) => loginEmailIpRateLimitKey(request, clientIpMode),
     });
     const registerIpLimiter = authServer.createRateLimit({
       max: limits.registerIpMax,
       timeWindow: limits.registerWindowMs,
+      keyGenerator: (request) => resolveClientIp(request, clientIpMode),
     });
     const enforce = (limiter: ReturnType<typeof authServer.createRateLimit>) =>
       async (request: FastifyRequest, reply: FastifyReply): Promise<void> => {

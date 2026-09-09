@@ -11,7 +11,7 @@ created. Startup errors name the invalid variable but do not print its value.
 | `AUTH_COOKIE_SECURE` | Required boolean; must be `true` with `NODE_ENV=production`. |
 | `CSRF_SECRET` | Required; at least 32 UTF-8 bytes of cryptographically random secret material. |
 | `CORS_ORIGINS` | Comma-separated serialized origins; explicit, nonempty and exact in production. |
-| `TRUST_PROXY` | Optional exact boolean, default `false`. |
+| `CLIENT_IP_MODE` | `direct` or `render`; required explicitly in production, defaults to `direct` in development/tests. |
 | `HOST` | Optional nonempty bind address, default `0.0.0.0`. |
 | `PORT` | Optional integer 1–65535, default 3000; use the provider port. |
 | `VITE_SCHEMAWISE_API_URL` | Web build-time absolute API origin. |
@@ -27,12 +27,13 @@ No wildcard is permitted with credentialed CORS.
 
 ## Proxy and IP identity
 
-Keep `TRUST_PROXY=false` for a direct connection or when the platform exposes
-the client address directly. Set it to `true` only when the API has exactly one
-controlled platform proxy hop whose forwarded headers are sanitized. Auth rate
-limits depend on `request.ip`; trusting arbitrary `X-Forwarded-For` permits
-spoofing, while failing to trust a real proxy collapses users into the proxy IP.
-Confirm the selected provider's chain before staging.
+Fastify always has `trustProxy=false`; do not add `TRUST_PROXY`. In `direct`
+mode, auth rate limits use and validate the socket peer and ignore forwarding
+headers. In `render` mode, they use a single valid `CF-Connecting-IP` because
+Render documents that its Cloudflare edge overwrites caller input on every web
+service request. Missing or malformed identity is rejected. Never enable Render
+mode on an origin reachable without that edge, and re-review the contract when
+the provider or topology changes.
 
 ## PostgreSQL connections and TLS
 

@@ -5,11 +5,13 @@ import {
   createServer,
   DEFAULT_AUTH_RATE_LIMITS,
   deriveCsrfToken,
+  readClientIpMode,
   readCsrfSecret,
   readAuthCookieConfig,
-  readTrustProxy,
+  resolveClientIp,
   type AuthRegistrationRepository,
   type Clock,
+  type ClientIpMode,
   type PasswordHasher,
   type Session,
   type SessionTokenGenerator,
@@ -80,7 +82,7 @@ class SequencedTokenGenerator implements SessionTokenGenerator {
   async hash(rawToken: string): Promise<string> { return rawToken[0]!.toLowerCase().repeat(64); }
 }
 
-function setup(secure = false, authRateLimits = DEFAULT_AUTH_RATE_LIMITS) {
+function setup(secure = false, authRateLimits = DEFAULT_AUTH_RATE_LIMITS, clientIpMode: ClientIpMode = "direct") {
   const store = new MemoryStore();
   const clock = new MutableClock();
   const tokenGenerator = new SequencedTokenGenerator();
@@ -96,7 +98,7 @@ function setup(secure = false, authRateLimits = DEFAULT_AUTH_RATE_LIMITS) {
     sessionTokenGenerator: tokenGenerator,
     clock,
   });
-  const server = createServer({ auth, authCookie: { secure }, csrfSecret: CSRF_SECRET, authRateLimits });
+  const server = createServer({ auth, authCookie: { secure }, csrfSecret: CSRF_SECRET, authRateLimits, clientIpMode });
   return { server, store, clock };
 }
 
@@ -124,14 +126,58 @@ describe("authentication HTTP v1", () => {
     expect(() => readAuthCookieConfig({ AUTH_COOKIE_SECURE: "1" })).toThrow("AUTH_COOKIE_SECURE is required");
   });
 
-  it("requires a strong CSRF secret and validates trust proxy as a boolean", () => {
+  it("requires a strong CSRF secret and validates the client IP mode", () => {
     expect(readCsrfSecret({ CSRF_SECRET })).toBe(CSRF_SECRET);
     expect(() => readCsrfSecret({})).toThrow("CSRF_SECRET is required");
     expect(() => readCsrfSecret({ CSRF_SECRET: "too-short" })).toThrow("at least 32 bytes");
-    expect(readTrustProxy({})).toBe(false);
-    expect(readTrustProxy({ TRUST_PROXY: "false" })).toBe(false);
-    expect(readTrustProxy({ TRUST_PROXY: "true" })).toBe(true);
-    expect(() => readTrustProxy({ TRUST_PROXY: "loopback" })).toThrow("true or false");
+    expect(readClientIpMode({})).toBe("direct");
+    expect(readClientIpMode({ CLIENT_IP_MODE: "direct" })).toBe("direct");
+    expect(readClientIpMode({ CLIENT_IP_MODE: "render" })).toBe("render");
+    expect(() => readClientIpMode({ CLIENT_IP_MODE: "proxy" })).toThrow("direct or render");
+  });
+
+  it("uses the socket IP in direct mode and ignores spoofed forwarding headers", async () => {
+    const server = createServer();
+    server.get("/client-ip", (request) => ({ ip: resolveClientIp(request, "direct") }));
+    try {
+      const response = await server.inject({
+        method: "GET",
+        url: "/client-ip",
+        remoteAddress: "198.51.100.10",
+        headers: { "x-forwarded-for": "203.0.113.99", "cf-connecting-ip": "203.0.113.98" },
+      });
+      expect(response.statusCode).toBe(200);
+      expect(response.json()).toEqual({ ip: "198.51.100.10" });
+    } finally { await server.close(); }
+  });
+
+  it("uses only valid Render metadata and normalizes equivalent IPv6 identities", async () => {
+    const server = createServer();
+    server.get("/client-ip", (request) => ({ ip: resolveClientIp(request, "render") }));
+    try {
+      const first = await server.inject({
+        method: "GET",
+        url: "/client-ip",
+        headers: { "cf-connecting-ip": "2001:db8:1234:5678::1", "x-forwarded-for": "203.0.113.99" },
+      });
+      const second = await server.inject({
+        method: "GET",
+        url: "/client-ip",
+        headers: { "cf-connecting-ip": "2001:0db8:1234:5678:abcd::2", "x-forwarded-for": "192.0.2.8" },
+      });
+      expect(first.json()).toEqual({ ip: "2001:db8:1234:5678::" });
+      expect(second.json()).toEqual(first.json());
+
+      for (const value of [undefined, "not-an-ip", "198.51.100.2, 203.0.113.4", " 198.51.100.2 "]) {
+        const response = await server.inject({
+          method: "GET",
+          url: "/client-ip",
+          headers: value === undefined ? {} : { "cf-connecting-ip": value },
+        });
+        expect(response.statusCode).toBe(403);
+        expect(response.json().error.code).toBe("INVALID_CLIENT_IP");
+      }
+    } finally { await server.close(); }
   });
 
   it("registers, canonicalizes the public user, and sets the host-only session cookie", async () => {
@@ -399,6 +445,43 @@ describe("authentication HTTP v1", () => {
       expect(limited.headers["retry-after"]).toBeDefined();
       const computation = await server.inject({ method: "POST", url: "/api/v1/analysis", headers: { "content-type": "application/json" }, payload: "{}" });
       expect(computation.statusCode).not.toBe(429);
+    } finally { await server.close(); }
+  });
+
+  it("keys Render rate limits consistently by trusted metadata, not X-Forwarded-For", async () => {
+    const { server } = setup(false, { ...DEFAULT_AUTH_RATE_LIMITS, loginIpMax: 2, loginEmailIpMax: 20 }, "render");
+    try {
+      for (const spoofed of ["203.0.113.1", "203.0.113.2"]) {
+        const response = await server.inject({
+          ...jsonPost("/api/v1/auth/login", { email: `${spoofed}@example.com`, password: "wrong" }, undefined, {
+            "cf-connecting-ip": "198.51.100.10",
+            "x-forwarded-for": spoofed,
+          }),
+        });
+        expect(response.statusCode).toBe(401);
+      }
+      const limited = await server.inject(jsonPost("/api/v1/auth/login", { email: "third@example.com", password: "wrong" }, undefined, {
+        "cf-connecting-ip": "198.51.100.10",
+        "x-forwarded-for": "192.0.2.50",
+      }));
+      expect(limited.statusCode).toBe(429);
+      expect(Number(limited.headers["retry-after"])).toBeGreaterThan(0);
+    } finally { await server.close(); }
+  });
+
+  it("keeps distinct Render clients in distinct rate-limit buckets", async () => {
+    const { server } = setup(false, { ...DEFAULT_AUTH_RATE_LIMITS, loginIpMax: 1, loginEmailIpMax: 20 }, "render");
+    try {
+      for (const ip of ["198.51.100.10", "198.51.100.11"]) {
+        const response = await server.inject(jsonPost("/api/v1/auth/login", { email: `${ip}@example.com`, password: "wrong" }, undefined, {
+          "cf-connecting-ip": ip,
+        }));
+        expect(response.statusCode).toBe(401);
+      }
+      const limited = await server.inject(jsonPost("/api/v1/auth/login", { email: "again@example.com", password: "wrong" }, undefined, {
+        "cf-connecting-ip": "198.51.100.10",
+      }));
+      expect(limited.statusCode).toBe(429);
     } finally { await server.close(); }
   });
 });
