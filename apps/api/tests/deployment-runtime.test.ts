@@ -107,4 +107,16 @@ describe("runtime configuration", () => {
     expect(() => readRuntimeConfig({ ...productionEnvironment, DATABASE_URL: "not-a-url" })).toThrow("DATABASE_URL");
     expect(() => readRuntimeConfig({ ...productionEnvironment, DATABASE_POOL_MAX: "21" })).toThrow("DATABASE_POOL_MAX");
   });
+
+  it("requires the staging proxy secret only for vercel-proxy mode", () => {
+    expect(() => readRuntimeConfig({ ...productionEnvironment, CLIENT_IP_MODE: "vercel-proxy" })).toThrow("STAGING_PROXY_SECRET");
+    expect(readRuntimeConfig({
+      ...productionEnvironment,
+      CLIENT_IP_MODE: "vercel-proxy",
+      STAGING_PROXY_SECRET: "runtime-staging-proxy-secret-at-least-32-bytes",
+    })).toMatchObject({
+      clientIpMode: "vercel-proxy",
+      stagingProxySecret: "runtime-staging-proxy-secret-at-least-32-bytes",
+    });
+  });
 });

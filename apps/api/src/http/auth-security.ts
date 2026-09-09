@@ -1,6 +1,11 @@
 import { createHash, createHmac, timingSafeEqual } from "node:crypto";
-import { isIP } from "node:net";
-import { normalizeIP } from "@fastify/rate-limit";
+import {
+  PROXY_ASSERTION_HEADERS,
+  ProxyAssertionError,
+  canonicalizeClientIp,
+  validateProxySecret,
+  verifyProxyAssertion,
+} from "@schemawise/proxy-assertion";
 import type { FastifyRequest } from "fastify";
 import { normalizeEmail } from "../auth/validation/email.js";
 import { httpSecurityError } from "./security-error.js";
@@ -32,13 +37,22 @@ export const DEFAULT_AUTH_RATE_LIMITS: AuthRateLimitConfig = Object.freeze({
   registerWindowMs: 60 * 60 * 1_000,
 });
 
-export type ClientIpMode = "direct" | "render";
+export type ClientIpMode = "direct" | "render" | "vercel-proxy";
 
 export function readClientIpMode(environment: NodeJS.ProcessEnv = process.env): ClientIpMode {
   const configured = environment.CLIENT_IP_MODE;
   if (configured === undefined || configured === "direct") return "direct";
   if (configured === "render") return "render";
-  throw new Error("CLIENT_IP_MODE must be either direct or render");
+  if (configured === "vercel-proxy") return "vercel-proxy";
+  throw new Error("CLIENT_IP_MODE must be direct, render, or vercel-proxy");
+}
+
+export function readStagingProxySecret(
+  mode: ClientIpMode,
+  environment: NodeJS.ProcessEnv = process.env,
+): string | undefined {
+  if (mode !== "vercel-proxy") return undefined;
+  return validateProxySecret(environment.STAGING_PROXY_SECRET);
 }
 
 /**
@@ -46,12 +60,45 @@ export function readClientIpMode(environment: NodeJS.ProcessEnv = process.env): 
  * Render mode relies on Render's documented guarantee that its Cloudflare edge
  * overwrites CF-Connecting-IP before every request reaches a web service.
  */
-export function resolveClientIp(request: FastifyRequest, mode: ClientIpMode): string {
+const VERIFIED_PROXY_IP = Symbol("schemawise.verifiedProxyIp");
+type ProxyVerifiedRequest = FastifyRequest & { [VERIFIED_PROXY_IP]?: string };
+
+function invalidProxyAssertion(): never {
+  throw httpSecurityError("INVALID_PROXY_ASSERTION", "Request proxy identity could not be verified.");
+}
+
+export function assertValidProxyRequest(request: FastifyRequest, secret: string): string {
+  const cached = (request as ProxyVerifiedRequest)[VERIFIED_PROXY_IP];
+  if (cached !== undefined) return cached;
+  try {
+    const clientIp = verifyProxyAssertion({
+      method: request.method,
+      pathAndQuery: request.url,
+      clientIp: request.headers[PROXY_ASSERTION_HEADERS.ip],
+      timestamp: request.headers[PROXY_ASSERTION_HEADERS.timestamp],
+      signature: request.headers[PROXY_ASSERTION_HEADERS.signature],
+      secret,
+    });
+    (request as ProxyVerifiedRequest)[VERIFIED_PROXY_IP] = clientIp;
+    return clientIp;
+  } catch (error) {
+    if (error instanceof ProxyAssertionError) invalidProxyAssertion();
+    throw error;
+  }
+}
+
+export function resolveClientIp(request: FastifyRequest, mode: ClientIpMode, proxySecret?: string): string {
+  if (mode === "vercel-proxy") {
+    if (proxySecret === undefined) throw new Error("STAGING_PROXY_SECRET is required in vercel-proxy mode");
+    return assertValidProxyRequest(request, proxySecret);
+  }
   const candidate = mode === "direct" ? request.socket.remoteAddress : request.headers["cf-connecting-ip"];
-  if (typeof candidate !== "string" || isIP(candidate) === 0) {
+  try {
+    return canonicalizeClientIp(candidate);
+  } catch (error) {
+    if (!(error instanceof ProxyAssertionError)) throw error;
     throw httpSecurityError("INVALID_CLIENT_IP", "Request client identity could not be verified.");
   }
-  return normalizeIP(candidate);
 }
 
 function invalidCsrf(): never {
@@ -126,7 +173,7 @@ function emailKeyMaterial(body: unknown): string {
   }
 }
 
-export function loginEmailIpRateLimitKey(request: FastifyRequest, mode: ClientIpMode = "direct"): string {
+export function loginEmailIpRateLimitKey(request: FastifyRequest, mode: ClientIpMode = "direct", proxySecret?: string): string {
   const emailDigest = createHash("sha256").update(emailKeyMaterial(request.body), "utf8").digest("base64url");
-  return `${resolveClientIp(request, mode)}:${emailDigest}`;
+  return `${resolveClientIp(request, mode, proxySecret)}:${emailDigest}`;
 }

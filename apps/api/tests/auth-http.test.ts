@@ -133,7 +133,8 @@ describe("authentication HTTP v1", () => {
     expect(readClientIpMode({})).toBe("direct");
     expect(readClientIpMode({ CLIENT_IP_MODE: "direct" })).toBe("direct");
     expect(readClientIpMode({ CLIENT_IP_MODE: "render" })).toBe("render");
-    expect(() => readClientIpMode({ CLIENT_IP_MODE: "proxy" })).toThrow("direct or render");
+    expect(readClientIpMode({ CLIENT_IP_MODE: "vercel-proxy" })).toBe("vercel-proxy");
+    expect(() => readClientIpMode({ CLIENT_IP_MODE: "proxy" })).toThrow("direct, render, or vercel-proxy");
   });
 
   it("uses the socket IP in direct mode and ignores spoofed forwarding headers", async () => {

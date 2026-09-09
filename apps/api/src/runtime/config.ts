@@ -1,5 +1,5 @@
 import { readAuthCookieConfig, type AuthCookieConfig } from "../http/auth-cookie.js";
-import { parseCorsOrigins, readClientIpMode, readCsrfSecret, type ClientIpMode } from "../http/auth-security.js";
+import { parseCorsOrigins, readClientIpMode, readCsrfSecret, readStagingProxySecret, type ClientIpMode } from "../http/auth-security.js";
 import { readDatabaseConfig, type DatabaseConfig } from "../persistence/postgres/database.js";
 
 export interface RuntimeConfig {
@@ -8,6 +8,7 @@ export interface RuntimeConfig {
   readonly csrfSecret: string;
   readonly corsOrigins: readonly string[];
   readonly clientIpMode: ClientIpMode;
+  readonly stagingProxySecret: string | undefined;
   readonly host: string;
   readonly port: number;
 }
@@ -32,6 +33,7 @@ export function readRuntimeConfig(environment: NodeJS.ProcessEnv = process.env):
   if (production && environment.CLIENT_IP_MODE === undefined) {
     throw new Error("CLIENT_IP_MODE is required when NODE_ENV=production");
   }
+  const clientIpMode = readClientIpMode(environment);
   const corsOrigins = parseCorsOrigins(environment.CORS_ORIGINS);
   if (corsOrigins.length === 0) throw new Error("CORS_ORIGINS must contain at least one origin");
 
@@ -43,7 +45,8 @@ export function readRuntimeConfig(environment: NodeJS.ProcessEnv = process.env):
     authCookie,
     csrfSecret: readCsrfSecret(environment),
     corsOrigins,
-    clientIpMode: readClientIpMode(environment),
+    clientIpMode,
+    stagingProxySecret: readStagingProxySecret(clientIpMode, environment),
     host,
     port: readPort(environment.PORT),
   };

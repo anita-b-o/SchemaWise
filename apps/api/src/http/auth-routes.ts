@@ -44,6 +44,7 @@ export function registerAuthRoutes(
   allowedOrigins: readonly string[],
   limits: AuthRateLimitConfig,
   clientIpMode: ClientIpMode,
+  proxySecret?: string,
 ): void {
   server.register(async (authServer) => {
     await authServer.register(rateLimit, {
@@ -67,17 +68,17 @@ export function registerAuthRoutes(
     const loginIpLimiter = authServer.createRateLimit({
       max: limits.loginIpMax,
       timeWindow: limits.loginWindowMs,
-      keyGenerator: (request) => resolveClientIp(request, clientIpMode),
+      keyGenerator: (request) => resolveClientIp(request, clientIpMode, proxySecret),
     });
     const loginEmailIpLimiter = authServer.createRateLimit({
       max: limits.loginEmailIpMax,
       timeWindow: limits.loginWindowMs,
-      keyGenerator: (request) => loginEmailIpRateLimitKey(request, clientIpMode),
+      keyGenerator: (request) => loginEmailIpRateLimitKey(request, clientIpMode, proxySecret),
     });
     const registerIpLimiter = authServer.createRateLimit({
       max: limits.registerIpMax,
       timeWindow: limits.registerWindowMs,
-      keyGenerator: (request) => resolveClientIp(request, clientIpMode),
+      keyGenerator: (request) => resolveClientIp(request, clientIpMode, proxySecret),
     });
     const enforce = (limiter: ReturnType<typeof authServer.createRateLimit>) =>
       async (request: FastifyRequest, reply: FastifyReply): Promise<void> => {

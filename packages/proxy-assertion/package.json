@@ -1,0 +1,17 @@
+{
+  "name": "@schemawise/proxy-assertion",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "main": "./index.js",
+  "types": "./index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./index.d.ts",
+      "import": "./index.js"
+    }
+  },
+  "dependencies": {
+    "ip-address": "^10.1.0"
+  }
+}

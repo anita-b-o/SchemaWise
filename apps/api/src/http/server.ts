@@ -16,8 +16,10 @@ import { readRuntimeConfig } from "../runtime/config.js";
 import {
   DEFAULT_AUTH_RATE_LIMITS,
   parseCorsOrigins,
+  assertValidProxyRequest,
   readClientIpMode,
   readCsrfSecret,
+  readStagingProxySecret,
   validateCsrfSecret,
   type AuthRateLimitConfig,
   type ClientIpMode,
@@ -31,6 +33,7 @@ export interface ServerOptions {
   readonly csrfSecret?: string;
   readonly corsOrigins?: readonly string[];
   readonly clientIpMode?: ClientIpMode;
+  readonly stagingProxySecret?: string;
   readonly authRateLimits?: AuthRateLimitConfig;
   readonly projectRepository?: ProjectRepository;
   readonly readinessCheck?: ReadinessCheck;
@@ -38,12 +41,24 @@ export interface ServerOptions {
 
 export function createServer(options: ServerOptions = {}): FastifyInstance {
   const allowedOrigins = parseCorsOrigins(options.corsOrigins?.join(",") ?? process.env.CORS_ORIGINS);
+  const clientIpMode = options.clientIpMode ?? readClientIpMode();
+  const stagingProxySecret = clientIpMode === "vercel-proxy"
+    ? (options.stagingProxySecret === undefined
+      ? readStagingProxySecret(clientIpMode)
+      : readStagingProxySecret(clientIpMode, { STAGING_PROXY_SECRET: options.stagingProxySecret }))
+    : undefined;
   const server = Fastify({
     bodyLimit: 64 * 1024,
     logger: options.logger === true ? {
       level: "info",
       redact: {
-        paths: ["req.headers.authorization", "req.headers.cookie", "req.headers.x-csrf-token"],
+        paths: [
+          "req.headers.authorization",
+          "req.headers.cookie",
+          "req.headers.x-csrf-token",
+          "req.headers.x-schemawise-proxy-ip",
+          "req.headers.x-schemawise-proxy-signature",
+        ],
         censor: "[REDACTED]",
       },
     } : false,
@@ -58,6 +73,12 @@ export function createServer(options: ServerOptions = {}): FastifyInstance {
   });
   registerErrorHandler(server);
   registerOperationsRoutes(server, options.readinessCheck);
+  server.addHook("onRequest", async (request) => {
+    if (clientIpMode === "vercel-proxy" && request.method !== "OPTIONS" && isProxyProtectedPath(request.url)) {
+      if (stagingProxySecret === undefined) throw new Error("STAGING_PROXY_SECRET is required in vercel-proxy mode");
+      assertValidProxyRequest(request, stagingProxySecret);
+    }
+  });
   server.addHook("onRequest", async (request, reply) => {
     const requiresJson = (request.method === "POST" && request.url !== "/api/v1/auth/logout") || request.method === "PUT";
     if (requiresJson && request.url.startsWith("/api/v1/") && !/^application\/json(?:\s*;|$)/i.test(request.headers["content-type"] ?? "")) {
@@ -77,7 +98,8 @@ export function createServer(options: ServerOptions = {}): FastifyInstance {
       csrfSecret,
       allowedOrigins,
       options.authRateLimits ?? DEFAULT_AUTH_RATE_LIMITS,
-      options.clientIpMode ?? readClientIpMode(),
+      clientIpMode,
+      stagingProxySecret,
     );
     if (options.projectRepository !== undefined) {
       registerProjectRoutes(server, options.auth, options.projectRepository, csrfSecret, allowedOrigins);
@@ -98,6 +120,7 @@ export async function startServer(): Promise<void> {
     csrfSecret: config.csrfSecret,
     corsOrigins: config.corsOrigins,
     clientIpMode: config.clientIpMode,
+    ...(config.stagingProxySecret === undefined ? {} : { stagingProxySecret: config.stagingProxySecret }),
   });
   server.addHook("onClose", async () => closeProjectPool(pool));
   const shutdown = createGracefulShutdown(server);
@@ -120,6 +143,11 @@ export async function startServer(): Promise<void> {
     await shutdown();
     throw error;
   }
+}
+
+function isProxyProtectedPath(url: string): boolean {
+  const path = url.split("?", 1)[0]!;
+  return path.startsWith("/api/v1/auth/") || path === "/api/v1/projects" || path.startsWith("/api/v1/projects/");
 }
 
 export function createGracefulShutdown(server: FastifyInstance): () => Promise<void> {
