@@ -1,6 +1,6 @@
 # Password security v1
 
-Status: accepted design; no password library is installed by this document.
+Status: implemented for the authentication crypto adapter.
 
 ## Input policy
 

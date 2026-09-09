@@ -28,3 +28,5 @@ export * from "./auth/ports/session-token-generator.js";
 export * from "./auth/ports/clock.js";
 export * from "./auth/ports/auth-registration-repository.js";
 export * from "./auth/application/auth-use-cases.js";
+export * from "./auth/crypto/argon2id-password-hasher.js";
+export * from "./auth/crypto/crypto-session-token-generator.js";

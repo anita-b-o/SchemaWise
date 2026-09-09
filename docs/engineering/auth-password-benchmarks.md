@@ -1,0 +1,32 @@
+# Authentication password benchmark
+
+Measured on 2026-09-09 with Node v22.22.1 on an AMD Ryzen 7 7735HS. The
+isolated development benchmark performs one warm-up of each operation followed
+by seven sequential samples. It is not part of the unit-test suite.
+
+Run it with:
+
+```sh
+npm run bench:auth --workspace @schemawise/api
+```
+
+## Parameters and result
+
+The initial candidate remained inside the approximate 100–250 ms target, so it
+was retained without adjustment: Argon2id v19, 65,536 KiB (64 MiB), time cost
+3, parallelism 1, 32-byte hash and 16-byte random salt.
+
+| Operation | Min (ms) | Median (ms) | Max (ms) |
+| --- | ---: | ---: | ---: |
+| hash | 125.29 | 127.29 | 148.84 |
+| verify success | 123.00 | 127.39 | 132.23 |
+| verify failure (existing user, wrong password) | 123.33 | 125.12 | 127.40 |
+| dummyVerify (nonexistent email path) | 123.79 | 125.49 | 129.97 |
+
+The invalid-login observations both executed Argon2id and had similar medians;
+there was no order-of-magnitude lookup-only timing gap. This is an observation,
+not a constant-time guarantee or an SLA.
+
+Production must recalibrate on the smallest deployed API hardware, including
+expected concurrent authentication load and its aggregate memory budget.
+Recalibration is also required whenever instance hardware or runtime changes.
