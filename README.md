@@ -13,7 +13,7 @@ La dirección de dependencias prevista es `Web → API → Normalization Engine`
 
 ## Desarrollo
 
-Requisitos: Node.js 20 o superior y npm.
+Requisitos: Node.js 22 o superior y npm.
 
 ```bash
 npm install

@@ -1,6 +1,6 @@
 # Session model v1
 
-Status: accepted design; no session code or migration exists yet.
+Status: accepted design; Application Layer contract and database migration implemented.
 
 ## Decision
 

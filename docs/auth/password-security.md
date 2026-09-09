@@ -27,13 +27,11 @@ memory-hardness; scrypt is sound and available in Node core, but Argon2id
 provides the preferred modern password-specific format and tuning model for this
 service.
 
-The repository currently declares Node `>=20`, while current `argon2` releases
-require Node `>=22` and Node 20 is end-of-life. Before installing the dependency,
-the implementation tranche must raise and verify the workspace/CI/deployment
-runtime floor to a supported Node release (`>=22`; prefer the active LTS used by
-deployment). The current local runtime is Node 22, but that observation does not
-replace CI verification. Pinning an obsolete Argon2 package merely to retain
-Node 20 is not the recommended security trade.
+The repository declares Node `>=22`, matching the runtime floor required by
+current `argon2` releases. CI and deployment must enforce that same supported
+floor; the current local Node 22 runtime does not replace those checks. Pinning
+an obsolete Argon2 package merely to retain Node 20 is not an acceptable
+security trade.
 
 Only a library-produced PHC-format Argon2id hash is persisted. It includes a
 unique cryptographic salt and the algorithm version and work parameters. The
