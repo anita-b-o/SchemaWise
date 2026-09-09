@@ -139,3 +139,20 @@ No backend or OpenAPI change is required. The frontend must retain its analyzed
 request snapshot for rendering transformation responses; this is a frontend
 state requirement, not a contract incompatibility.
 
+## Auth and project clients
+
+`auth-api.ts` and `project-api.ts` extend the explicit frontend HTTP boundary;
+their DTOs remain hand-written mirrors of OpenAPI in
+`schemawise-contracts.ts` and do not import from `apps/api`. A small shared
+transport normalizes JSON envelopes, network failures, and empty 204 responses.
+
+All Auth and Project calls set `credentials: "include"`. Register and login do
+not send incoming CSRF. Logout and every project mutation send the in-memory
+token as `X-CSRF-Token`; computational requests remain public and do not receive
+that header. Project lists are fetched fresh at each panel open with
+`limit=20&offset=0`; v1 adds no server-state cache or automatic retry.
+
+Project 401 responses clear frontend auth state while preserving workspace and
+project session state. A CSRF 403 performs at most one explicit `/auth/me`
+refresh and never automatically replays the mutation. The OpenAPI contract was
+compatible without backend changes.

@@ -1,6 +1,13 @@
 import { useEffect, useReducer, useRef, useState } from "react";
 import { schemawiseApi, SchemaWiseApiError, type SchemaWiseApi } from "../../../api/schemawise-api";
+import { projectApi as defaultProjectApi, type ProjectApi } from "../../../api/project-api";
+import { HttpApiError } from "../../../api/http-api";
 import type { ErrorCode } from "../../../api/schemawise-contracts";
+import type { ProjectSummaryDto } from "../../../api/schemawise-contracts";
+import { AuthPanel } from "../../auth/AuthPanel";
+import { useAuth } from "../../auth/auth-context";
+import { ProjectListPanel } from "../../projects/ProjectListPanel";
+import { draftToPersistedSchema, initialProjectSession, isProjectDirty, persistedSchemaToDraft, sessionFromProject, type ProjectSession } from "../../projects/project-session";
 import { AttributeList } from "./AttributeList";
 import { ClosureTool } from "./ClosureTool";
 import { FunctionalDependencyEditor } from "./FunctionalDependencyEditor";
@@ -11,6 +18,7 @@ import { validateDraft } from "../workspace-validation";
 
 interface SchemaWorkspaceProps {
   readonly api?: SchemaWiseApi;
+  readonly projectsApi?: ProjectApi;
 }
 
 const API_ERROR_MESSAGES: Partial<Record<ErrorCode, string>> = {
@@ -42,8 +50,18 @@ function focusFirstIssue(field: string) {
   document.querySelector<HTMLElement>(selector)?.focus();
 }
 
-export function SchemaWorkspace({ api = schemawiseApi }: SchemaWorkspaceProps) {
+export function SchemaWorkspace({ api = schemawiseApi, projectsApi = defaultProjectApi }: SchemaWorkspaceProps) {
+  const auth = useAuth();
   const [state, dispatch] = useReducer(workspaceReducer, undefined, createInitialWorkspaceState);
+  const [project, setProject] = useState<ProjectSession>(initialProjectSession);
+  const [authOpen, setAuthOpen] = useState(false);
+  const [projectsOpen, setProjectsOpen] = useState(false);
+  const [projectList, setProjectList] = useState<readonly ProjectSummaryDto[]>([]);
+  const [projectBusy, setProjectBusy] = useState(false);
+  const [projectError, setProjectError] = useState<string>();
+  const [conflict, setConflict] = useState(false);
+  const [pendingReplace, setPendingReplace] = useState<{ type: "new" } | { type: "open"; id: string }>();
+  const [pendingDelete, setPendingDelete] = useState<ProjectSummaryDto | { id: string; name: string }>();
   const [confirmExample, setConfirmExample] = useState(false);
   const activeAnalysis = useRef<AbortController | undefined>(undefined);
   const activeSynthesis = useRef<AbortController | undefined>(undefined);
@@ -54,6 +72,7 @@ export function SchemaWorkspace({ api = schemawiseApi }: SchemaWorkspaceProps) {
   const isAnalyzing = state.analysis.status === "loading";
   const hasResult = state.analysis.data !== undefined && state.analysis.inputSnapshot !== undefined;
   const isPristine = state.draft.relationName === "" && state.draft.attributes.length === 0 && state.draft.functionalDependencies.length === 0;
+  const dirty = isProjectDirty(project, state.draft);
   const referenceCounts = new Map(state.draft.attributes.map((attribute) => [
     attribute.id,
     state.draft.functionalDependencies.filter((dependency) => dependency.left.includes(attribute.id) || dependency.right.includes(attribute.id)).length,
@@ -76,6 +95,100 @@ export function SchemaWorkspace({ api = schemawiseApi }: SchemaWorkspaceProps) {
     activePreservation.current?.abort();
     activeClosure.current?.abort();
   }, []);
+
+  useEffect(() => {
+    if (auth.status === "unauthenticated" && project.projectId) setProject((current) => ({ ...current, syncUnavailable: true }));
+    if (auth.status === "authenticated") setProject((current) => current.syncUnavailable ? { ...current, syncUnavailable: false } : current);
+  }, [auth.status, project.projectId]);
+
+  function persistenceErrorMessage(error: unknown): string {
+    if (error instanceof HttpApiError) {
+      if (error.kind === "network") return "We couldn't reach SchemaWise. Your local workspace is unchanged.";
+      if (error.code === "INVALID_PROJECT") return "This project could not be saved. Check its name and schema.";
+      if (error.code === "PROJECT_NOT_FOUND") return "That project could not be found.";
+      if (error.code === "PROJECT_LIMIT_EXCEEDED") return "This project exceeds the persistence limits.";
+      if (error.code === "PERSISTENCE_ERROR") return "Project storage is temporarily unavailable. Try again.";
+    }
+    return "The project operation failed. Your local workspace is unchanged.";
+  }
+
+  async function handleProjectFailure(error: unknown) {
+    if (error instanceof HttpApiError && error.status === 401) {
+      auth.setUnauthenticated();
+      setProject((current) => ({ ...current, syncUnavailable: true }));
+      setProjectError("Sign in to continue saving. Your local workspace is unchanged.");
+      return;
+    }
+    if (error instanceof HttpApiError && error.status === 403 && error.code === "INVALID_CSRF_TOKEN") {
+      await auth.refreshSession();
+      setProjectError("The security check failed. Your session was refreshed; retry the action yourself.");
+      return;
+    }
+    setProjectError(persistenceErrorMessage(error));
+  }
+
+  async function saveProject() {
+    if (auth.status !== "authenticated" || !auth.csrfToken) { setAuthOpen(true); return; }
+    if (project.name.trim().length === 0) { setProjectError("Project name is required."); return; }
+    setProjectBusy(true); setProjectError(undefined);
+    try {
+      const schema = draftToPersistedSchema(state.draft);
+      const saved = project.projectId && project.serverRevision
+        ? await projectsApi.updateProject(project.projectId, { name: project.name, schema, expectedRevision: project.serverRevision }, auth.csrfToken)
+        : await projectsApi.createProject({ name: project.name, schema }, auth.csrfToken);
+      setProject(sessionFromProject(saved, state.revision));
+      setConflict(false);
+    } catch (error) {
+      if (error instanceof HttpApiError && error.status === 409 && error.code === "PROJECT_REVISION_CONFLICT") setConflict(true);
+      else await handleProjectFailure(error);
+    } finally { setProjectBusy(false); }
+  }
+
+  async function openProjectList() {
+    if (auth.status !== "authenticated") { setAuthOpen(true); return; }
+    setProjectsOpen(true); setProjectBusy(true); setProjectError(undefined);
+    try { setProjectList((await projectsApi.listProjects(20, 0)).projects); }
+    catch (error) { await handleProjectFailure(error); }
+    finally { setProjectBusy(false); }
+  }
+
+  function requestOpen(id: string) {
+    if (dirty) setPendingReplace({ type: "open", id });
+    else void loadProject(id);
+  }
+
+  async function loadProject(id: string) {
+    setProjectBusy(true); setProjectError(undefined);
+    try {
+      const loaded = await projectsApi.getProject(id);
+      dispatch({ type: "replaceDraft", draft: persistedSchemaToDraft(loaded.schema) });
+      setProject(sessionFromProject(loaded, state.revision + 1));
+      setProjectsOpen(false); setPendingReplace(undefined); setConflict(false);
+    } catch (error) { await handleProjectFailure(error); }
+    finally { setProjectBusy(false); }
+  }
+
+  function requestNew() {
+    if (dirty) setPendingReplace({ type: "new" });
+    else newProject();
+  }
+
+  function newProject() {
+    dispatch({ type: "resetWorkspace" });
+    setProject(initialProjectSession); setConflict(false); setProjectError(undefined); setPendingReplace(undefined); setProjectsOpen(false);
+  }
+
+  async function confirmDelete() {
+    if (!pendingDelete || !auth.csrfToken) return;
+    setProjectBusy(true); setProjectError(undefined);
+    try {
+      await projectsApi.deleteProject(pendingDelete.id, auth.csrfToken);
+      if (pendingDelete.id === project.projectId) setProject({ ...initialProjectSession, name: project.name });
+      setProjectList((current) => current.filter(({ id }) => id !== pendingDelete.id));
+      setPendingDelete(undefined);
+    } catch (error) { await handleProjectFailure(error); }
+    finally { setProjectBusy(false); }
+  }
 
   async function calculateClosure(selectedAttributes: readonly string[]) {
     const currentIssues = validateDraft(state.draft);
@@ -189,6 +302,24 @@ export function SchemaWorkspace({ api = schemawiseApi }: SchemaWorkspaceProps) {
   const analyzeHelp = firstIssue ? (issues.filter((issue) => issue.message === firstIssue.message).length > 1 ? "Resolve the highlighted schema errors before analyzing." : firstIssue.message) : undefined;
 
   return (
+    <>
+    <section className="project-bar" aria-label="Project controls">
+      <div className="project-title-field"><label htmlFor="project-name">Project name</label><input id="project-name" type="text" maxLength={120} value={project.name} onChange={(event) => setProject((current) => ({ ...current, name: event.target.value }))} /></div>
+      <span className={`save-state ${dirty ? "save-state--dirty" : ""}`} aria-live="polite">{project.syncUnavailable ? "Sync unavailable" : project.savedSnapshot && !dirty ? "Saved" : dirty ? "Unsaved changes" : "Not saved"}</span>
+      <div className="project-actions">
+        <button className="button button--secondary" type="button" onClick={requestNew}>New project</button>
+        <button className="button button--secondary" type="button" onClick={() => void openProjectList()}>Open projects</button>
+        <button className="button button--primary" type="button" onClick={() => void saveProject()} disabled={projectBusy}>{projectBusy ? "Working…" : "Save"}</button>
+        {auth.status === "authenticated" ? <><span className="account-email">{auth.user?.email}</span><button className="button button--quiet" type="button" onClick={() => void auth.logout()}>Logout</button></> : <button className="button button--quiet" type="button" onClick={() => setAuthOpen(true)}>{auth.status === "unknown" ? "Checking session…" : "Sign in"}</button>}
+      </div>
+    </section>
+    {auth.initializationError ? <p className="project-notice" role="status">{auth.initializationError}</p> : null}
+    {projectError ? <div className="project-notice project-notice--error" role="alert"><p>{projectError}</p><button className="button button--quiet" type="button" onClick={() => setProjectError(undefined)}>Dismiss</button></div> : null}
+    {authOpen ? <AuthPanel onClose={() => setAuthOpen(false)} /> : null}
+    {projectsOpen ? <ProjectListPanel projects={projectList} loading={projectBusy} {...(projectError ? { error: projectError } : {})} onOpen={requestOpen} onDelete={setPendingDelete} onClose={() => setProjectsOpen(false)} /> : null}
+    {pendingReplace ? <div className="inline-confirmation" role="alert"><p>Discard unsaved changes?</p><div className="button-row"><button className="button button--secondary" type="button" onClick={() => setPendingReplace(undefined)}>Cancel</button><button className="button button--danger-solid" type="button" onClick={() => pendingReplace.type === "new" ? newProject() : void loadProject(pendingReplace.id)}>Discard and continue</button></div></div> : null}
+    {pendingDelete ? <div className="inline-confirmation" role="alert"><p>Delete “{pendingDelete.name}” permanently?</p><div className="button-row"><button className="button button--secondary" type="button" onClick={() => setPendingDelete(undefined)}>Cancel</button><button className="button button--danger-solid" type="button" onClick={() => void confirmDelete()}>Delete project</button></div></div> : null}
+    {conflict ? <section className="conflict-panel" aria-labelledby="conflict-heading"><h2 id="conflict-heading">This project was updated elsewhere.</h2><p>The saved version changed since you opened this project. Your changes have not been overwritten.</p><div className="button-row"><button className="button button--primary" type="button" onClick={() => project.projectId && void loadProject(project.projectId)}>Reload saved version</button><button className="button button--secondary" type="button" onClick={() => setConflict(false)}>Cancel</button></div></section> : null}
     <div className="workspace-layout">
       <div className="workspace-primary">
       <section className="schema-editor" aria-label="Schema editor">
@@ -269,5 +400,6 @@ export function SchemaWorkspace({ api = schemawiseApi }: SchemaWorkspaceProps) {
         )}
       </aside>
     </div>
+    </>
   );
 }

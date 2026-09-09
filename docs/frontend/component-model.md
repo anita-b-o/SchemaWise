@@ -33,6 +33,26 @@ while the product limit remains six attributes. Generic
 `Card`, `Stack`, `Badge` abstractions are deferred until repetition proves a
 stable API; initial styles can use semantic classes and tokens.
 
+The persistence extension keeps three ownership boundaries:
+
+```text
+App
+└─ AuthProvider                         session user + CSRF only
+   └─ SchemaWorkspace
+      ├─ Project bar                    project session + manual actions
+      ├─ AuthPanel                      inline, focused form
+      ├─ ProjectListPanel               fresh compact list
+      ├─ OCC / confirmation panels
+      └─ Existing editor and results    workspace reducer
+```
+
+`AuthProvider` does not own workspace or project data. `SchemaWorkspace` owns a
+small `ProjectSession` alongside the existing reducer; it keeps server revision,
+last saved snapshot, association, and sync availability separate from the
+workspace draft revision. Panels receive callbacks and DTOs rather than calling
+fetch. Native sections and controls avoid an inaccessible custom dialog while
+still moving initial focus to the close/email control.
+
 ## Responsibilities
 
 - `SchemaWorkspace` owns the reducer, analyzed snapshot, request lifecycles and

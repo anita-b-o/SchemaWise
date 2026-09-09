@@ -57,7 +57,7 @@ h1 { max-width: 38rem; margin-bottom: var(--space-3); font-size: clamp(2rem, 5vw
 .field { display: grid; gap: var(--space-2); }
 .field--measure { max-width: 32rem; }
 .field label, .technical-id label { font-size: 0.82rem; font-weight: 700; }
-input[type="text"] { width: 100%; min-height: 2.75rem; padding: 0.65rem 0.75rem; color: var(--text-primary); background: #fff; border: 1px solid var(--border-strong); border-radius: var(--radius-sm); }
+input[type="text"], input[type="email"], input[type="password"] { width: 100%; min-height: 2.75rem; padding: 0.65rem 0.75rem; color: var(--text-primary); background: #fff; border: 1px solid var(--border-strong); border-radius: var(--radius-sm); }
 input[type="text"][aria-invalid="true"] { border-color: var(--danger); }
 input[readonly] { background: var(--surface-subtle); color: var(--text-secondary); }
 .field-help, .empty-note, .limit-note { margin-bottom: 0; color: var(--text-secondary); font-size: 0.8rem; }
@@ -209,6 +209,29 @@ summary { width: fit-content; min-height: 2.75rem; padding-block: 0.7rem; cursor
 .property-status--negative { color: var(--danger); }
 .dependency-result-group { display: grid; gap: var(--space-2); }
 .visually-hidden { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip: rect(0, 0, 0, 0); white-space: nowrap; border: 0; }
+.project-bar { display: grid; grid-template-columns: minmax(12rem, 22rem) auto minmax(0, 1fr); gap: var(--space-4); align-items: end; margin-bottom: var(--space-6); padding: var(--space-4); background: var(--surface-raised); border-block: 1px solid var(--border-default); }
+.project-title-field { display: grid; gap: var(--space-1); }
+.project-title-field label, .auth-form label { font-size: 0.78rem; font-weight: 750; }
+.project-actions { display: flex; flex-wrap: wrap; justify-content: flex-end; align-items: center; gap: var(--space-2); }
+.save-state { align-self: center; color: #17613f; font-size: 0.82rem; font-weight: 750; white-space: nowrap; }
+.save-state--dirty { color: #775b0a; }
+.account-email { max-width: 15rem; color: var(--text-secondary); font-size: 0.8rem; overflow: hidden; text-overflow: ellipsis; }
+.transient-panel, .conflict-panel { margin-bottom: var(--space-6); padding: var(--space-6); background: var(--surface-raised); border: 1px solid var(--border-strong); border-radius: var(--radius-md); }
+.panel-heading { display: flex; justify-content: space-between; align-items: start; gap: var(--space-4); }
+.panel-heading h2, .conflict-panel h2 { margin-bottom: var(--space-2); font-size: 1.25rem; }
+.auth-panel { max-width: 34rem; }
+.auth-mode { margin-block: var(--space-4); }
+.auth-form { display: grid; gap: var(--space-2); }
+.auth-form .button[type="submit"] { justify-self: start; margin-top: var(--space-2); }
+.panel-error { color: var(--danger); font-weight: 650; }
+.project-notice { margin: calc(var(--space-4) * -1) 0 var(--space-6); color: var(--text-secondary); font-size: 0.85rem; }
+.project-notice--error { display: flex; justify-content: space-between; align-items: center; gap: var(--space-4); padding: var(--space-3) var(--space-4); color: #76271f; background: var(--danger-surface); border-left: 3px solid var(--danger); }
+.project-notice p { margin: 0; }
+.project-list { margin: var(--space-4) 0 0; padding: 0; list-style: none; border-top: 1px solid var(--border-default); }
+.project-list li { display: grid; grid-template-columns: minmax(0, 1fr) auto; align-items: center; gap: var(--space-3); border-bottom: 1px solid var(--border-default); }
+.project-list__open { display: grid; gap: var(--space-1); min-height: 4.5rem; padding: var(--space-3) 0; text-align: left; color: var(--text-primary); background: transparent; border: 0; cursor: pointer; }
+.project-list__open span, .project-list__open small { color: var(--text-secondary); }
+.conflict-panel { border-left: 4px solid #9a7618; }
 :focus-visible { outline: 3px solid var(--focus-ring); outline-offset: 2px; }
 
 @media (max-width: 64rem) {
@@ -240,4 +263,8 @@ summary { width: fit-content; min-height: 2.75rem; padding-block: 0.7rem; cursor
   .transformation-action-row .button, .preservation-action .button { width: 100%; }
   .relation-result-list li { grid-template-columns: 1fr; gap: var(--space-1); }
   .decomposition-steps dl > div { grid-template-columns: 1fr; gap: var(--space-1); }
+  .project-bar { grid-template-columns: 1fr; align-items: stretch; }
+  .project-actions { justify-content: flex-start; }
+  .account-email { flex-basis: 100%; }
+  .project-list li { grid-template-columns: 1fr; padding-bottom: var(--space-2); }
 }

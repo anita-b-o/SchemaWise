@@ -12,6 +12,7 @@ export interface WorkspaceState { readonly draft: SchemaDraft; readonly revision
 export type WorkspaceAction =
   | { type: "changeRelationName"; name: string } | { type: "addAttribute"; attribute: AttributeDraft } | { type: "renameAttribute"; id: string; name: string } | { type: "removeAttribute"; id: string }
   | { type: "addFunctionalDependency"; dependency: FunctionalDependencyDto } | { type: "updateFunctionalDependency"; index: number; dependency: FunctionalDependencyDto } | { type: "removeFunctionalDependency"; index: number } | { type: "loadExample"; ids?: { a: string; b: string; c: string } }
+  | { type: "replaceDraft"; draft: SchemaDraft } | { type: "resetWorkspace" }
   | { type: "analysisRequestStart"; requestId: string; inputRevision: number; inputSnapshot: SchemaInputDto } | { type: "analysisSuccess"; requestId: string; data: AnalysisResponseDto } | { type: "analysisError"; requestId: string; error: unknown } | { type: "analysisAborted"; requestId: string }
   | { type: "closureRequestStart"; requestId: string; inputRevision: number; inputSnapshot: SchemaInputDto; selectedAttributes: readonly string[] } | { type: "closureSuccess"; requestId: string; data: ClosureResponseDto } | { type: "closureError"; requestId: string; error: unknown } | { type: "closureAborted"; requestId: string }
   | { type: "synthesisRequestStart"; requestId: string } | { type: "synthesisSuccess"; requestId: string; data: ThirdNormalFormSynthesisResponseDto } | { type: "synthesisError"; requestId: string; error: unknown } | { type: "synthesisAborted"; requestId: string }
@@ -38,6 +39,8 @@ export function workspaceReducer(state: WorkspaceState, action: WorkspaceAction)
     case "updateFunctionalDependency": return mutate(state, { ...state.draft, functionalDependencies: state.draft.functionalDependencies.map((fd, i) => i === action.index ? { left: [...action.dependency.left], right: [...action.dependency.right] } : fd) });
     case "removeFunctionalDependency": return mutate(state, { ...state.draft, functionalDependencies: state.draft.functionalDependencies.filter((_, i) => i !== action.index) });
     case "loadExample": { const ids = action.ids ?? { a: id(), b: id(), c: id() }; return mutate(state, { relationName: "R", attributes: [{ id: ids.a, name: "A" }, { id: ids.b, name: "B" }, { id: ids.c, name: "C" }], functionalDependencies: [{ left: [ids.a], right: [ids.b] }, { left: [ids.b], right: [ids.c] }] }); }
+    case "replaceDraft": return { ...createInitialWorkspaceState(), draft: action.draft, revision: state.revision + 1 };
+    case "resetWorkspace": return { ...createInitialWorkspaceState(), revision: state.revision + 1 };
     case "analysisRequestStart": return { ...state, analysis: { ...state.analysis, status: "loading", requestId: action.requestId, error: undefined, pendingInput: { revision: action.inputRevision, snapshot: action.inputSnapshot } }, requests: { ...state.requests, analysis: { status: "loading", requestId: action.requestId } } };
     case "analysisSuccess": {
       if (state.analysis.requestId !== action.requestId || !state.analysis.pendingInput) return state;

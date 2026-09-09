@@ -1,6 +1,6 @@
 # Frontend architecture
 
-Status: proposed MVP architecture.
+Status: implemented MVP plus manual project persistence.
 
 ## Context and boundaries
 
@@ -18,7 +18,8 @@ React view
 
 The frontend owns interaction, accessible presentation, request state and
 deterministic natural-language templates. It does not own normalization
-algorithms, server validation, persistence, identity, projects or SQL modeling.
+algorithms, server validation, identity, ownership or SQL modeling. It now owns
+the local session view and orchestration of the server persistence contract.
 
 ## Navigation
 
@@ -26,6 +27,10 @@ Only `/` is required. It renders the workspace directly with compact product
 context and optional inline help. No router dependency is introduced for one
 route. `/workspace`, `/about`, authentication and settings routes would create
 navigation without distinct MVP jobs.
+
+This means refresh recovers authentication but not the in-memory workspace or
+open project. The explicit Open projects flow is the recovery path in v1.
+Deep-linkable projects are a later routing decision, not implicit localStorage.
 
 If substantial educational reference content appears later, `/how-it-works`
 can become the first additional route and justify a router. This is not part of
@@ -38,6 +43,19 @@ the current build.
 `SchemaWorkspace` uses `useReducer` for the schema draft, revision and remote
 resource state. Ephemeral presentation state stays near its component. This
 keeps cross-feature rules explicit without a global state dependency.
+
+Authentication is the deliberate exception: a focused Context plus reducer
+serves header, forms, logout, and project actions. Project session state stays
+at the workspace boundary and is not merged into either Auth Context or the
+workspace reducer. Server revision and draft revision have distinct meanings.
+
+### Manual persistence snapshots
+
+The project session stores project identity, editable project name, last server
+revision and last persisted snapshot. Dirty state compares only persisted
+fields. Saving uses OCC; opening/new resets computation resources; deletion
+unlinks without destroying the visible draft. There is no autosave, project
+cache, state library, or mutation replay.
 
 ### Snapshot-based calculations
 
@@ -111,4 +129,3 @@ reader behavior is tested.
 
 The first slice should be independently typechecked and tested before visual
 construction expands.
-
