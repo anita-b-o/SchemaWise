@@ -55,28 +55,28 @@ async function persist<T>(operation: () => Promise<T>): Promise<T> {
   }
 }
 
-export async function createProject(repository: ProjectRepository, input: CreateProjectInput): Promise<Project> {
+export async function createProject(repository: ProjectRepository, userId: string, input: CreateProjectInput): Promise<Project> {
   const replacement = validateProjectReplacement(input.name, input.schema);
-  return persist(() => repository.create({ id: randomUUID(), ...replacement }));
+  return persist(() => repository.create(userId, { id: randomUUID(), ...replacement }));
 }
 
-export async function getProject(repository: ProjectRepository, projectId: unknown): Promise<Project> {
+export async function getProject(repository: ProjectRepository, userId: string, projectId: unknown): Promise<Project> {
   const id = validateProjectId(projectId);
-  const project = await persist(() => repository.findById(id));
+  const project = await persist(() => repository.findById(userId, id));
   if (project === null) throw projectError("PROJECT_NOT_FOUND", "The project was not found.", { projectId: id });
   return project;
 }
 
-export async function listProjects(repository: ProjectRepository, input: ListProjectsInput = {}): Promise<ProjectListResult> {
+export async function listProjects(repository: ProjectRepository, userId: string, input: ListProjectsInput = {}): Promise<ProjectListResult> {
   const query = validatePagination(input);
-  return persist(() => repository.list(query));
+  return persist(() => repository.list(userId, query));
 }
 
-export async function updateProject(repository: ProjectRepository, projectId: unknown, input: UpdateProjectInput): Promise<Project> {
+export async function updateProject(repository: ProjectRepository, userId: string, projectId: unknown, input: UpdateProjectInput): Promise<Project> {
   const id = validateProjectId(projectId);
   const expectedRevision = validateExpectedRevision(input.expectedRevision);
   const replacement: ProjectReplacement = validateProjectReplacement(input.name, input.schema);
-  const result = await persist(() => repository.update(id, expectedRevision, replacement));
+  const result = await persist(() => repository.update(userId, id, expectedRevision, replacement));
   if (result.kind === "not-found") throw projectError("PROJECT_NOT_FOUND", "The project was not found.", { projectId: id });
   if (result.kind === "revision-conflict") {
     throw projectError("PROJECT_REVISION_CONFLICT", "The project was modified after the requested revision.", {
@@ -88,9 +88,9 @@ export async function updateProject(repository: ProjectRepository, projectId: un
   return result.project;
 }
 
-export async function deleteProject(repository: ProjectRepository, projectId: unknown): Promise<void> {
+export async function deleteProject(repository: ProjectRepository, userId: string, projectId: unknown): Promise<void> {
   const id = validateProjectId(projectId);
-  const result = await persist(() => repository.delete(id));
+  const result = await persist(() => repository.delete(userId, id));
   if (result.kind === "not-found") throw projectError("PROJECT_NOT_FOUND", "The project was not found.", { projectId: id });
 }
 

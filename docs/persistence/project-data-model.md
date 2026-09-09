@@ -5,6 +5,7 @@
 ```text
 Project (aggregate root)
 ├── id: UUID
+├── ownerId: UUID (required, immutable)
 ├── name: string
 ├── schema: ProjectSchemaDto
 │   ├── schemaVersion: 1
@@ -85,6 +86,7 @@ Use one `projects` table with scalar columns and a JSONB schema snapshot:
 | Conceptual column | Meaning |
 | --- | --- |
 | `id` | UUID primary key |
+| `owner_id` | required owner UUID referencing `users(id)` with delete restricted |
 | `name` | normalized project display name |
 | `schema_json` | non-null `ProjectSchemaDto` JSONB envelope |
 | `revision` | positive optimistic-concurrency integer, initially 1 |
@@ -93,10 +95,10 @@ Use one `projects` table with scalar columns and a JSONB schema snapshot:
 
 This is the JSONB-snapshot option, not a normalized child model. The aggregate
 has at most 6 attributes and 12 FDs, is loaded/saved as a unit, and has no
-attribute-level query requirement. A normal primary-key index is required; an
-index supporting list order (`updated_at` plus a deterministic `id` tie-breaker)
-may be added when implementing list queries. No GIN JSONB index is justified in
-v1 because no API filters inside the document.
+attribute-level query requirement. The primary key index remains global, while
+`(owner_id, updated_at DESC, id ASC)` supports owner-scoped counts and ordered
+lists. No GIN JSONB index is justified in v1 because no API filters inside the
+document.
 
 If future product requirements add cross-project attribute/FD analytics, measure
 the query first. Add a transactional projection or normalized read model then;
@@ -107,7 +109,8 @@ do not compromise the aggregate write model speculatively.
 The database should enforce only robust row invariants:
 
 - primary key on `id`;
-- `name`, `schema_json`, `revision`, `created_at` and `updated_at` are non-null;
+- `owner_id`, `name`, `schema_json`, `revision`, `created_at` and `updated_at` are non-null;
+- `owner_id` references `users(id)` with `ON DELETE RESTRICT`;
 - `revision > 0`;
 - `schema_json` is a JSON object (a shallow shape check is optional);
 - project names are not unique.

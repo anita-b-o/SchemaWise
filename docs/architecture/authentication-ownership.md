@@ -1,6 +1,6 @@
 # Authentication and project ownership architecture
 
-Status: accepted v1 design; Auth Application Layer contract and users/sessions migrations implemented.
+Status: auth application/adapters and owner-scoped project persistence implemented; HTTP security boundary pending.
 
 ## System flows
 
@@ -144,17 +144,17 @@ ownership field, placeholder user or RLS policy is introduced.
 
 ## Migration sequence
 
-Future version-controlled migrations are applied in this order:
+Version-controlled migrations are applied in this order:
 
 1. create `users` and its canonical email constraint/index;
 2. create `sessions` and its foreign key/indexes;
-3. add required `projects.owner_id`, its foreign key and scoped list index.
+3. add required `projects.owner_id`, its `ON DELETE RESTRICT` foreign key and
+   `(owner_id, updated_at DESC, id ASC)` index.
 
-Because SchemaWise has no production/public project data, local and test
-databases are explicitly reset before step 3. The owner migration requires an
-empty projects table and fails rather than silently deleting, guessing owners,
-creating a placeholder or introducing a nullable authorization interval. If
-that precondition changes, implementation pauses for a real backfill plan.
+Migration 004 enforces the empty-projects precondition itself before any ALTER
+and fails transactionally if legacy rows exist. It never deletes, guesses
+owners, creates a placeholder or introduces a nullable authorization interval.
+If that precondition changes, implementation pauses for a real backfill plan.
 
 ## Future test layers
 
@@ -195,10 +195,10 @@ tests repeat cross-owner `404` behavior through `GET`, `PUT` and `DELETE`.
    register and generic login failure behavior.
 4. Add Argon2id, secure-token and PostgreSQL auth adapters with unit/integration
    tests.
-5. Reset dev/test project data, then add the non-null owner migration together
-   with `ownerId` and the refactor of every ProjectRepository/use-case signature
-   and SQL predicate, keeping the repository build green as one tranche.
-6. Add cross-user ownership and owner-scoped OCC integration tests.
+5. Completed: add the guarded non-null owner migration together with `ownerId`
+   and the refactor of every ProjectRepository/use-case signature and SQL
+   predicate.
+6. Completed: add cross-user ownership and owner-scoped OCC integration tests.
 7. Add the Fastify auth/session adapter and auth endpoints.
 8. Add CSRF validation, credentialed CORS, cookie policy and auth rate limiting.
 9. Add authenticated Project HTTP routes and their full HTTP authorization

@@ -60,6 +60,14 @@ describe.sequential("PostgreSQL auth migrations", () => {
 
     await pool.end();
     await migrate("down");
+    const ownerColumnAfterOwnershipDown = await adminPool.query<{ column_name: string }>(
+      `SELECT column_name FROM information_schema.columns
+       WHERE table_schema = $1 AND table_name = 'projects' AND column_name = 'owner_id'`,
+      [schemaName],
+    );
+    expect(ownerColumnAfterOwnershipDown.rows).toHaveLength(0);
+
+    await migrate("down");
     const afterSessionsDown = await adminPool.query<{ table_name: string }>(
       "SELECT table_name FROM information_schema.tables WHERE table_schema = $1 AND table_name IN ('users', 'sessions') ORDER BY table_name",
       [schemaName],

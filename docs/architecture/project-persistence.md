@@ -23,19 +23,20 @@ not learn about project IDs, revisions, databases or users.
 
 ## Aggregate and ports
 
-`Project` is a small aggregate root whose consistency boundary includes name,
-schema snapshot and revision. Its attributes and FDs are values inside the
-snapshot rather than independently addressable persistence entities.
+`Project` is a small aggregate root whose consistency boundary includes its
+immutable owner, name, schema snapshot and revision. Its attributes and FDs are
+values inside the snapshot rather than independently addressable persistence
+entities.
 
-The conceptual `ProjectRepository` port exposes:
+The `ProjectRepository` port exposes:
 
 ```text
-create(input: NewProject): Project
-findById(projectId: ProjectId): Project | null
-list(query: { limit, offset }): { projects: ProjectSummary[], total: integer }
-update(projectId, expectedRevision, replacement):
+create(ownerId, input: NewProject): Project
+findById(ownerId, projectId: ProjectId): Project | null
+list(ownerId, query: { limit, offset }): { projects: ProjectSummary[], total: integer }
+update(ownerId, projectId, expectedRevision, replacement):
   updated(Project) | notFound | revisionConflict(actualRevision)
-delete(projectId): deleted | notFound
+delete(ownerId, projectId): deleted | notFound
 ```
 
 The port uses application/persistence values, not HTTP requests, Fastify types,
@@ -58,11 +59,10 @@ incomplete. Database checks do not duplicate deep JSON validation.
 
 ## Deployment boundary
 
-Implement and test the database adapter and project use cases before auth if
-useful, but do not register public production project routes until authentication
-and owner-scoped authorization exist. No nullable owner or global implicit user
-is part of v1. The future ownership change must update repository selectors and
-uniqueness/access rules so knowledge of a project UUID never grants access.
+The database adapter and project use cases now enforce owner-scoped
+authorization. Public production project routes remain gated on authentication
+HTTP, CSRF, credentialed CORS and rate limiting. No nullable owner or global
+implicit user is part of v1; knowledge of a project UUID never grants access.
 
 ## Future extensions
 

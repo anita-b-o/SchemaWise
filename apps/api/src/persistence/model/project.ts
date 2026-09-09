@@ -21,6 +21,7 @@ export interface PersistedSchema {
 
 export interface Project {
   readonly id: string;
+  readonly ownerId: string;
   readonly name: string;
   readonly schema: PersistedSchema;
   readonly revision: number;

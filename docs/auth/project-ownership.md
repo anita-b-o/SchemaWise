@@ -1,6 +1,6 @@
 # Project ownership v1
 
-Status: accepted design; implementation is out of scope for this tranche.
+Status: implemented in the Project Persistence application and PostgreSQL layers.
 
 ## Aggregate and public boundary
 
@@ -41,7 +41,7 @@ transfer ownership.
 
 ## Repository contract
 
-The future port is conceptually:
+The implemented port is:
 
 ```text
 create(ownerId, newProject): Project
@@ -52,7 +52,7 @@ update(ownerId, projectId, expectedRevision, replacement):
 delete(ownerId, projectId): deleted | notFound
 ```
 
-The exact enforcement boundary is deliberately redundant: application use cases
+The enforcement boundary is deliberately redundant: application use cases
 require an authenticated `userId`, and every repository selector includes it.
 The HTTP adapter must never call `findById(projectId)` and perform an owner check
 afterward. A database role/RLS policy is not required in v1, but repository SQL
@@ -133,12 +133,12 @@ they are credentials with no independent lifetime.
 
 ## Existing local projects
 
-There is no production or public project data. Before applying the ownership
-migration, developers and tests reset their local/test databases after exporting
-anything they deliberately want to preserve. The migration adds `owner_id NOT
-NULL` and intentionally requires `projects` to be empty; it does not create a
-placeholder owner, infer ownership, delete rows silently or leave a nullable
-authorization window.
+Migration `004_add_project_owner` checks `projects` before altering it. When a
+row exists it raises `Cannot add project ownership: projects table must be
+empty.` and the transaction leaves both data and schema unchanged. With an
+empty table it adds `owner_id NOT NULL`, the restrictive foreign key and the
+scoped list index. It does not create a placeholder owner, infer ownership,
+delete rows silently or leave a nullable authorization window.
 
 If real data exists before implementation, this assumption is invalid and the
 migration must stop for a separate explicit-user backfill plan. That is not a
@@ -146,7 +146,8 @@ reason to weaken the target schema now.
 
 ## Required authorization tests
 
-At minimum, integration and HTTP coverage proves that user A cannot list, count,
-read, update or delete user B's projects; foreign and missing IDs have identical
-public outcomes; creation always uses session identity; and OCC still reports a
-conflict only for a stale revision inside the caller's owner scope.
+PostgreSQL integration coverage proves that user A cannot list, count, read,
+update or delete user B's projects; foreign and missing IDs have identical
+application outcomes; creation uses the explicit authenticated identity; and
+OCC reports a conflict only for a stale revision inside the caller's owner
+scope. HTTP coverage remains deferred until the HTTP security boundary exists.

@@ -18,9 +18,9 @@ export type ProjectUpdateResult =
 export type ProjectDeleteResult = { readonly kind: "deleted" } | { readonly kind: "not-found" };
 
 export interface ProjectRepository {
-  create(project: NewProject): Promise<Project>;
-  findById(projectId: string): Promise<Project | null>;
-  list(query: ProjectListQuery): Promise<ProjectListResult>;
-  update(projectId: string, expectedRevision: number, replacement: ProjectReplacement): Promise<ProjectUpdateResult>;
-  delete(projectId: string): Promise<ProjectDeleteResult>;
+  create(ownerId: string, project: NewProject): Promise<Project>;
+  findById(ownerId: string, projectId: string): Promise<Project | null>;
+  list(ownerId: string, query: ProjectListQuery): Promise<ProjectListResult>;
+  update(ownerId: string, projectId: string, expectedRevision: number, replacement: ProjectReplacement): Promise<ProjectUpdateResult>;
+  delete(ownerId: string, projectId: string): Promise<ProjectDeleteResult>;
 }

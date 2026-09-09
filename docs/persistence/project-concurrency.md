@@ -40,7 +40,7 @@ set name = replacement name,
     schema_json = replacement schema,
     revision = revision + 1,
     updated_at = server time
-where id = projectId and revision = expectedRevision
+where owner_id = ownerId and id = projectId and revision = expectedRevision
 return the updated row
 ```
 
@@ -49,10 +49,11 @@ schema, revision and update timestamp change in one transaction or none change.
 Relation and FDs are never saved in independent transactions.
 
 If the conditional update affects no row, the adapter checks existence/current
-revision within the transaction: absent maps to `PROJECT_NOT_FOUND`; present
-maps to `PROJECT_REVISION_CONFLICT`, with the observed `actualRevision` when safe.
-A concurrent delete observed during this resolution maps to not found. Adapters
-must not collapse both cases merely because both initially affect zero rows.
+revision using the same `(owner_id, id)` scope: absent maps to
+`PROJECT_NOT_FOUND`; present maps to `PROJECT_REVISION_CONFLICT`, with the
+observed `actualRevision`. A concurrent delete observed during this resolution
+maps to not found. It never queries by project ID alone, so another owner gets
+not found even when supplying the exact current revision and learns no revision.
 
 Create and hard delete are also single-transaction operations. Delete does not
 require `expectedRevision` in v1; explicit user confirmation and the small CRUD
