@@ -18,10 +18,10 @@ was retained without adjustment: Argon2id v19, 65,536 KiB (64 MiB), time cost
 
 | Operation | Min (ms) | Median (ms) | Max (ms) |
 | --- | ---: | ---: | ---: |
-| hash | 125.29 | 127.29 | 148.84 |
-| verify success | 123.00 | 127.39 | 132.23 |
-| verify failure (existing user, wrong password) | 123.33 | 125.12 | 127.40 |
-| dummyVerify (nonexistent email path) | 123.79 | 125.49 | 129.97 |
+| hash | 153.87 | 168.41 | 173.70 |
+| verify success | 146.20 | 164.34 | 188.28 |
+| verify failure (existing user, wrong password) | 153.61 | 169.53 | 192.62 |
+| dummyVerify (nonexistent email path) | 155.69 | 162.40 | 175.24 |
 
 The invalid-login observations both executed Argon2id and had similar medians;
 there was no order-of-magnitude lookup-only timing gap. This is an observation,

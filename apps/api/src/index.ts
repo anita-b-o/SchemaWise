@@ -30,3 +30,6 @@ export * from "./auth/ports/auth-registration-repository.js";
 export * from "./auth/application/auth-use-cases.js";
 export * from "./auth/crypto/argon2id-password-hasher.js";
 export * from "./auth/crypto/crypto-session-token-generator.js";
+export * from "./auth/postgres/postgres-user-repository.js";
+export * from "./auth/postgres/postgres-session-repository.js";
+export * from "./auth/postgres/postgres-auth-registration-repository.js";

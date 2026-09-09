@@ -7,7 +7,7 @@
     "build": "tsc",
     "typecheck": "tsc --noEmit",
     "test": "vitest run tests --exclude 'tests/integration/**'",
-    "test:integration": "vitest run tests/integration",
+    "test:integration": "vitest run tests/integration --maxWorkers=1",
     "bench:auth": "npm run build && node bench/auth-password.mjs",
     "db:migrate": "node-pg-migrate --migrations-dir migrations up",
     "db:rollback": "node-pg-migrate --migrations-dir migrations down",

@@ -33,9 +33,8 @@ versioned migrations, verifies user/session constraints and indexes, rolls
 sessions and users down independently, reapplies them, and drops only that test
 schema.
 
-## Deferred adapters
+## Real adapters
 
-The following remain deliberately unimplemented: Argon2id `PasswordHasher`,
-cryptographic `SessionTokenGenerator`, PostgreSQL user/session repositories and
-the PostgreSQL transaction implementing `AuthRegistrationRepository`. HTTP,
-cookies, CSRF, rate limiting and project ownership are later tranches.
+Argon2id, cryptographic token and PostgreSQL adapter coverage is documented in
+`auth-adapters-integration.md`. HTTP, cookies, CSRF, rate limiting and project
+ownership remain later tranches.
