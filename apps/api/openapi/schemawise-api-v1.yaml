@@ -2,35 +2,89 @@ openapi: 3.1.0
 info:
   title: SchemaWise API
   version: 1.0.0
-  description: HTTP contract v1 for synchronous SchemaWise normalization analysis. This describes the HTTP contract, not the engine package version.
+  description: HTTP contract v1 for synchronous normalization analysis and the functional, not-yet-public-ready authentication adapter. This describes the HTTP contract, not the engine package version.
+tags:
+  - { name: Auth, description: Server-side opaque session authentication. CSRF, credentialed CORS, and rate limiting are pending. }
+  - { name: Computation, description: Public stateless normalization computations. }
 paths:
+  /api/v1/auth/register:
+    post:
+      tags: [Auth]
+      operationId: registerUser
+      requestBody: { $ref: '#/components/requestBodies/AuthRequest' }
+      responses:
+        '201': { $ref: '#/components/responses/AuthCreated' }
+        '400': { $ref: '#/components/responses/AuthBadRequest' }
+        '409': { $ref: '#/components/responses/AuthConflict' }
+        '500': { $ref: '#/components/responses/AuthInternalError' }
+  /api/v1/auth/login:
+    post:
+      tags: [Auth]
+      operationId: loginUser
+      requestBody: { $ref: '#/components/requestBodies/AuthRequest' }
+      responses:
+        '200': { $ref: '#/components/responses/AuthLoginSuccess' }
+        '400': { $ref: '#/components/responses/AuthBadRequest' }
+        '401': { $ref: '#/components/responses/AuthUnauthorized' }
+        '500': { $ref: '#/components/responses/AuthInternalError' }
+  /api/v1/auth/me:
+    get:
+      tags: [Auth]
+      operationId: getCurrentUser
+      security: [{ sessionCookie: [] }]
+      responses:
+        '200': { $ref: '#/components/responses/AuthSuccess' }
+        '401': { $ref: '#/components/responses/AuthUnauthenticated' }
+        '500': { $ref: '#/components/responses/AuthInternalError' }
+  /api/v1/auth/logout:
+    post:
+      tags: [Auth]
+      operationId: logoutUser
+      security: [{ sessionCookie: [] }]
+      responses:
+        '204': { description: Session revoked when present and cookie cleared idempotently. }
+        '500': { $ref: '#/components/responses/AuthInternalError' }
   /api/v1/analysis:
     post:
+      tags: [Computation]
       operationId: analyzeSchema
       requestBody: { $ref: '#/components/requestBodies/SchemaInput' }
       responses: { '200': { $ref: '#/components/responses/AnalysisResponse' }, '400': { $ref: '#/components/responses/BadRequest' }, '413': { $ref: '#/components/responses/PayloadTooLarge' }, '415': { $ref: '#/components/responses/UnsupportedMediaType' }, '422': { $ref: '#/components/responses/LimitExceeded' }, '500': { $ref: '#/components/responses/InternalError' } }
   /api/v1/closure:
     post:
+      tags: [Computation]
       operationId: calculateClosure
       requestBody: { $ref: '#/components/requestBodies/ClosureRequest' }
       responses: { '200': { $ref: '#/components/responses/ClosureResponse' }, '400': { $ref: '#/components/responses/BadRequest' }, '413': { $ref: '#/components/responses/PayloadTooLarge' }, '415': { $ref: '#/components/responses/UnsupportedMediaType' }, '422': { $ref: '#/components/responses/LimitExceeded' }, '500': { $ref: '#/components/responses/InternalError' } }
   /api/v1/synthesis/3nf:
     post:
+      tags: [Computation]
       operationId: synthesizeThirdNormalForm
       requestBody: { $ref: '#/components/requestBodies/SchemaInput' }
       responses: { '200': { $ref: '#/components/responses/SynthesisResponse' }, '400': { $ref: '#/components/responses/BadRequest' }, '413': { $ref: '#/components/responses/PayloadTooLarge' }, '415': { $ref: '#/components/responses/UnsupportedMediaType' }, '422': { $ref: '#/components/responses/LimitExceeded' }, '500': { $ref: '#/components/responses/InternalError' } }
   /api/v1/decomposition/bcnf:
     post:
+      tags: [Computation]
       operationId: decomposeBoyceCodd
       requestBody: { $ref: '#/components/requestBodies/SchemaInput' }
       responses: { '200': { $ref: '#/components/responses/BcnfResponse' }, '400': { $ref: '#/components/responses/BadRequest' }, '413': { $ref: '#/components/responses/PayloadTooLarge' }, '415': { $ref: '#/components/responses/UnsupportedMediaType' }, '422': { $ref: '#/components/responses/LimitExceeded' }, '500': { $ref: '#/components/responses/InternalError' } }
   /api/v1/analysis/dependency-preservation:
     post:
+      tags: [Computation]
       operationId: analyzeDependencyPreservation
       requestBody: { $ref: '#/components/requestBodies/DependencyPreservationRequest' }
       responses: { '200': { $ref: '#/components/responses/DependencyPreservationResponse' }, '400': { $ref: '#/components/responses/BadRequest' }, '413': { $ref: '#/components/responses/PayloadTooLarge' }, '415': { $ref: '#/components/responses/UnsupportedMediaType' }, '422': { $ref: '#/components/responses/LimitExceeded' }, '500': { $ref: '#/components/responses/InternalError' }, 'default': { description: OPERATION_TIMEOUT status is selected by the future execution adapter; no status is frozen in v1., content: { application/json: { schema: { $ref: '#/components/schemas/ErrorEnvelope' } } } } }
 components:
+  securitySchemes:
+    sessionCookie:
+      type: apiKey
+      in: cookie
+      name: schemawise_session
+      description: Opaque 256-bit session token. The server stores only its SHA-256 digest.
   requestBodies:
+    AuthRequest:
+      required: true
+      content: { application/json: { schema: { $ref: '#/components/schemas/AuthRequestDto' } } }
     SchemaInput:
       required: true
       content: { application/json: { schema: { $ref: '#/components/schemas/SchemaInputDto' } } }
@@ -41,6 +95,22 @@ components:
       required: true
       content: { application/json: { schema: { $ref: '#/components/schemas/DependencyPreservationRequestDto' } } }
   responses:
+    AuthCreated:
+      description: User registered and signed in. The raw session token is returned only in Set-Cookie; no CSRF token is returned in this tranche.
+      headers: { Set-Cookie: { schema: { type: string }, description: 'schemawise_session with HttpOnly, Path=/, SameSite=Lax, Max-Age=2592000, Expires, and environment-configured Secure.' } }
+      content: { application/json: { schema: { $ref: '#/components/schemas/AuthResponseDto' } } }
+    AuthSuccess:
+      description: Authentication succeeded; me does not replace an active cookie.
+      content: { application/json: { schema: { $ref: '#/components/schemas/AuthResponseDto' } } }
+    AuthLoginSuccess:
+      description: Authentication succeeded with a new independent session. The raw token is returned only in Set-Cookie.
+      headers: { Set-Cookie: { schema: { type: string }, description: 'schemawise_session with HttpOnly, Path=/, SameSite=Lax, Max-Age=2592000, Expires, and environment-configured Secure.' } }
+      content: { application/json: { schema: { $ref: '#/components/schemas/AuthResponseDto' } } }
+    AuthBadRequest: { description: Invalid authentication DTO or input policy, content: { application/json: { schema: { $ref: '#/components/schemas/AuthErrorEnvelope' } } } }
+    AuthUnauthorized: { description: Invalid credentials, content: { application/json: { schema: { $ref: '#/components/schemas/AuthErrorEnvelope' } } } }
+    AuthUnauthenticated: { description: Missing or inactive session; an invalid presented cookie is cleared, content: { application/json: { schema: { $ref: '#/components/schemas/AuthErrorEnvelope' } } } }
+    AuthConflict: { description: Canonical email already exists, content: { application/json: { schema: { $ref: '#/components/schemas/AuthErrorEnvelope' } } } }
+    AuthInternalError: { description: Sanitized authentication infrastructure failure, content: { application/json: { schema: { $ref: '#/components/schemas/AuthErrorEnvelope' } } } }
     AnalysisResponse: { description: Successful analysis, content: { application/json: { schema: { $ref: '#/components/schemas/AnalysisResponseDto' } } } }
     ClosureResponse: { description: Successful closure, content: { application/json: { schema: { $ref: '#/components/schemas/ClosureResponseDto' } } } }
     SynthesisResponse: { description: Successful 3NF synthesis, content: { application/json: { schema: { $ref: '#/components/schemas/ThirdNormalFormSynthesisResponseDto' } } } }
@@ -52,6 +122,27 @@ components:
     LimitExceeded: { description: Product limit exceeded (cardinality/length uses 422; payload bytes uses 413 in the future HTTP adapter), content: { application/json: { schema: { $ref: '#/components/schemas/ErrorEnvelope' } } } }
     InternalError: { description: Internal error, content: { application/json: { schema: { $ref: '#/components/schemas/ErrorEnvelope' } } } }
   schemas:
+    AuthRequestDto:
+      type: object
+      required: [email, password]
+      additionalProperties: false
+      properties:
+        email: { type: string, maxLength: 254 }
+        password: { type: string, maxLength: 128, description: Registration requires at least 12 Unicode code points; login permits historical shorter values. }
+    PublicUserDto:
+      type: object
+      required: [id, email]
+      additionalProperties: false
+      properties:
+        id: { type: string, format: uuid }
+        email: { type: string, maxLength: 254 }
+    AuthResponseDto:
+      type: object
+      required: [user]
+      additionalProperties: false
+      properties: { user: { $ref: '#/components/schemas/PublicUserDto' } }
+    AuthErrorCode: { type: string, enum: [INVALID_AUTH_REQUEST, EMAIL_ALREADY_EXISTS, INVALID_CREDENTIALS, UNAUTHENTICATED, AUTH_RATE_LIMITED, AUTH_INTERNAL_ERROR] }
+    AuthErrorEnvelope: { type: object, required: [error], properties: { error: { type: object, required: [code, message], properties: { code: { $ref: '#/components/schemas/AuthErrorCode' }, message: { type: string }, details: { type: object, additionalProperties: true } } } } }
     AttributeDto:
       type: object
       required: [id, name]

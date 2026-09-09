@@ -1,6 +1,6 @@
 # Authentication and project ownership architecture
 
-Status: auth application/adapters and owner-scoped project persistence implemented; HTTP security boundary pending.
+Status: Auth HTTP v1 functional and owner-scoped project persistence implemented; public HTTP security boundary pending.
 
 ## System flows
 
@@ -44,7 +44,7 @@ and immediate server-side revocation on logout.
 The HTTP adapter turns an active session into the minimal application value:
 
 ```text
-AuthContext { userId: UserId }
+AuthContext { userId: UserId, user: PublicUser }
 ```
 
 No Fastify request, cookie or session object enters project use cases. Auth
@@ -180,11 +180,12 @@ the same outcome; create assigns only the supplied server identity; owner-scoped
 ordering/total remain unchanged; and OCC succeeds/conflicts correctly only
 inside the owner's scope.
 
-HTTP tests cover register/login/`me`/logout, response redaction, cookie set and
-clear flags, session rotation, CSRF Origin/header acceptance and rejection,
-credentialed CORS preflights for allowed and denied origins, and `401
-UNAUTHENTICATED` on every project route without an active session. Project HTTP
-tests repeat cross-owner `404` behavior through `GET`, `PUT` and `DELETE`.
+Current HTTP tests cover register/login/`me`/logout, response redaction, cookie
+set and clear flags, session rotation, multiple-session independence and
+inactive-cookie behavior. The next security tranche adds CSRF Origin/header
+acceptance and rejection plus credentialed CORS preflights. Later Project HTTP
+tests will require `401 UNAUTHENTICATED` without an active session and repeat
+cross-owner `404` behavior through `GET`, `PUT` and `DELETE`.
 
 ## Implementation sequence
 
@@ -199,7 +200,7 @@ tests repeat cross-owner `404` behavior through `GET`, `PUT` and `DELETE`.
    and the refactor of every ProjectRepository/use-case signature and SQL
    predicate.
 6. Completed: add cross-user ownership and owner-scoped OCC integration tests.
-7. Add the Fastify auth/session adapter and auth endpoints.
+7. Completed: add the Fastify auth/session adapter and auth endpoints.
 8. Add CSRF validation, credentialed CORS, cookie policy and auth rate limiting.
 9. Add authenticated Project HTTP routes and their full HTTP authorization
    tests.

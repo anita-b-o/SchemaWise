@@ -1,6 +1,6 @@
 # Authentication v1
 
-Status: accepted design; implementation is out of scope for this tranche.
+Status: application, adapters and Auth HTTP v1 implemented; public security tranche pending.
 
 ## Scope and decision
 
@@ -104,10 +104,10 @@ not part of `UserDto`.
 
 | Method and route | Request | Success |
 | --- | --- | --- |
-| `POST /api/v1/auth/register` | exact `{ email, password }` | `201`, set session cookie, return `{ user, csrfToken }` |
-| `POST /api/v1/auth/login` | exact `{ email, password }` | `200`, set session cookie, return `{ user, csrfToken }` |
+| `POST /api/v1/auth/register` | exact `{ email, password }` | `201`, set session cookie, return `{ user }` |
+| `POST /api/v1/auth/login` | exact `{ email, password }` | `200`, set session cookie, return `{ user }` |
 | `POST /api/v1/auth/logout` | no body | `204`, revoke current DB session and clear cookie |
-| `GET /api/v1/auth/me` | no body | `200 { user, csrfToken }` or `401 UNAUTHENTICATED` |
+| `GET /api/v1/auth/me` | no body | `200 { user }` or `401 UNAUTHENTICATED` |
 
 Unknown request fields are rejected. Register creates the user and initial
 session as one application transaction. An email uniqueness race is resolved by
@@ -115,15 +115,20 @@ the database constraint and mapped to `EMAIL_ALREADY_EXISTS`.
 
 Register automatically signs in: requiring a second transmission of the same
 credential adds no security before email verification exists. Each successful
-register or login issues a fresh session token. If that browser presents an
-existing valid session, it is revoked as the new cookie replaces it; sessions on
-other devices remain valid.
+register or login issues a fresh session token. Replacing a browser cookie does
+not revoke its previous server-side session in v1; multiple sessions are
+intentional and each must be logged out independently. Logout-all is absent.
+
+The response temporarily omits the final-design `csrfToken` because CSRF
+runtime is not part of Auth HTTP v1. No placeholder is emitted. This adapter is
+functional for same-origin/inject/curl use but is not public-ready.
 
 Logout is not implemented by cookie deletion alone. When a valid current token
 is present, its server-side session is deleted/revoked before the cookie is
 cleared. The adapter clears the cookie even when it is absent, expired or
 already revoked, and returns `204`; this makes logout cleanup idempotent without
-disclosing session state. A valid cookie makes logout subject to CSRF controls.
+disclosing session state. The next security tranche makes a valid-cookie logout
+subject to CSRF controls; Auth HTTP v1 does not enforce them yet.
 
 ## Authentication resolution
 
@@ -173,10 +178,11 @@ dummy Argon2id PHC hash calibrated like normal hashes. This narrows timing
 differences without claiming perfect network-level timing equality. Code must
 not branch into an immediate unknown-email response.
 
-## Initial rate limits
+## Planned initial rate limits
 
-Rate limiting is enforced before expensive password hashing, while preserving a
-generic public response:
+Rate limiting is not implemented in Auth HTTP v1. The next security tranche will
+enforce it before expensive password hashing while preserving a generic public
+response:
 
 - login: 20 attempts per 15 minutes per source IP;
 - login: 5 attempts per 15 minutes per canonical-email-and-IP pair;
