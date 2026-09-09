@@ -21,16 +21,24 @@ resets computed results. New and Open require explicit discard confirmation
 when local persisted fields differ from the last snapshot.
 
 OCC conflicts are never retried. A 409 leaves local edits intact and offers
-`Reload saved version` or `Cancel`; reload performs a GET, replaces the draft,
-adopts the current server revision, and marks it Saved. There is no force
-overwrite in v1.
+`Reload saved version` or `Cancel`. Reload explicitly warns that local changes
+will be permanently discarded and requires a second confirmation before a GET
+replaces the draft, adopts the current server revision, and marks it Saved.
+There is no force overwrite in v1.
 
 Delete is a hard server delete with explicit confirmation. If the deleted
 project is open, its schema stays visible, association/revision are removed,
 and it becomes an unsaved local draft that can be saved as a new project.
 Logout and authentication expiry likewise preserve the workspace. Expiry also
-keeps the local project association but marks sync unavailable and prompts the
-user to sign in.
+keeps the local project association but shows `Sign in to save`. A failed
+network logout keeps the authenticated UI and states that the server session is
+still active, avoiding a false logout while the HttpOnly cookie remains set.
+
+If an externally deleted current project returns 404 during Save, reload, or
+Delete, the frontend removes only the stale project association. Its name and
+schema remain an unsaved local draft, and the next Save creates a new project.
+The compact list shows at most the 20 most recently updated projects and says so
+when the server reports additional projects.
 
 On `INVALID_CSRF_TOKEN`, the frontend calls `/auth/me` once to refresh session
 state and never repeats the mutation. The user must explicitly retry Save or

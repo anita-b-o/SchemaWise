@@ -1,4 +1,4 @@
-import { createContext, useCallback, useContext, useEffect, useMemo, useReducer, type ReactNode } from "react";
+import { createContext, useCallback, useContext, useEffect, useMemo, useReducer, useRef, type ReactNode } from "react";
 import { authApi as defaultAuthApi, type AuthApi } from "../../api/auth-api";
 import { HttpApiError } from "../../api/http-api";
 import type { AuthResponseDto, UserDto } from "../../api/schemawise-contracts";
@@ -8,18 +8,21 @@ export interface AuthState {
   readonly user: UserDto | null;
   readonly csrfToken: string | null;
   readonly initializationError?: string;
+  readonly sessionError?: string;
 }
 
 type AuthAction =
   | { type: "authenticated"; response: AuthResponseDto }
   | { type: "unauthenticated" }
-  | { type: "initializationError" };
+  | { type: "initializationError" }
+  | { type: "logoutError" };
 
 const initialState: AuthState = { status: "unknown", user: null, csrfToken: null };
 
 function reducer(_state: AuthState, action: AuthAction): AuthState {
   if (action.type === "authenticated") return { status: "authenticated", user: action.response.user, csrfToken: action.response.csrfToken };
   if (action.type === "initializationError") return { status: "unauthenticated", user: null, csrfToken: null, initializationError: "We couldn't check your session. You can keep working and try signing in." };
+  if (action.type === "logoutError") return { ..._state, sessionError: "We couldn't log you out. Your session is still active; try again." };
   return { status: "unauthenticated", user: null, csrfToken: null };
 }
 
@@ -36,6 +39,7 @@ const AuthContext = createContext<AuthContextValue>(standaloneAuth);
 
 export function AuthProvider({ children, api = defaultAuthApi }: { readonly children: ReactNode; readonly api?: AuthApi }) {
   const [state, dispatch] = useReducer(reducer, initialState);
+  const initializationStarted = useRef(false);
   const setAuthenticated = useCallback((response: AuthResponseDto) => dispatch({ type: "authenticated", response }), []);
   const setUnauthenticated = useCallback(() => dispatch({ type: "unauthenticated" }), []);
   const refreshSession = useCallback(async () => {
@@ -47,11 +51,15 @@ export function AuthProvider({ children, api = defaultAuthApi }: { readonly chil
     }
   }, [api, setAuthenticated, setUnauthenticated]);
 
-  useEffect(() => { void refreshSession(); }, [refreshSession]);
+  useEffect(() => {
+    if (initializationStarted.current) return;
+    initializationStarted.current = true;
+    void refreshSession();
+  }, [refreshSession]);
 
   const logout = useCallback(async () => {
-    try { await api.logout(state.csrfToken ?? undefined); }
-    finally { setUnauthenticated(); }
+    try { await api.logout(state.csrfToken ?? undefined); setUnauthenticated(); }
+    catch { dispatch({ type: "logoutError" }); }
   }, [api, setUnauthenticated, state.csrfToken]);
 
   const value = useMemo<AuthContextValue>(() => ({ ...state, api, setAuthenticated, setUnauthenticated, refreshSession, logout }), [api, logout, refreshSession, setAuthenticated, setUnauthenticated, state]);

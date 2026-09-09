@@ -1,6 +1,7 @@
 import { render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { describe, expect, it, vi } from "vitest";
+import { StrictMode } from "react";
 import type { AuthApi } from "../../api/auth-api";
 import { HttpApiError } from "../../api/http-api";
 import { AuthPanel } from "./AuthPanel";
@@ -14,7 +15,7 @@ function api(overrides: Partial<AuthApi> = {}): AuthApi {
 
 function Session() {
   const auth = useAuth();
-  return <div><span>{auth.status}</span><span>{auth.user?.email}</span><span>{auth.csrfToken}</span><button onClick={() => void auth.logout()}>log out now</button></div>;
+  return <div><span>{auth.status}</span><span>{auth.user?.email}</span><span>{auth.csrfToken}</span><span>{auth.sessionError}</span><button onClick={() => void auth.logout()}>log out now</button></div>;
 }
 
 describe("frontend auth session", () => {
@@ -22,6 +23,13 @@ describe("frontend auth session", () => {
     const client = api();
     render(<AuthProvider api={client}><Session /></AuthProvider>);
     expect(screen.getByText("unknown")).toBeTruthy();
+    expect(await screen.findByText("unauthenticated")).toBeTruthy();
+    expect(client.me).toHaveBeenCalledOnce();
+  });
+
+  it("initializes the session only once under StrictMode", async () => {
+    const client = api();
+    render(<StrictMode><AuthProvider api={client}><Session /></AuthProvider></StrictMode>);
     expect(await screen.findByText("unauthenticated")).toBeTruthy();
     expect(client.me).toHaveBeenCalledOnce();
   });
@@ -35,6 +43,16 @@ describe("frontend auth session", () => {
     await user.click(screen.getByRole("button", { name: "log out now" }));
     await waitFor(() => expect(client.logout).toHaveBeenCalledWith("memory-csrf"));
     expect(screen.getByText("unauthenticated")).toBeTruthy();
+  });
+
+  it("keeps the authenticated state and reports when logout cannot reach the server", async () => {
+    const client = api({ me: vi.fn(async () => authenticated), logout: vi.fn(async () => { throw new HttpApiError({ kind: "network", message: "offline" }); }) });
+    const user = userEvent.setup();
+    render(<AuthProvider api={client}><Session /></AuthProvider>);
+    expect(await screen.findByText("person@example.com")).toBeTruthy();
+    await user.click(screen.getByRole("button", { name: "log out now" }));
+    expect(await screen.findByText(/session is still active/)).toBeTruthy();
+    expect(screen.getByText("authenticated")).toBeTruthy();
   });
 
   it("registers and signs in without closing over workspace state", async () => {

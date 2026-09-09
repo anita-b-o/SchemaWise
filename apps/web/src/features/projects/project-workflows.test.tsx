@@ -79,6 +79,9 @@ describe("project persistence UX", () => {
     expect(await screen.findByRole("heading", { name: "This project was updated elsewhere." })).toBeTruthy();
     expect(updateProject).toHaveBeenCalledOnce();
     await user.click(screen.getByRole("button", { name: "Reload saved version" }));
+    expect(screen.getByText("Discard local changes and reload the saved version?")).toBeTruthy();
+    expect(screen.getByDisplayValue("Local edit")).toBeTruthy();
+    await user.click(screen.getByRole("button", { name: "Reload and discard" }));
     expect(await screen.findByDisplayValue("Server winner")).toBeTruthy();
     expect(screen.getByText("Saved")).toBeTruthy();
     expect(updateProject).toHaveBeenCalledOnce();
@@ -100,11 +103,35 @@ describe("project persistence UX", () => {
   it("keeps the workspace through logout and requires authentication to save again", async () => {
     const { user } = await renderAuthenticated();
     await user.click(screen.getByRole("button", { name: "Load example" }));
-    await user.click(screen.getByRole("button", { name: "Logout" }));
+    await user.click(screen.getByRole("button", { name: "Log out" }));
     expect(await screen.findByRole("button", { name: "Sign in" })).toBeTruthy();
     expect((screen.getByRole("textbox", { name: "Relation name" }) as HTMLInputElement).value).toBe("R");
     await user.click(screen.getByRole("button", { name: "Save" }));
     expect(screen.getByRole("heading", { name: "Sign in to save" })).toBeTruthy();
+  });
+
+  it("unlinks a project missing during save so the preserved draft can be created again", async () => {
+    const updateProject = vi.fn(async () => { throw new HttpApiError({ kind: "api", status: 404, code: "PROJECT_NOT_FOUND", message: "missing" }); });
+    const createProject = vi.fn(async (input) => ({ ...project(input.name), schema: input.schema }));
+    const { user } = await renderAuthenticated(projectsApi({ updateProject, createProject }));
+    await openSaved(user);
+    await user.clear(screen.getByRole("textbox", { name: "Project name" }));
+    await user.type(screen.getByRole("textbox", { name: "Project name" }), "Recovered draft");
+    await user.click(screen.getByRole("button", { name: "Save" }));
+    expect(await screen.findByText(/can be saved as a new project/)).toBeTruthy();
+    expect(screen.getByDisplayValue("Recovered draft")).toBeTruthy();
+    expect(screen.getByDisplayValue("R")).toBeTruthy();
+    await user.click(screen.getByRole("button", { name: "Save" }));
+    await waitFor(() => expect(createProject).toHaveBeenCalledOnce());
+    expect(updateProject).toHaveBeenCalledOnce();
+    expect(screen.getByText("Saved")).toBeTruthy();
+  });
+
+  it("announces when the project list is limited to the first 20", async () => {
+    const projects = Array.from({ length: 20 }, (_, index) => summary({ ...project(`Project ${index}`), id: `11111111-1111-4111-8111-${String(index).padStart(12, "0")}` }));
+    const { user } = await renderAuthenticated(projectsApi({ listProjects: vi.fn(async () => ({ projects, total: 21, limit: 20, offset: 0 })) }));
+    await user.click(screen.getByRole("button", { name: "Open projects" }));
+    expect(await screen.findByText("Showing the 20 most recently updated projects.")).toBeTruthy();
   });
 
   it("handles 401 without data loss and refreshes CSRF once without retrying a failed mutation", async () => {
