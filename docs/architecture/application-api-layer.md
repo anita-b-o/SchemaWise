@@ -92,6 +92,9 @@ análisis y síntesis, pero no tiene endpoint propio en v1.
 
 El API actual no autentica ni persiste. Un futuro Project Persistence API podrá
 guardar inputs o resultados, pero no cambiará la semántica del Computational
-API ni convertirá `POST /analysis` en una operación de guardado. Framework HTTP,
-controllers, OpenAPI 3.1, observabilidad y cancelación se eligen después de
-aprobar el contrato.
+API ni convertirá `POST /analysis` en una operación de guardado. El contrato
+OpenAPI 3.1 vive en `apps/api/openapi/schemawise-api-v1.yaml`; todavía no hay
+framework HTTP, controllers, observabilidad ni cancelación. El futuro HTTP
+adapter deberá aplicar media type y los 64 KiB de payload antes de invocar esta
+capa, y decidir el status de `OPERATION_TIMEOUT` según el mecanismo de
+ejecución elegido.

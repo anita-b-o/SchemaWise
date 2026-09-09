@@ -1,0 +1,8 @@
+export const MAX_ATTRIBUTES = 6;
+export const MAX_FUNCTIONAL_DEPENDENCIES = 12;
+export const MAX_DECOMPOSITION_RELATIONS = 12;
+export const MAX_ATTRIBUTE_ID_LENGTH = 64;
+export const MAX_ATTRIBUTE_NAME_LENGTH = 120;
+export const MAX_RELATION_NAME_LENGTH = 120;
+export const MAX_PAYLOAD_BYTES = 64 * 1024;
+
