@@ -28,7 +28,7 @@ ADR 016 accepts the implemented Vercel Function proxy. It reads Vercel's sanitiz
 
 ### Render Free Web Service
 
-- One native Node 22 Web Service, repository root, Virginia; build `npm ci && npm run build --workspace @schemawise/api`; start `npm start --workspace @schemawise/api`; `HOST=0.0.0.0`; provider `PORT`; `/ready` health check.
+- One native Node 22 Web Service, repository root, Virginia; build `npm ci --include=dev && npm run build --workspace @schemawise/api`; start `npm start --workspace @schemawise/api`; `HOST=0.0.0.0`; provider `PORT`; `/ready` health check. `NODE_ENV=production` remains the runtime environment; `--include=dev` explicitly installs the TypeScript compiler and build-time type packages needed during the build, without moving them into runtime dependencies.
 - Do not define pre-deploy: Render documents it as paid-service-only. Never migrate from startup.
 - It sleeps after 15 idle minutes and the next request takes about one minute to wake it. Filesystem is ephemeral. 750 workspace free instance-hours reset monthly; exhausted bandwidth/build-pipeline allowance can suspend service. Do not add a keepalive.
 
