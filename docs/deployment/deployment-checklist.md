@@ -4,19 +4,25 @@ No item in this checklist authorizes a deployment by itself.
 
 ## Before staging
 
+Follow the concrete [staging provisioning plan](staging-provisioning.md),
+[staging secrets matrix](staging-secrets-matrix.md), and [staging smoke
+checklist](staging-smoke.md). They do not authorize resource creation.
+
 - [ ] Record candidate Git SHA; working tree clean; Node major 22 selected.
 - [ ] `npm ci`, typecheck, unit/integration tests, build, OpenAPI parse,
       `git diff --check`, and runtime dependency audit pass.
 - [ ] Web/API/PostgreSQL are isolated from production; API replicas fixed at 1.
-- [ ] Secret manager contains environment-specific `DATABASE_URL` and
-      `CSRF_SECRET`; logs/build output contain neither.
+- [ ] Secret manager contains environment-specific pooled `DATABASE_URL`, direct
+      `DATABASE_MIGRATION_URL`, and `CSRF_SECRET`; logs/build output contain none.
 - [ ] Exact same-site Web/API hostnames or a reviewed same-origin proxy exist.
 - [ ] API config has `NODE_ENV=production`, secure cookie, exact CORS origin,
-      correct proxy trust, `HOST=0.0.0.0`, provider `PORT`, and reviewed pool cap.
+      `CLIENT_IP_MODE=render`, Fastify proxy trust disabled, `HOST=0.0.0.0`,
+      provider `PORT`, and reviewed pool cap.
 - [ ] PostgreSQL TLS/private-network behavior and connection limit are verified.
 - [ ] Migrations directory is in the release artifact; backup/restore facilities
       are known.
-- [ ] Run the migration release command once; inspect `pgmigrations`.
+- [ ] Run the migration release command once with the direct Neon URL; inspect
+      `pgmigrations` and confirm the fresh `projects`/`users` tables are empty.
 - [ ] Deploy API and require `/health` and `/ready`; then deploy the Web artifact
       built with the staging API URL.
 
@@ -30,6 +36,8 @@ No item in this checklist authorizes a deployment by itself.
       CSRF on mutations, and no cookie/token in JS storage or bodies.
 - [ ] Logs include request IDs/status/duration and exclude passwords, cookies,
       CSRF tokens and connection strings.
+- [ ] Effective client identity distinguishes two real networks and is unchanged
+      by forged `X-Forwarded-For`; `Retry-After` works without attack traffic.
 
 ## Production gate and smoke
 
