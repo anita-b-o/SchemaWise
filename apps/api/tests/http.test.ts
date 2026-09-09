@@ -29,7 +29,7 @@ describe("HTTP adapter v1", () => {
     });
     expect(response.statusCode).toBe(204);
     expect(response.headers["access-control-allow-origin"]).toBe("http://localhost:5173");
-    expect(response.headers["access-control-allow-methods"]).toBe("GET, POST, OPTIONS");
+    expect(response.headers["access-control-allow-methods"]).toBe("GET, POST, PUT, DELETE, OPTIONS");
     expect(response.headers["access-control-allow-headers"]).toBe("Content-Type, X-CSRF-Token");
     expect(response.headers["access-control-allow-credentials"]).toBe("true");
     expect(response.headers["access-control-allow-origin"]).not.toBe("*");
