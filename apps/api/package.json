@@ -4,6 +4,7 @@
   "private": true,
   "type": "module",
   "scripts": {
+    "prebuild": "npm run build --workspace @schemawise/normalization-engine",
     "build": "tsc",
     "typecheck": "tsc --noEmit",
     "test": "vitest run tests --exclude 'tests/integration/**'",
@@ -15,6 +16,7 @@
   },
   "dependencies": {
     "@schemawise/proxy-assertion": "0.1.0",
+    "@schemawise/normalization-engine": "0.1.0",
     "@fastify/cookie": "^11.1.2",
     "@fastify/cors": "^11.3.0",
     "@fastify/rate-limit": "^11.2.0",
