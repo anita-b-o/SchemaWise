@@ -11,7 +11,7 @@ App
    ├─ ProductHeader
    ├─ SchemaEditor
    │  ├─ RelationEditor
-   │  │  └─ AttributeList
+   │  ├─ AttributeList
    │  ├─ FunctionalDependencyEditor
    │  │  ├─ DependencyComposer
    │  │  └─ DependencyList
@@ -27,8 +27,9 @@ App
          └─ DependencyPreservationResult
 ```
 
-`AttributePicker`, `AttributeSet` and `FunctionalDependencyNotation` are small
-shared primitives justified by repeated interaction/formatting. Generic
+`AttributeSet` and `FunctionalDependencyNotation` are small shared primitives
+justified by repeated formatting. The input editor uses native checkbox groups
+while the product limit remains six attributes. Generic
 `Card`, `Stack`, `Badge` abstractions are deferred until repetition proves a
 stable API; initial styles can use semantic classes and tokens.
 
@@ -41,7 +42,7 @@ stable API; initial styles can use semantic classes and tokens.
 - `RelationEditor` owns relation name interaction; `AttributeList` adds,
   renames and safely removes stable attribute identities.
 - `FunctionalDependencyEditor` owns composer/list editing and prevents invalid
-  references. `AttributePicker` operates on IDs but displays names.
+  references. Its checkbox groups operate on IDs but display names.
 - `AnalyzeAction` exposes submit state and validation summary without owning
   validation rules.
 - `ResultsWorkspace` receives an immutable result view model and never reads
@@ -193,4 +194,3 @@ icon and word, never color alone.
   match the mobile reading order; CSS columns do not scramble it.
 - Contrast targets WCAG 2.2 AA. Reduced motion is naturally respected because
   the MVP uses no essential animation.
-

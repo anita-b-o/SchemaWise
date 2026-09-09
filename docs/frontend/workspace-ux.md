@@ -71,7 +71,9 @@ limit reached`.
 
 ## Functional dependency editor
 
-La creación ocurre en una única fila/composer visual:
+La creación ocurre en un único composer visual. Para el máximo actual de seis
+atributos, cada lado usa un `fieldset` de checkboxes nativos en lugar de un
+multiselect personalizado:
 
 ```text
 Left side                         Right side
@@ -79,21 +81,14 @@ Left side                         Right side
                                       [ Add dependency ]
 ```
 
-Cada lado es un selector múltiple basado en la lista de atributos. El popup
-ofrece checkboxes, busca por nombre cuando resulte útil y excluye duplicados en
-ese mismo lado. Un atributo puede estar en ambos lados porque el contrato lo
-permite. Las selecciones mantienen el orden de atributos del draft para una
-lectura estable; el servidor sigue decidiendo el orden canónico de outputs.
+Cada lado es un selector múltiple basado en la lista de atributos y excluye
+duplicados en ese mismo lado. Un atributo puede estar en ambos lados porque el
+contrato lo permite. Las selecciones mantienen el orden de atributos del draft
+para una lectura estable; el servidor sigue decidiendo el orden canónico de
+outputs.
 
-Comportamiento de teclado:
-
-- Tab recorre LHS, RHS y acción; no entra en cada chip salvo que el grupo reciba
-  navegación interna.
-- Enter o Space abre el picker; flechas recorren opciones; Enter alterna una;
-  Escape cierra y devuelve foco al trigger.
-- Backspace con búsqueda vacía elimina el último chip y anuncia el cambio.
-- Cada chip tiene un botón removible con nombre accesible, por ejemplo `Remove A
-  from left side`.
+El comportamiento de teclado es el nativo: Tab recorre los checkboxes y Space
+alterna cada atributo, sin un patrón ARIA personalizado.
 
 Por defecto ambos lados requieren al menos un atributo. `Advanced dependency`
 permite marcar explícitamente `Use empty set` de forma independiente en LHS o
@@ -355,4 +350,3 @@ Conceptual breakpoints are content-driven: single column when the editor and a
 readable result cannot each retain their minimum width; two-column workspace
 above that; a capped wide layout on large screens. Exact pixels are decided
 during implementation with real content, not treated as product API.
-

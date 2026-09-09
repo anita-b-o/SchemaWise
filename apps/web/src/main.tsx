@@ -1,9 +1,7 @@
 import { StrictMode } from "react";
 import { createRoot } from "react-dom/client";
-
-function BaselineMessage() {
-  return <p>SchemaWise baseline</p>;
-}
+import { App } from "./App";
+import "./styles.css";
 
 const root = document.getElementById("root");
 
@@ -13,6 +11,6 @@ if (!root) {
 
 createRoot(root).render(
   <StrictMode>
-    <BaselineMessage />
+    <App />
   </StrictMode>
 );
