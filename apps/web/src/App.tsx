@@ -1,8 +1,9 @@
 import { SchemaWorkspace } from "./features/workspace/components/SchemaWorkspace";
+import { AuthProvider } from "./features/auth/auth-context";
 
 export function App() {
   return (
-    <>
+    <AuthProvider>
       <header className="site-header">
         <div className="shell site-header__inner">
           <a className="wordmark" href="/" aria-label="SchemaWise home">SchemaWise</a>
@@ -17,6 +18,6 @@ export function App() {
         </div>
         <SchemaWorkspace />
       </main>
-    </>
+    </AuthProvider>
   );
 }
