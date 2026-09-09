@@ -152,10 +152,12 @@ marker. They follow this order:
 4. Expandable violation explanations, grouped by normal form.
 5. Contextual transformation actions and their results.
 
-Sets use braces and visible names: `{ A, B }`; the empty set is `∅`. FDs use the
-arrow glyph with accessible text: `A B -> C` for assistive technology. Candidate
-keys are separate set tokens/lines, not a comma-flattened string. Pills are
-reserved for compact sets and statuses, not for every label.
+Sets use braces and visible names: `{ A, B }`; the empty set is `∅`. Because
+sets have no mathematical order, the presentation orders their members by the
+analyzed relation snapshot instead of exposing variable engine traversal order.
+FDs use the arrow glyph with accessible text: `A B -> C` for assistive
+technology. Candidate keys are separate set tokens/lines, not a comma-flattened
+string. Pills are reserved for compact sets and statuses, not for every label.
 
 ```text
 ANALYSIS FOR R(A, B, C)
@@ -327,6 +329,11 @@ replacing a newer result. Errors remain local to the tool; an abort is silent.
 At narrow widths, the page becomes one column in task order: header, editor,
 Analyze CTA, result summary, violation details, transformations, tools. Results
 do not sit beside inputs and the button is full width but not sticky by default.
+The layout must use the browser's available content width at 320 CSS pixels,
+including environments with a non-overlay scrollbar; the page itself must not
+introduce horizontal scrolling. Native disclosures, quiet actions and checkbox
+labels keep an approximately 44 CSS pixel target without changing the compact
+visual language.
 
 ```text
 +----------------------------+

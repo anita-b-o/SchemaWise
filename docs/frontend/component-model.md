@@ -130,6 +130,10 @@ IDs against the relation returned with analysis or the analyzed request snapshot
 Unknown IDs are rendered as `Unknown attribute (id)` and recorded as a contract
 error; rendering must not crash. Helpers are pure and unit-testable.
 
+Set formatters preserve the attribute order of the immutable relation snapshot
+for display. This is presentation canonicalization only: it does not change the
+API payload, infer dependencies or perform normalization work in the client.
+
 The frontend may format sets, count violations and choose deterministic copy. It
 must not discover keys, compute minimal covers, infer normal forms, synthesize or
 decompose locally.
