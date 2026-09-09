@@ -7,3 +7,8 @@ export { analyzeSchema, calculateClosure, synthesizeThirdNormalForm, decomposeBo
 export { createServer, startServer } from "./http/server.js";
 export type { HttpUseCases } from "./http/routes.js";
 export type { ServerOptions } from "./http/server.js";
+export * from "./persistence/model/project.js";
+export * from "./persistence/errors/project-error.js";
+export * from "./persistence/ports/project-repository.js";
+export * from "./persistence/validation/validate-project-draft.js";
+export * from "./persistence/application/project-use-cases.js";
