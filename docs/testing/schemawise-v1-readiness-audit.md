@@ -137,15 +137,15 @@ No Critical or High issue remains.
 ## Validation
 
 - Web: 72 tests passed.
-- API unit: 100 tests passed.
+- API unit: 107 tests passed.
 - Normalization Engine: 174 tests passed.
-- Unit total: 346 tests passed.
+- Unit total: 353 tests passed.
 - PostgreSQL integration: 28 tests passed.
-- Total: 374 tests passed.
+- Total: 381 tests passed.
 - TypeScript typecheck: passed for all workspaces.
 - Production build: passed; Vite emitted the static web bundle and API/engine
   TypeScript compiled.
-- OpenAPI 3.1 parse: passed, 11 paths.
+- OpenAPI 3.1 parse: passed, 13 paths.
 - `git diff --check`: passed.
 - Runtime dependency audit: zero vulnerabilities.
 
@@ -177,24 +177,24 @@ There is no remaining functional deployment blocker. Provider configuration,
 secrets, database provisioning, migrations, and hosting are deployment work,
 not missing application behavior.
 
-## Health/readiness recommendation
+## Health/readiness
 
-`GET /health` and `GET /ready` are not implemented; `/health` currently returns
-the safe API 404 envelope. They are recommended before an orchestrated rollout:
-`/health` should prove the process/event loop is serving, while `/ready` should
-perform a bounded PostgreSQL readiness check. They are not a v1 functional
-blocker if the selected platform can use process/TCP health checks. If the
-platform mandates HTTP probes, adding the required endpoint becomes a deployment
-task before launch.
+`GET /health` proves that the HTTP process is serving without touching the
+database. `GET /ready` performs a bounded PostgreSQL `SELECT 1` and returns only
+`{ "status": "not-ready" }` with 503 on failure. Both are unauthenticated
+operational endpoints documented under the OpenAPI `Operations` tag. Unit tests
+cover success, unavailable PostgreSQL, sanitized responses and rate-limit
+independence; a real TCP process/database smoke also passed.
 
 ## Environment variables verified from code
 
 | Variable | Runtime behavior |
 | --- | --- |
 | `DATABASE_URL` | API required; startup fails without it. |
+| `DATABASE_POOL_MAX` | API optional; defaults to 5 and accepts integers 1–20. |
 | `AUTH_COOKIE_SECURE` | API required; exact `true` or `false`, production `true`. |
 | `CSRF_SECRET` | API required; minimum 32 UTF-8 bytes. |
-| `CORS_ORIGINS` | API optional local default, but production must set exact comma-separated origins. |
+| `CORS_ORIGINS` | API optional local default; required and nonempty when `NODE_ENV=production`. |
 | `TRUST_PROXY` | API optional, defaults `false`; accepts only `true`/`false`. |
 | `HOST` | API optional, defaults `0.0.0.0`. |
 | `PORT` | API optional, defaults `3000`. |
@@ -203,8 +203,8 @@ task before launch.
 ## Deferred improvements
 
 Router/deep-linked project restore, local draft recovery across refresh,
-pagination beyond 20 projects, a shared distributed rate limiter, HTTP
-health/readiness probes, stronger operational observability, CSP review, and
+pagination beyond 20 projects, a shared distributed rate limiter, external
+observability/alerting, CSP review, and
 automated screen-reader/axe coverage are deferred. Autosave, password reset,
 email verification, OAuth, sharing, collaboration, archive, search, analytics,
 and admin remain explicitly outside v1.
