@@ -9,6 +9,19 @@ Engine.
 es el entrypoint de proceso; usa `PORT` (default `3000`) y `HOST` (default
 `0.0.0.0`). La importación del módulo no inicia el servidor.
 
+CORS es responsabilidad de este HTTP Adapter y se implementa con
+`@fastify/cors`. `CORS_ORIGINS` configura una allowlist separada por comas.
+Cuando no se define, el default local limitado permite `localhost` y
+`127.0.0.1` en los puertos Vite `5173` y `5174`. En producción se debe definir
+explícitamente la allowlist de origins; no se usa wildcard. Sólo se permiten
+`POST` y `OPTIONS`, y `Content-Type` como header solicitado. Las credenciales
+están deshabilitadas (`credentials: false`).
+
+El preflight `OPTIONS` es atendido por el plugin antes de las rutas y no entra
+en Application Layer. Un origin no autorizado no recibe headers CORS válidos;
+la request HTTP puede continuar y producir su respuesta normal, pero el
+navegador bloquea el acceso a esa respuesta.
+
 Las rutas son `POST /api/v1/analysis`, `POST /api/v1/closure`,
 `POST /api/v1/synthesis/3nf`, `POST /api/v1/decomposition/bcnf` y
 `POST /api/v1/analysis/dependency-preservation`. Todas aceptan

@@ -14,8 +14,10 @@ de input, sin preemption CPU real.
 
 Usar Fastify como adapter HTTP. `createServer()` será una factory testeable que
 no abre puertos; `startServer()` será el entrypoint separado. Fastify aplicará
-JSON y 64 KiB de body limit. Un error handler único producirá el error envelope
-estable y los handlers delegarán exclusivamente en Application Layer.
+JSON y 64 KiB de body limit, y `@fastify/cors` aplicará una allowlist
+configurable mediante `CORS_ORIGINS` para permitir integración browser entre
+origins. Un error handler único producirá el error envelope estable y los
+handlers delegarán exclusivamente en Application Layer.
 
 ## Consequences
 
@@ -23,4 +25,5 @@ El transporte queda pequeño, inyectable y verificable sin red. Se obtiene
 validación de tamaño/media type del framework y mapeo HTTP consistente. No hay
 cancelación de cálculos CPU-bound ni `OPERATION_TIMEOUT` artificial; si se
 necesita preemption real, habrá que diseñar un runtime aislado antes de elevar
-los límites o añadir trabajos asíncronos.
+los límites o añadir trabajos asíncronos. La allowlist local por defecto no
+debe sustituir la configuración explícita de origins en producción.

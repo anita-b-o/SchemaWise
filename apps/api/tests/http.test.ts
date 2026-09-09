@@ -17,10 +17,53 @@ function post(path: string, payload: unknown) {
 }
 
 describe("HTTP adapter v1", () => {
+  it("handles preflight for an allowed origin without entering the application layer", async () => withServer(async (server) => {
+    const response = await server.inject({
+      method: "OPTIONS",
+      url: "/api/v1/analysis",
+      headers: {
+        origin: "http://localhost:5173",
+        "access-control-request-method": "POST",
+        "access-control-request-headers": "content-type",
+      },
+    });
+    expect(response.statusCode).toBe(204);
+    expect(response.headers["access-control-allow-origin"]).toBe("http://localhost:5173");
+    expect(response.headers["access-control-allow-methods"]).toBe("POST, OPTIONS");
+    expect(response.headers["access-control-allow-headers"]).toBe("Content-Type");
+    expect(response.headers["access-control-allow-credentials"]).toBeUndefined();
+  }));
+
   it("serves analysis", async () => withServer(async (server) => {
     const response = await server.inject(post("/api/v1/analysis", schema));
     expect(response.statusCode).toBe(200);
     expect(response.json()).toMatchObject({ candidateKeys: [["a"]], normalForms: { second: { satisfied: true }, third: { satisfied: false }, bcnf: { satisfied: false } } });
+  }));
+
+  it("adds CORS headers to a successful browser request without credentials", async () => withServer(async (server) => {
+    const response = await server.inject({
+      ...post("/api/v1/analysis", schema),
+      headers: { "content-type": "application/json", origin: "http://127.0.0.1:5174" },
+    });
+    expect(response.statusCode).toBe(200);
+    expect(response.headers["access-control-allow-origin"]).toBe("http://127.0.0.1:5174");
+    expect(response.headers["access-control-allow-credentials"]).toBeUndefined();
+  }));
+
+  it("does not authorize a disallowed origin", async () => withServer(async (server) => {
+    const response = await server.inject({
+      ...post("/api/v1/analysis", schema),
+      headers: { "content-type": "application/json", origin: "https://not-allowed.example" },
+    });
+    expect(response.statusCode).toBe(200);
+    expect(response.headers["access-control-allow-origin"]).toBeUndefined();
+    expect(response.headers["access-control-allow-credentials"]).toBeUndefined();
+  }));
+
+  it("keeps direct requests without Origin working", async () => withServer(async (server) => {
+    const response = await server.inject(post("/api/v1/analysis", schema));
+    expect(response.statusCode).toBe(200);
+    expect(response.headers["access-control-allow-origin"]).toBeUndefined();
   }));
 
   it("serves closure", async () => withServer(async (server) => {
@@ -89,6 +132,19 @@ describe("HTTP adapter v1", () => {
       expect(response.body).not.toContain("stack");
     } finally { await server.close(); }
   });
+
+  it("keeps unknown API routes unchanged", async () => withServer(async (server) => {
+    const getResponse = await server.inject({ method: "GET", url: "/api/v1/missing" });
+    expect(getResponse.statusCode).toBe(404);
+    expect(getResponse.json()).toEqual({ error: { code: "INVALID_REQUEST", message: "The requested API route does not exist." } });
+
+    const postResponse = await server.inject({
+      ...post("/api/v1/missing", {}),
+      headers: { "content-type": "application/json", origin: "http://localhost:5173" },
+    });
+    expect(postResponse.statusCode).toBe(404);
+    expect(postResponse.json()).toEqual({ error: { code: "INVALID_REQUEST", message: "The requested API route does not exist." } });
+  }));
 
   it("preserves application canonical ordering for reordered input", async () => withServer(async (server) => {
     const reordered = { relation: { name: "R", attributes: [...schema.relation.attributes].reverse() }, functionalDependencies: [...schema.functionalDependencies].reverse() };
