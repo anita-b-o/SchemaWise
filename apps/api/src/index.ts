@@ -12,3 +12,5 @@ export * from "./persistence/errors/project-error.js";
 export * from "./persistence/ports/project-repository.js";
 export * from "./persistence/validation/validate-project-draft.js";
 export * from "./persistence/application/project-use-cases.js";
+export * from "./persistence/postgres/database.js";
+export * from "./persistence/postgres/postgres-project-repository.js";
