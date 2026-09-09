@@ -57,12 +57,20 @@ references should be shared with computational validation. The two top-level
 validators remain separate because a valid saved draft may be computationally
 incomplete. Database checks do not duplicate deep JSON validation.
 
-## Deployment boundary
+## HTTP deployment boundary
 
-The database adapter and project use cases now enforce owner-scoped
-authorization. Public production project routes remain gated on authentication
-HTTP, CSRF, credentialed CORS and rate limiting. No nullable owner or global
-implicit user is part of v1; knowledge of a project UUID never grants access.
+The database adapter and project use cases enforce owner-scoped authorization,
+and the five Project HTTP routes are registered only when both Auth and a
+ProjectRepository are composed. Every request resolves the opaque session before
+calling persistence. `POST`, `PUT`, and `DELETE` then reuse the Auth adapter's
+Origin/Referer and session-bound CSRF checks. `GET` list/detail need no CSRF.
+
+Dedicated response mappers convert dates to ISO 8601 strings, preserve the
+persisted schema in detail responses, emit only compact counts in lists, and
+never include `ownerId`. The HTTP list envelope is `{ projects, total, limit,
+offset }`. UUID v4 path format is checked before repository access; invalid
+format is `400 INVALID_PROJECT`, while scoped absence is `404
+PROJECT_NOT_FOUND`. The global 64 KiB body limit covers create and update.
 
 ## Future extensions
 

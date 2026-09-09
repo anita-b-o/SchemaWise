@@ -1,6 +1,6 @@
 # Authentication and project ownership architecture
 
-Status: Auth HTTP v1 public-ready and owner-scoped project persistence implemented; Project HTTP routes pending.
+Status: Auth HTTP v1 and authenticated owner-scoped Project HTTP v1 public-ready.
 
 ## System flows
 
@@ -98,8 +98,8 @@ likewise owner-scoped.
 ## HTTP security boundary
 
 Cookie authentication uses credentialed CORS with exact origins, `GET`, `POST`,
-`OPTIONS`, and `X-CSRF-Token`. Browser requests use `credentials: "include"`.
-`PUT` and `DELETE` remain deferred until Project routes are implemented.
+`PUT`, `DELETE`, `OPTIONS`, and allowed headers `Content-Type` plus
+`X-CSRF-Token`. Browser requests use `credentials: "include"`.
 
 The host-only session cookie uses `HttpOnly`, production `Secure`,
 `SameSite=Lax`, `Path=/` and a 30-day expiry. Local UI and API use the same
@@ -109,9 +109,9 @@ session-bound CSRF token. Register and login apply the same provenance policy
 plus rate limits. Headerless direct clients remain supported. No token is kept
 in browser storage.
 
-Auth resolution, owner-scoped persistence, CSRF, credentialed CORS, and basic
-auth rate limiting are operational. Project routes are still not registered and
-will reuse these controls in the next tranche.
+Auth resolution, owner-scoped Project HTTP persistence, CSRF, credentialed CORS,
+and auth-only rate limiting are operational. Project routes do not reuse the
+login/register rate-limit buckets and introduce no project-specific limiter.
 
 ## Persistence model
 
@@ -181,10 +181,10 @@ ordering/total remain unchanged; and OCC succeeds/conflicts correctly only
 inside the owner's scope.
 
 Current HTTP tests additionally cover CSRF Origin/header acceptance and
-rejection, cross-session tokens, credentialed CORS preflights, rate-limit
-buckets, and a real-TCP PostgreSQL flow. Later Project HTTP
-tests will require `401 UNAUTHENTICATED` without an active session and repeat
-cross-owner `404` behavior through `GET`, `PUT` and `DELETE`.
+rejection, cross-session tokens, credentialed PUT/DELETE CORS preflights,
+rate-limit buckets, and real-TCP PostgreSQL flows. Project tests prove `401
+UNAUTHENTICATED` before repository access, cross-owner `404` behavior through
+`GET`, `PUT` and `DELETE`, and concurrent owner-scoped OCC.
 
 ## Implementation sequence
 
@@ -201,8 +201,8 @@ cross-owner `404` behavior through `GET`, `PUT` and `DELETE`.
 6. Completed: add cross-user ownership and owner-scoped OCC integration tests.
 7. Completed: add the Fastify auth/session adapter and auth endpoints.
 8. Completed: add CSRF validation, credentialed CORS, cookie policy and auth rate limiting.
-9. Add authenticated Project HTTP routes and their full HTTP authorization
-   tests.
+9. Completed: add authenticated Project HTTP routes and their full HTTP
+   authorization tests.
 10. Add frontend login and project persistence UX in a later tranche.
 
 No Project HTTP route should move ahead of steps 1–8. Computational routes can

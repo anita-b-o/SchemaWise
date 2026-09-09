@@ -4,10 +4,13 @@ import cookie from "@fastify/cookie";
 import type { AuthRuntime } from "../auth/runtime/auth-runtime.js";
 import { createPostgresAuthRuntime } from "../auth/runtime/auth-runtime.js";
 import { closeProjectPool, createProjectPool } from "../persistence/postgres/database.js";
+import type { ProjectRepository } from "../persistence/ports/project-repository.js";
+import { PostgresProjectRepository } from "../persistence/postgres/postgres-project-repository.js";
 import { readAuthCookieConfig, type AuthCookieConfig } from "./auth-cookie.js";
 import { registerAuthRoutes } from "./auth-routes.js";
 import { registerErrorHandler } from "./error-handler.js";
 import { registerRoutes, type HttpUseCases } from "./routes.js";
+import { registerProjectRoutes } from "./project-routes.js";
 import {
   DEFAULT_AUTH_RATE_LIMITS,
   parseCorsOrigins,
@@ -26,6 +29,7 @@ export interface ServerOptions {
   readonly corsOrigins?: readonly string[];
   readonly trustProxy?: boolean;
   readonly authRateLimits?: AuthRateLimitConfig;
+  readonly projectRepository?: ProjectRepository;
 }
 
 export function createServer(options: ServerOptions = {}): FastifyInstance {
@@ -38,13 +42,13 @@ export function createServer(options: ServerOptions = {}): FastifyInstance {
   server.register(cookie);
   server.register(cors, {
     origin: [...allowedOrigins],
-    methods: ["GET", "POST", "OPTIONS"],
+    methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
     allowedHeaders: ["Content-Type", "X-CSRF-Token"],
     credentials: true,
   });
   registerErrorHandler(server);
   server.addHook("onRequest", async (request, reply) => {
-    const requiresJson = request.method === "POST" && request.url !== "/api/v1/auth/logout";
+    const requiresJson = (request.method === "POST" && request.url !== "/api/v1/auth/logout") || request.method === "PUT";
     if (requiresJson && request.url.startsWith("/api/v1/") && !/^application\/json(?:\s*;|$)/i.test(request.headers["content-type"] ?? "")) {
       if (request.url.startsWith("/api/v1/auth/")) {
         return reply.code(400).send({ error: { code: "INVALID_AUTH_REQUEST", message: "The authentication request is invalid." } });
@@ -63,6 +67,9 @@ export function createServer(options: ServerOptions = {}): FastifyInstance {
       allowedOrigins,
       options.authRateLimits ?? DEFAULT_AUTH_RATE_LIMITS,
     );
+    if (options.projectRepository !== undefined) {
+      registerProjectRoutes(server, options.auth, options.projectRepository, csrfSecret, allowedOrigins);
+    }
   }
   return server;
 }
@@ -73,6 +80,7 @@ export async function startServer(): Promise<void> {
   const server = createServer({
     logger: true,
     auth: createPostgresAuthRuntime(pool),
+    projectRepository: new PostgresProjectRepository(pool),
     authCookie,
     csrfSecret: readCsrfSecret(),
   });

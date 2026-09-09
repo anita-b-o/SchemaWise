@@ -3,6 +3,8 @@ import { authInternalError, isAuthApplicationError } from "../auth/errors/auth-e
 import { isApplicationError, applicationError } from "../errors/application-error.js";
 import { statusForApplicationError, statusForAuthError } from "./http-status.js";
 import { isHttpSecurityError } from "./security-error.js";
+import { isProjectApplicationError } from "../persistence/errors/project-error.js";
+import { statusForProjectError } from "./http-status.js";
 
 interface ErrorEnvelope {
   readonly error: {
@@ -22,11 +24,15 @@ export function registerErrorHandler(server: FastifyInstance): void {
   });
   server.setErrorHandler((error: FastifyError, request, reply) => {
     const isAuthRoute = request.url.startsWith("/api/v1/auth/");
+    const isProjectRoute = request.url === "/api/v1/projects" || request.url.startsWith("/api/v1/projects?") || request.url.startsWith("/api/v1/projects/");
     if (isHttpSecurityError(error)) {
       return reply.code(403).send(envelope(error.code, error.message));
     }
     if (isAuthApplicationError(error)) {
       return reply.code(statusForAuthError(error.code)).send(envelope(error.code, error.message, error.details));
+    }
+    if (isProjectApplicationError(error)) {
+      return reply.code(statusForProjectError(error.code)).send(envelope(error.code, error.message, error.details));
     }
     if (isApplicationError(error)) {
       return reply.code(statusForApplicationError(error.code)).send(envelope(error.code, error.message, error.details));
@@ -37,6 +43,9 @@ export function registerErrorHandler(server: FastifyInstance): void {
     if (error.code === "FST_ERR_CTP_BODY_TOO_LARGE") {
       if (isAuthRoute) {
         return reply.code(400).send(envelope("INVALID_AUTH_REQUEST", "The authentication request is invalid."));
+      }
+      if (isProjectRoute) {
+        return reply.code(413).send(envelope("PROJECT_LIMIT_EXCEEDED", "Request payload exceeds the maximum size.", { limit: "maxPayloadBytes", maximum: 64 * 1024 }));
       }
       return reply.code(413).send(envelope("ANALYSIS_LIMIT_EXCEEDED", "Request payload exceeds the maximum size.", { limit: "maxPayloadBytes", maximum: 64 * 1024 }));
     }
@@ -49,6 +58,9 @@ export function registerErrorHandler(server: FastifyInstance): void {
     if (isAuthRoute) {
       const internal = authInternalError();
       return reply.code(500).send(envelope(internal.code, internal.message));
+    }
+    if (isProjectRoute) {
+      return reply.code(500).send(envelope("PERSISTENCE_ERROR", "The project persistence operation failed."));
     }
     const internal = applicationError("INTERNAL_ERROR", "The request could not be completed.");
     return reply.code(500).send(envelope(internal.code, internal.message));

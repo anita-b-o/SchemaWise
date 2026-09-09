@@ -2,9 +2,10 @@ openapi: 3.1.0
 info:
   title: SchemaWise API
   version: 1.0.0
-  description: HTTP contract v1 for synchronous normalization analysis and the public-ready authentication adapter. This describes the HTTP contract, not the engine package version.
+  description: HTTP contract v1 for synchronous normalization analysis, authentication, and authenticated owner-scoped project persistence. This describes the HTTP contract, not the engine package version.
 tags:
   - { name: Auth, description: Server-side opaque session authentication with session-bound CSRF, credentialed CORS, and auth-specific rate limits. }
+  - { name: Projects, description: Authenticated owner-scoped project snapshots with optimistic concurrency control. }
   - { name: Computation, description: Public stateless normalization computations. }
 paths:
   /api/v1/auth/register:
@@ -51,6 +52,80 @@ paths:
         '204': { description: Session revoked when present and cookie cleared idempotently. }
         '403': { $ref: '#/components/responses/AuthForbidden' }
         '500': { $ref: '#/components/responses/AuthInternalError' }
+  /api/v1/projects:
+    post:
+      tags: [Projects]
+      operationId: createProject
+      description: Creates revision 1 for the authenticated user. Browser provenance and the session-bound CSRF token are required.
+      security: [{ sessionCookie: [] }]
+      parameters: [{ $ref: '#/components/parameters/ProjectCsrfHeader' }]
+      requestBody: { $ref: '#/components/requestBodies/CreateProject' }
+      responses:
+        '201': { $ref: '#/components/responses/ProjectCreated' }
+        '400': { $ref: '#/components/responses/ProjectBadRequest' }
+        '401': { $ref: '#/components/responses/AuthUnauthenticated' }
+        '403': { $ref: '#/components/responses/AuthForbidden' }
+        '413': { $ref: '#/components/responses/ProjectPayloadTooLarge' }
+        '415': { $ref: '#/components/responses/UnsupportedMediaType' }
+        '422': { $ref: '#/components/responses/ProjectLimitExceeded' }
+        '500': { $ref: '#/components/responses/ProjectInternalError' }
+    get:
+      tags: [Projects]
+      operationId: listProjects
+      security: [{ sessionCookie: [] }]
+      parameters:
+        - { $ref: '#/components/parameters/ProjectLimit' }
+        - { $ref: '#/components/parameters/ProjectOffset' }
+      responses:
+        '200': { $ref: '#/components/responses/ProjectListSuccess' }
+        '400': { $ref: '#/components/responses/ProjectBadRequest' }
+        '401': { $ref: '#/components/responses/AuthUnauthenticated' }
+        '422': { $ref: '#/components/responses/ProjectLimitExceeded' }
+        '500': { $ref: '#/components/responses/ProjectInternalError' }
+  /api/v1/projects/{projectId}:
+    parameters:
+      - { $ref: '#/components/parameters/ProjectId' }
+    get:
+      tags: [Projects]
+      operationId: getProject
+      security: [{ sessionCookie: [] }]
+      responses:
+        '200': { $ref: '#/components/responses/ProjectSuccess' }
+        '400': { $ref: '#/components/responses/ProjectBadRequest' }
+        '401': { $ref: '#/components/responses/AuthUnauthenticated' }
+        '404': { $ref: '#/components/responses/ProjectNotFound' }
+        '500': { $ref: '#/components/responses/ProjectInternalError' }
+    put:
+      tags: [Projects]
+      operationId: updateProject
+      description: Replaces the complete project name/schema when expectedRevision matches. Browser provenance and the session-bound CSRF token are required.
+      security: [{ sessionCookie: [] }]
+      parameters: [{ $ref: '#/components/parameters/ProjectCsrfHeader' }]
+      requestBody: { $ref: '#/components/requestBodies/UpdateProject' }
+      responses:
+        '200': { $ref: '#/components/responses/ProjectSuccess' }
+        '400': { $ref: '#/components/responses/ProjectBadRequest' }
+        '401': { $ref: '#/components/responses/AuthUnauthenticated' }
+        '403': { $ref: '#/components/responses/AuthForbidden' }
+        '404': { $ref: '#/components/responses/ProjectNotFound' }
+        '409': { $ref: '#/components/responses/ProjectConflict' }
+        '413': { $ref: '#/components/responses/ProjectPayloadTooLarge' }
+        '415': { $ref: '#/components/responses/UnsupportedMediaType' }
+        '422': { $ref: '#/components/responses/ProjectLimitExceeded' }
+        '500': { $ref: '#/components/responses/ProjectInternalError' }
+    delete:
+      tags: [Projects]
+      operationId: deleteProject
+      description: Hard-deletes an owned project. Browser provenance and the session-bound CSRF token are required.
+      security: [{ sessionCookie: [] }]
+      parameters: [{ $ref: '#/components/parameters/ProjectCsrfHeader' }]
+      responses:
+        '204': { description: Project deleted; response has no body. }
+        '400': { $ref: '#/components/responses/ProjectBadRequest' }
+        '401': { $ref: '#/components/responses/AuthUnauthenticated' }
+        '403': { $ref: '#/components/responses/AuthForbidden' }
+        '404': { $ref: '#/components/responses/ProjectNotFound' }
+        '500': { $ref: '#/components/responses/ProjectInternalError' }
   /api/v1/analysis:
     post:
       tags: [Computation]
@@ -95,10 +170,38 @@ components:
       required: false
       description: Required when logout presents an active session; value returned by register, login, or me for that same session.
       schema: { type: string, pattern: '^[A-Za-z0-9_-]{43}$' }
+    ProjectCsrfHeader:
+      name: X-CSRF-Token
+      in: header
+      required: true
+      description: HMAC token returned for the same active session; required on every project mutation even when Origin and Referer are absent.
+      schema: { type: string, pattern: '^[A-Za-z0-9_-]{43}$' }
+    ProjectId:
+      name: projectId
+      in: path
+      required: true
+      description: Server-generated UUID v4. A malformed value returns 400 INVALID_PROJECT before persistence.
+      schema: { type: string, format: uuid, pattern: '^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-4[0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}$' }
+    ProjectLimit:
+      name: limit
+      in: query
+      required: false
+      schema: { type: integer, minimum: 1, maximum: 100, default: 20 }
+    ProjectOffset:
+      name: offset
+      in: query
+      required: false
+      schema: { type: integer, minimum: 0, default: 0 }
   requestBodies:
     AuthRequest:
       required: true
       content: { application/json: { schema: { $ref: '#/components/schemas/AuthRequestDto' } } }
+    CreateProject:
+      required: true
+      content: { application/json: { schema: { $ref: '#/components/schemas/CreateProjectRequestDto' } } }
+    UpdateProject:
+      required: true
+      content: { application/json: { schema: { $ref: '#/components/schemas/UpdateProjectRequestDto' } } }
     SchemaInput:
       required: true
       content: { application/json: { schema: { $ref: '#/components/schemas/SchemaInputDto' } } }
@@ -130,6 +233,15 @@ components:
       headers: { Retry-After: { schema: { type: integer, minimum: 1 }, description: Seconds until this request can be retried. } }
       content: { application/json: { schema: { $ref: '#/components/schemas/AuthErrorEnvelope' } } }
     AuthInternalError: { description: Sanitized authentication infrastructure failure, content: { application/json: { schema: { $ref: '#/components/schemas/AuthErrorEnvelope' } } } }
+    ProjectCreated: { description: Project created at revision 1, content: { application/json: { schema: { $ref: '#/components/schemas/ProjectResponseDto' } } } }
+    ProjectSuccess: { description: Owned project snapshot, content: { application/json: { schema: { $ref: '#/components/schemas/ProjectResponseDto' } } } }
+    ProjectListSuccess: { description: Compact summaries and exact owner-scoped total, content: { application/json: { schema: { $ref: '#/components/schemas/ProjectListResponseDto' } } } }
+    ProjectBadRequest: { description: Invalid project DTO, pagination, or project identifier, content: { application/json: { schema: { $ref: '#/components/schemas/ProjectErrorEnvelope' } } } }
+    ProjectNotFound: { description: Project is missing or belongs to another user; both cases are indistinguishable, content: { application/json: { schema: { $ref: '#/components/schemas/ProjectErrorEnvelope' } } } }
+    ProjectConflict: { description: The owned project revision no longer matches expectedRevision, content: { application/json: { schema: { $ref: '#/components/schemas/ProjectErrorEnvelope' } } } }
+    ProjectPayloadTooLarge: { description: Project request payload exceeds the global 64 KiB limit, content: { application/json: { schema: { $ref: '#/components/schemas/ProjectErrorEnvelope' } } } }
+    ProjectLimitExceeded: { description: A documented project draft or list limit was exceeded, content: { application/json: { schema: { $ref: '#/components/schemas/ProjectErrorEnvelope' } } } }
+    ProjectInternalError: { description: Sanitized project persistence failure, content: { application/json: { schema: { $ref: '#/components/schemas/ProjectErrorEnvelope' } } } }
     AnalysisResponse: { description: Successful analysis, content: { application/json: { schema: { $ref: '#/components/schemas/AnalysisResponseDto' } } } }
     ClosureResponse: { description: Successful closure, content: { application/json: { schema: { $ref: '#/components/schemas/ClosureResponseDto' } } } }
     SynthesisResponse: { description: Successful 3NF synthesis, content: { application/json: { schema: { $ref: '#/components/schemas/ThirdNormalFormSynthesisResponseDto' } } } }
@@ -164,6 +276,90 @@ components:
         csrfToken: { type: string, pattern: '^[A-Za-z0-9_-]{43}$', description: HMAC-SHA-256 value bound to the current session; keep in memory and send as X-CSRF-Token on authenticated mutations. }
     AuthErrorCode: { type: string, enum: [INVALID_AUTH_REQUEST, EMAIL_ALREADY_EXISTS, INVALID_CREDENTIALS, UNAUTHENTICATED, INVALID_CSRF_TOKEN, AUTH_RATE_LIMITED, AUTH_INTERNAL_ERROR] }
     AuthErrorEnvelope: { type: object, required: [error], properties: { error: { type: object, required: [code, message], properties: { code: { $ref: '#/components/schemas/AuthErrorCode' }, message: { type: string }, details: { type: object, additionalProperties: true } } } } }
+    ProjectAttributeDto:
+      type: object
+      required: [id, name]
+      additionalProperties: false
+      properties:
+        id: { type: string, minLength: 1, maxLength: 64 }
+        name: { type: string, maxLength: 120 }
+    ProjectRelationDto:
+      type: object
+      required: [name, attributes]
+      additionalProperties: false
+      properties:
+        name: { type: string, maxLength: 120 }
+        attributes: { type: array, maxItems: 6, items: { $ref: '#/components/schemas/ProjectAttributeDto' } }
+    ProjectFunctionalDependencyDto:
+      type: object
+      required: [left, right]
+      additionalProperties: false
+      properties:
+        left: { type: array, items: { type: string }, uniqueItems: true }
+        right: { type: array, items: { type: string }, uniqueItems: true }
+    PersistedProjectSchemaDto:
+      type: object
+      required: [schemaVersion, relation, functionalDependencies]
+      additionalProperties: false
+      properties:
+        schemaVersion: { type: integer, const: 1 }
+        relation: { $ref: '#/components/schemas/ProjectRelationDto' }
+        functionalDependencies: { type: array, maxItems: 12, items: { $ref: '#/components/schemas/ProjectFunctionalDependencyDto' } }
+    CreateProjectRequestDto:
+      type: object
+      required: [name, schema]
+      additionalProperties: false
+      properties:
+        name: { type: string, minLength: 1, maxLength: 120 }
+        schema: { $ref: '#/components/schemas/PersistedProjectSchemaDto' }
+    UpdateProjectRequestDto:
+      type: object
+      required: [name, schema, expectedRevision]
+      additionalProperties: false
+      properties:
+        name: { type: string, minLength: 1, maxLength: 120 }
+        schema: { $ref: '#/components/schemas/PersistedProjectSchemaDto' }
+        expectedRevision: { type: integer, minimum: 1 }
+    ProjectDto:
+      type: object
+      required: [id, name, schema, revision, createdAt, updatedAt]
+      additionalProperties: false
+      properties:
+        id: { type: string, format: uuid }
+        name: { type: string }
+        schema: { $ref: '#/components/schemas/PersistedProjectSchemaDto' }
+        revision: { type: integer, minimum: 1 }
+        createdAt: { type: string, format: date-time }
+        updatedAt: { type: string, format: date-time }
+    ProjectResponseDto:
+      type: object
+      required: [project]
+      additionalProperties: false
+      properties: { project: { $ref: '#/components/schemas/ProjectDto' } }
+    ProjectSummaryDto:
+      type: object
+      required: [id, name, relationName, attributeCount, functionalDependencyCount, revision, createdAt, updatedAt]
+      additionalProperties: false
+      properties:
+        id: { type: string, format: uuid }
+        name: { type: string }
+        relationName: { type: string }
+        attributeCount: { type: integer, minimum: 0 }
+        functionalDependencyCount: { type: integer, minimum: 0 }
+        revision: { type: integer, minimum: 1 }
+        createdAt: { type: string, format: date-time }
+        updatedAt: { type: string, format: date-time }
+    ProjectListResponseDto:
+      type: object
+      required: [projects, total, limit, offset]
+      additionalProperties: false
+      properties:
+        projects: { type: array, items: { $ref: '#/components/schemas/ProjectSummaryDto' } }
+        total: { type: integer, minimum: 0 }
+        limit: { type: integer, minimum: 1, maximum: 100 }
+        offset: { type: integer, minimum: 0 }
+    ProjectErrorCode: { type: string, enum: [INVALID_PROJECT, PROJECT_NOT_FOUND, PROJECT_REVISION_CONFLICT, PROJECT_LIMIT_EXCEEDED, PERSISTENCE_ERROR] }
+    ProjectErrorEnvelope: { type: object, required: [error], properties: { error: { type: object, required: [code, message], properties: { code: { $ref: '#/components/schemas/ProjectErrorCode' }, message: { type: string }, details: { type: object, additionalProperties: true } } } } }
     AttributeDto:
       type: object
       required: [id, name]

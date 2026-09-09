@@ -1,6 +1,6 @@
 # Project Persistence API contract v1
 
-Status: conceptual; no routes are implemented by this document.
+Status: implemented and public-ready.
 
 ## Resource API
 
@@ -124,11 +124,9 @@ attribute IDs in the request and response remain unchanged.
       "updatedAt": "2026-09-09T15:05:12.000Z"
     }
   ],
-  "pagination": {
-    "limit": 20,
-    "offset": 0,
-    "total": 1
-  }
+  "total": 1,
+  "limit": 20,
+  "offset": 0
 }
 ```
 
@@ -192,5 +190,10 @@ failures use `PROJECT_LIMIT_EXCEEDED`, never `ANALYSIS_LIMIT_EXCEEDED`.
 
 Unexpected database availability, serialization and adapter failures map to
 `500 PERSISTENCE_ERROR`. The client receives no SQL, table, driver, stack or
-constraint names. Authentication/authorization mappings are deliberately
-undefined until that contract exists.
+constraint names. Authentication/authorization uses the shared Auth HTTP
+contract: every route returns `401 UNAUTHENTICATED` without an active session,
+and mutations return `403 INVALID_CSRF_TOKEN` for failed provenance or CSRF.
+
+Project path IDs are validated as UUID v4 before persistence. Malformed IDs
+return `400 INVALID_PROJECT`; well-formed missing and foreign IDs both use the
+same `404 PROJECT_NOT_FOUND` response.
