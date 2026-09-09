@@ -224,7 +224,11 @@ If the form is satisfied, the default view states that no transformation is
 needed and offers no prominent action. Transformations use the current analyzed
 snapshot, never the mutable draft. Each has independent idle/loading/success/
 error state and can be retried. Running one does not run the other or replace
-the analysis.
+the analysis. Editing the draft keeps completed transformations visible as part
+of the previous analysis, but disables every new transformation with `Analyze
+the updated schema before generating a transformation.` A successful analysis
+of a new revision clears synthesis, BCNF and preservation results together.
+Retries keep their previous result visible while updating and after a failure.
 
 ### 3NF synthesis
 
@@ -288,7 +292,12 @@ A B -> C
 ```
 
 The UI does not imply that BCNF failed when preservation is false; it presents
-two separate properties.
+two separate properties. The explanatory copy distinguishes them explicitly:
+lossless join is reconstruction without loss of information, while dependency
+preservation is the ability to check dependencies locally without recomposing
+relations. By construction, 3NF synthesis is dependency-preserving and lossless;
+BCNF decomposition produces BCNF leaves and a lossless decomposition, but does
+not guarantee dependency preservation.
 
 ## Closure tool
 

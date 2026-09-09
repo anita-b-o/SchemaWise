@@ -49,7 +49,8 @@ stable API; initial styles can use semantic classes and tokens.
   mutable input directly.
 - `ViolationDetails` maps typed evidence to fixed explanation templates.
 - `SynthesisResult`, `BcnfResult` and preservation result render separate
-  asynchronous resources.
+  asynchronous resources. `BcnfResult` owns the contextual preservation action,
+  which consumes its leaf attribute sets plus the immutable analysis snapshot.
 - `ClosureTool` is independent of analysis but consumes the same draft snapshot
   and API boundary.
 
@@ -112,6 +113,8 @@ Analysis, synthesis, BCNF, preservation and closure each use a separate
 snapshot. Transformations consume that snapshot. `sourceRevision !==
 draft.revision` means stale. Editing the draft invalidates transformation
 eligibility and preservation context but does not discard useful visible data.
+Only analysis success for a new input revision resets all three transformation
+resources; retries retain previous data through loading and error states.
 
 No Redux, Zustand, server cache or React Query is warranted: there is one
 workspace, no shared remote resource graph and all operations are explicit POST

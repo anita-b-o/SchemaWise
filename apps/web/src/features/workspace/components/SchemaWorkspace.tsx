@@ -28,6 +28,14 @@ function analysisErrorMessage(error: unknown): { message: string; code?: string 
   return { message: "We couldn't analyze this schema. Try again." };
 }
 
+function transformationErrorMessage(error: unknown): string {
+  if (error instanceof SchemaWiseApiError) {
+    if (error.kind === "network") return "We couldn't reach SchemaWise. Check your connection and try again.";
+    if (error.kind === "api") return "The API could not complete this operation for the analyzed schema. Review the analysis and try again.";
+  }
+  return "SchemaWise couldn't complete this operation. Try again.";
+}
+
 function focusFirstIssue(field: string) {
   const selector = field === "relationName" ? "#relation-name" : field.startsWith("attribute:") ? `#attribute-${CSS.escape(field.slice("attribute:".length))}` : field === "attributes" ? ".add-button" : "#dependencies-heading";
   document.querySelector<HTMLElement>(selector)?.focus();
@@ -37,6 +45,9 @@ export function SchemaWorkspace({ api = schemawiseApi }: SchemaWorkspaceProps) {
   const [state, dispatch] = useReducer(workspaceReducer, undefined, createInitialWorkspaceState);
   const [confirmExample, setConfirmExample] = useState(false);
   const activeAnalysis = useRef<AbortController | undefined>(undefined);
+  const activeSynthesis = useRef<AbortController | undefined>(undefined);
+  const activeBcnf = useRef<AbortController | undefined>(undefined);
+  const activePreservation = useRef<AbortController | undefined>(undefined);
   const issues = validateDraft(state.draft);
   const isAnalyzing = state.analysis.status === "loading";
   const hasResult = state.analysis.data !== undefined && state.analysis.inputSnapshot !== undefined;
@@ -56,7 +67,12 @@ export function SchemaWorkspace({ api = schemawiseApi }: SchemaWorkspaceProps) {
     setConfirmExample(false);
   }
 
-  useEffect(() => () => activeAnalysis.current?.abort(), []);
+  useEffect(() => () => {
+    activeAnalysis.current?.abort();
+    activeSynthesis.current?.abort();
+    activeBcnf.current?.abort();
+    activePreservation.current?.abort();
+  }, []);
 
   async function analyze() {
     const currentIssues = validateDraft(state.draft);
@@ -83,6 +99,64 @@ export function SchemaWorkspace({ api = schemawiseApi }: SchemaWorkspaceProps) {
       dispatch({ type: "analysisError", requestId, error });
     } finally {
       if (activeAnalysis.current === controller) activeAnalysis.current = undefined;
+    }
+  }
+
+  async function generateSynthesis() {
+    if (!state.analysis.inputSnapshot || state.analysis.outOfDate) return;
+    activeSynthesis.current?.abort();
+    const controller = new AbortController();
+    activeSynthesis.current = controller;
+    const requestId = crypto.randomUUID();
+    const inputSnapshot = state.analysis.inputSnapshot;
+    dispatch({ type: "synthesisRequestStart", requestId });
+    try {
+      const data = await api.synthesizeThirdNormalForm(inputSnapshot, controller.signal);
+      dispatch({ type: "synthesisSuccess", requestId, data });
+    } catch (error) {
+      if (error instanceof SchemaWiseApiError && error.kind === "aborted") dispatch({ type: "synthesisAborted", requestId });
+      else dispatch({ type: "synthesisError", requestId, error });
+    } finally {
+      if (activeSynthesis.current === controller) activeSynthesis.current = undefined;
+    }
+  }
+
+  async function generateBcnf() {
+    if (!state.analysis.inputSnapshot || state.analysis.outOfDate) return;
+    activeBcnf.current?.abort();
+    const controller = new AbortController();
+    activeBcnf.current = controller;
+    const requestId = crypto.randomUUID();
+    const inputSnapshot = state.analysis.inputSnapshot;
+    dispatch({ type: "bcnfRequestStart", requestId });
+    try {
+      const data = await api.decomposeBoyceCodd(inputSnapshot, controller.signal);
+      dispatch({ type: "bcnfSuccess", requestId, data });
+    } catch (error) {
+      if (error instanceof SchemaWiseApiError && error.kind === "aborted") dispatch({ type: "bcnfAborted", requestId });
+      else dispatch({ type: "bcnfError", requestId, error });
+    } finally {
+      if (activeBcnf.current === controller) activeBcnf.current = undefined;
+    }
+  }
+
+  async function checkDependencyPreservation() {
+    if (!state.analysis.inputSnapshot || !state.bcnf.data || state.analysis.outOfDate) return;
+    activePreservation.current?.abort();
+    const controller = new AbortController();
+    activePreservation.current = controller;
+    const requestId = crypto.randomUUID();
+    const inputSnapshot = state.analysis.inputSnapshot;
+    const request = { ...inputSnapshot, decomposition: state.bcnf.data.relations.map((relation) => [...relation.attributes]) };
+    dispatch({ type: "preservationRequestStart", requestId });
+    try {
+      const data = await api.analyzeDependencyPreservation(request, controller.signal);
+      dispatch({ type: "preservationSuccess", requestId, data });
+    } catch (error) {
+      if (error instanceof SchemaWiseApiError && error.kind === "aborted") dispatch({ type: "preservationAborted", requestId });
+      else dispatch({ type: "preservationError", requestId, error });
+    } finally {
+      if (activePreservation.current === controller) activePreservation.current = undefined;
     }
   }
 
@@ -148,7 +222,20 @@ export function SchemaWorkspace({ api = schemawiseApi }: SchemaWorkspaceProps) {
         <div className="analysis-live-status" role="status" aria-live="polite">
           {isAnalyzing ? (hasResult ? "Updating analysis…" : "Analyzing schema…") : state.analysis.status === "success" ? "Analysis complete." : ""}
         </div>
-        {hasResult ? <AnalysisResults result={state.analysis.data!} analyzedSnapshot={state.analysis.inputSnapshot!} outOfDate={state.analysis.outOfDate} /> : isAnalyzing ? (
+        {hasResult ? <AnalysisResults
+          result={state.analysis.data!}
+          analyzedSnapshot={state.analysis.inputSnapshot!}
+          outOfDate={state.analysis.outOfDate}
+          synthesis={state.synthesis}
+          bcnf={state.bcnf}
+          preservation={state.dependencyPreservation}
+          synthesisError={state.synthesis.status === "error" ? transformationErrorMessage(state.synthesis.error) : undefined}
+          bcnfError={state.bcnf.status === "error" ? transformationErrorMessage(state.bcnf.error) : undefined}
+          preservationError={state.dependencyPreservation.status === "error" ? transformationErrorMessage(state.dependencyPreservation.error) : undefined}
+          onGenerateSynthesis={generateSynthesis}
+          onGenerateBcnf={generateBcnf}
+          onCheckPreservation={checkDependencyPreservation}
+        /> : isAnalyzing ? (
           <div className="results-placeholder"><p className="eyebrow">Results</p><p>Analyzing the schema…</p></div>
         ) : (
           <div className="results-placeholder"><p className="eyebrow">Results</p><p>Define your relation and dependencies, then analyze the schema.</p></div>

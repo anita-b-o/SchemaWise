@@ -12,9 +12,9 @@ export type WorkspaceAction =
   | { type: "changeRelationName"; name: string } | { type: "addAttribute"; attribute: AttributeDraft } | { type: "renameAttribute"; id: string; name: string } | { type: "removeAttribute"; id: string }
   | { type: "addFunctionalDependency"; dependency: FunctionalDependencyDto } | { type: "updateFunctionalDependency"; index: number; dependency: FunctionalDependencyDto } | { type: "removeFunctionalDependency"; index: number } | { type: "loadExample"; ids?: { a: string; b: string; c: string } }
   | { type: "analysisRequestStart"; requestId: string; inputRevision: number; inputSnapshot: SchemaInputDto } | { type: "analysisSuccess"; requestId: string; data: AnalysisResponseDto } | { type: "analysisError"; requestId: string; error: unknown } | { type: "analysisAborted"; requestId: string }
-  | { type: "synthesisRequestStart"; requestId: string } | { type: "synthesisSuccess"; requestId: string; data: ThirdNormalFormSynthesisResponseDto } | { type: "synthesisError"; requestId: string; error: unknown }
-  | { type: "bcnfRequestStart"; requestId: string } | { type: "bcnfSuccess"; requestId: string; data: BcnfDecompositionResponseDto } | { type: "bcnfError"; requestId: string; error: unknown }
-  | { type: "preservationRequestStart"; requestId: string } | { type: "preservationSuccess"; requestId: string; data: DependencyPreservationResponseDto } | { type: "preservationError"; requestId: string; error: unknown };
+  | { type: "synthesisRequestStart"; requestId: string } | { type: "synthesisSuccess"; requestId: string; data: ThirdNormalFormSynthesisResponseDto } | { type: "synthesisError"; requestId: string; error: unknown } | { type: "synthesisAborted"; requestId: string }
+  | { type: "bcnfRequestStart"; requestId: string } | { type: "bcnfSuccess"; requestId: string; data: BcnfDecompositionResponseDto } | { type: "bcnfError"; requestId: string; error: unknown } | { type: "bcnfAborted"; requestId: string }
+  | { type: "preservationRequestStart"; requestId: string } | { type: "preservationSuccess"; requestId: string; data: DependencyPreservationResponseDto } | { type: "preservationError"; requestId: string; error: unknown } | { type: "preservationAborted"; requestId: string };
 
 export function createInitialWorkspaceState(): WorkspaceState { return { draft: { relationName: "", attributes: [], functionalDependencies: [] }, revision: 0, analysis: { status: "idle", outOfDate: false }, synthesis: { status: "idle" }, bcnf: { status: "idle" }, dependencyPreservation: { status: "idle" }, requests: { analysis: { status: "idle" }, synthesis: { status: "idle" }, bcnf: { status: "idle" }, dependencyPreservation: { status: "idle" } } }; }
 function id() { return `attr_${crypto.randomUUID()}`; }
@@ -23,8 +23,9 @@ export function draftToSchemaRequest(draft: SchemaDraft): SchemaInputDto { retur
 export function analysisSnapshotToSchemaRequest(state: WorkspaceState): SchemaInputDto | undefined { return state.analysis.inputSnapshot; }
 function mutate(state: WorkspaceState, draft: SchemaDraft): WorkspaceState { return { ...state, draft, revision: state.revision + 1, analysis: { ...state.analysis, outOfDate: state.analysis.status === "success" || state.analysis.inputSnapshot !== undefined } }; }
 function setRequest<T>(state: WorkspaceState, key: keyof WorkspaceState["requests"], value: RequestState<T>) { return { ...state, requests: { ...state.requests, [key]: value } }; }
-function startTransform<T>(state: WorkspaceState, key: "synthesis" | "bcnf" | "dependencyPreservation", requestId: string) { const input = state.analysis.inputSnapshot; return input ? { ...state, [key]: { status: "loading", requestId, sourceRevision: state.analysis.inputRevision, inputSnapshot: input }, requests: { ...state.requests, [key]: { status: "loading", requestId } } } as WorkspaceState : state; }
+function startTransform(state: WorkspaceState, key: "synthesis" | "bcnf" | "dependencyPreservation", requestId: string) { const input = state.analysis.inputSnapshot; const current = state[key]; return input ? { ...state, [key]: { ...current, status: "loading", requestId, error: undefined, sourceRevision: state.analysis.inputRevision, inputSnapshot: input }, requests: { ...state.requests, [key]: { status: "loading", requestId } } } as WorkspaceState : state; }
 function finish<T>(state: WorkspaceState, key: "synthesis" | "bcnf" | "dependencyPreservation", requestId: string, result: RequestState<T>) { const current = state[key]; if (current.requestId !== requestId || current.status !== "loading") return state; return { ...state, [key]: { ...current, ...result }, requests: { ...state.requests, [key]: { ...result, requestId } } } as WorkspaceState; }
+function abortTransform(state: WorkspaceState, key: "synthesis" | "bcnf" | "dependencyPreservation", requestId: string) { const current = state[key]; if (current.requestId !== requestId || current.status !== "loading") return state; return { ...state, [key]: { ...current, status: current.data ? "success" : "idle", requestId: undefined }, requests: { ...state.requests, [key]: { status: "idle" } } } as WorkspaceState; }
 export function workspaceReducer(state: WorkspaceState, action: WorkspaceAction): WorkspaceState {
   switch (action.type) {
     case "changeRelationName": return mutate(state, { ...state.draft, relationName: action.name });
@@ -39,7 +40,19 @@ export function workspaceReducer(state: WorkspaceState, action: WorkspaceAction)
     case "analysisSuccess": {
       if (state.analysis.requestId !== action.requestId || !state.analysis.pendingInput) return state;
       const { revision, snapshot: inputSnapshot } = state.analysis.pendingInput;
-      return { ...state, analysis: { status: "success", requestId: action.requestId, data: action.data, inputRevision: revision, inputSnapshot, outOfDate: state.revision !== revision }, requests: { ...state.requests, analysis: { status: "success", requestId: action.requestId, data: action.data } } };
+      const isNewRevision = state.analysis.inputRevision !== revision;
+      return {
+        ...state,
+        analysis: { status: "success", requestId: action.requestId, data: action.data, inputRevision: revision, inputSnapshot, outOfDate: state.revision !== revision },
+        synthesis: isNewRevision ? { status: "idle" } : state.synthesis,
+        bcnf: isNewRevision ? { status: "idle" } : state.bcnf,
+        dependencyPreservation: isNewRevision ? { status: "idle" } : state.dependencyPreservation,
+        requests: {
+          ...state.requests,
+          analysis: { status: "success", requestId: action.requestId, data: action.data },
+          ...(isNewRevision ? { synthesis: { status: "idle" as const }, bcnf: { status: "idle" as const }, dependencyPreservation: { status: "idle" as const } } : {}),
+        },
+      };
     }
     case "analysisError": {
       if (state.analysis.requestId !== action.requestId) return state;
@@ -54,11 +67,18 @@ export function workspaceReducer(state: WorkspaceState, action: WorkspaceAction)
     case "synthesisRequestStart": return startTransform(state, "synthesis", action.requestId);
     case "synthesisSuccess": return finish(state, "synthesis", action.requestId, { status: "success", data: action.data });
     case "synthesisError": return finish(state, "synthesis", action.requestId, { status: "error", error: action.error });
+    case "synthesisAborted": return abortTransform(state, "synthesis", action.requestId);
     case "bcnfRequestStart": return startTransform(state, "bcnf", action.requestId);
-    case "bcnfSuccess": return finish(state, "bcnf", action.requestId, { status: "success", data: action.data });
+    case "bcnfSuccess": {
+      const next = finish(state, "bcnf", action.requestId, { status: "success", data: action.data });
+      if (next === state) return state;
+      return { ...next, dependencyPreservation: { status: "idle" }, requests: { ...next.requests, dependencyPreservation: { status: "idle" } } };
+    }
     case "bcnfError": return finish(state, "bcnf", action.requestId, { status: "error", error: action.error });
+    case "bcnfAborted": return abortTransform(state, "bcnf", action.requestId);
     case "preservationRequestStart": return startTransform(state, "dependencyPreservation", action.requestId);
     case "preservationSuccess": return finish(state, "dependencyPreservation", action.requestId, { status: "success", data: action.data });
     case "preservationError": return finish(state, "dependencyPreservation", action.requestId, { status: "error", error: action.error });
+    case "preservationAborted": return abortTransform(state, "dependencyPreservation", action.requestId);
   }
 }
