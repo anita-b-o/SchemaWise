@@ -1,0 +1,4 @@
+import type { AttributeSetDto, FunctionalDependencyDto } from "../../api/schemawise-contracts";
+export function formatAttributeSet(ids: AttributeSetDto, lookup?: ReadonlyMap<string, string> | Record<string, string>): string { if (!ids.length) return "∅"; const name = (id: string) => lookup instanceof Map ? lookup.get(id) ?? id : lookup ? (lookup as Record<string, string>)[id] ?? id : id; return `{${ids.map(name).join(", ")}}`; }
+export function formatFunctionalDependency(fd: FunctionalDependencyDto, lookup?: ReadonlyMap<string, string> | Record<string, string>): string { return `${formatAttributeSet(fd.left, lookup).replace(/^\{|\}$/g, "")} → ${formatAttributeSet(fd.right, lookup).replace(/^\{|\}$/g, "")}`.replace("∅ →", "∅ →"); }
+export function formatClosure(ids: AttributeSetDto, lookup?: ReadonlyMap<string, string> | Record<string, string>): string { return formatAttributeSet(ids, lookup); }
