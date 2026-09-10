@@ -8,7 +8,7 @@ Use Vercel Hobby `*.vercel.app` as the sole browser origin, Render Free as the A
 
 Reject a declarative Vercel external rewrite as final authenticated proxy. It can transparently route `/api/:path*` to `https://<render-service>.onrender.com/api/:path*`, but no reviewed contract makes that hop a server-authenticated carrier for the client identity required by existing auth IP limits.
 
-Use the Node.js Vercel Function at `apps/web/api/[...path].ts` instead. The Vercel project root is `apps/web`; monorepo source inclusion must remain enabled so the Function can import `@schemawise/proxy-assertion`. It:
+Use the Node.js Vercel Function at `apps/web/api/proxy.ts` with the explicit same-application `/api/v1/(.*)` to `/api/proxy` rewrite in `apps/web/vercel.json`. Vercel's Vite preset does not give `[...path].ts` the multi-segment catch-all semantics provided by Next.js. The Vercel project root is `apps/web`; monorepo source inclusion must remain enabled so the Function can import `@schemawise/proxy-assertion`. It:
 
 1. receive the browser request at the Vercel hostname;
 2. derive IP only from Vercel's documented sanitized `x-vercel-forwarded-for` (Vercel documents that it overwrites `X-Forwarded-For` to prevent spoofing and exposes `x-vercel-forwarded-for` as its copy);
@@ -26,6 +26,7 @@ Render `CF-Connecting-IP` was approved for direct browser→Render but is not ap
 
 - `@schemawise/proxy-assertion` is the single canonicalization/signing/verification implementation used by Web and API. IPv4-mapped IPv6 becomes IPv4 and native IPv6 is grouped to `/64`, matching rate-limit identity.
 - Browser assertion headers are removed and replaced. The relay filters hop-by-hop, Host and Content-Length headers, preserves browser Origin/Referer/Cookie/CSRF, buffers the bounded API exchange, and uses `Headers.getSetCookie()` plus independent appends.
+- The rewrite uses an unnamed wildcard, preserving the original visible path/query without an injected named route parameter. Only `api/proxy.ts` remains under `api/`; proxy helpers and tests are non-public modules under `server/proxy`.
 - Fastify verifies once in an `onRequest` hook for Auth/Projects, caches the canonical identity on that request, then provenance and auth rate-limit pre-handlers run before the use case. The three existing buckets resolve only that verified identity.
 - Unit and real local PostgreSQL proxy-chain tests cover request binding, expiry, malformed/spoofed values, direct Render policy, rate-limit isolation, response fidelity, multiple cookies, register/me/project/logout and security regression.
 

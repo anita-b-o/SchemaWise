@@ -1,9 +1,21 @@
 # Vercel to Render authenticated proxy
 
-The Vite project's Node.js Function at `apps/web/api/[...path].ts` owns
-same-origin `/api/*`. It forwards only to the server-side
+The Vite project's single Node.js Function at `apps/web/api/proxy.ts` owns
+same-origin `/api/v1/*` through the explicit rewrite in
+`apps/web/vercel.json`. Vercel's Vite preset maps `api/[...path].ts` as a
+single-segment dynamic route, not as the Next.js-style catch-all its name
+suggests. The rewrite therefore uses the documented unnamed wildcard source
+`/api/v1/(.*)` and a stable `/api/proxy` destination. An unnamed capture is
+intentional: Vercel does not append a route parameter to the original query,
+so the Function observes and signs the browser-visible path and query exactly.
+
+The entrypoint forwards only to the server-side
 `RENDER_API_ORIGIN`; callers cannot choose an upstream. Hosted origins must be
 HTTPS serialized origins without credentials, path, query or fragment.
+Helpers and tests live under `apps/web/server/proxy`; only the entrypoint lives
+under `api/`, because every source file there is a potential Function. A direct
+request to the internal `/api/proxy` path is rejected by the handler before an
+upstream request is made.
 
 ## Trusted identity and assertion
 

@@ -1,7 +1,7 @@
 // @vitest-environment node
 import { describe, expect, it, vi } from "vitest";
 import { PROXY_ASSERTION_HEADERS, verifyProxyAssertion } from "@schemawise/proxy-assertion";
-import { createProxyHandler, readRenderApiOrigin, relayResponseHeaders } from "./_proxy-core.js";
+import { createProxyHandler, readRenderApiOrigin, relayResponseHeaders } from "./proxy-core.js";
 
 const SECRET = "web-proxy-test-secret-with-at-least-32-bytes";
 const NOW = 1_789_000_000;
@@ -35,7 +35,7 @@ describe("Vercel API proxy", () => {
       return Response.json({ ok: true }, { status: 201 });
     };
     const handler = createProxyHandler({ environment: LOCAL_ENV, fetchImpl, nowSeconds: () => NOW });
-    const request = new Request("https://schemawise.vercel.app/api/v1/projects?limit=2&offset=1", {
+    const request = new Request("https://schemawise.vercel.app/api/v1/projects?limit=20&offset=0", {
       method: "POST",
       headers: {
         "content-type": "application/json",
@@ -56,7 +56,7 @@ describe("Vercel API proxy", () => {
 
     const response = await handler(request);
     expect(response.status).toBe(201);
-    expect(target).toBe("http://127.0.0.1:3400/api/v1/projects?limit=2&offset=1");
+    expect(target).toBe("http://127.0.0.1:3400/api/v1/projects?limit=20&offset=0");
     expect(init?.method).toBe("POST");
     const headers = init?.headers as Headers;
     expect(headers.get("origin")).toBe("https://schemawise.vercel.app");
@@ -70,7 +70,7 @@ describe("Vercel API proxy", () => {
     expect(headers.get(PROXY_ASSERTION_HEADERS.signature)).not.toBe("A".repeat(43));
     expect(verifyProxyAssertion({
       method: "POST",
-      pathAndQuery: "/api/v1/projects?limit=2&offset=1",
+      pathAndQuery: "/api/v1/projects?limit=20&offset=0",
       clientIp: headers.get(PROXY_ASSERTION_HEADERS.ip),
       timestamp: headers.get(PROXY_ASSERTION_HEADERS.timestamp),
       signature: headers.get(PROXY_ASSERTION_HEADERS.signature),
@@ -78,6 +78,17 @@ describe("Vercel API proxy", () => {
       nowSeconds: NOW,
     })).toBe("198.51.100.20");
     expect(Buffer.from(init?.body as ArrayBuffer).toString("utf8")).toBe(JSON.stringify({ name: "relay" }));
+  });
+
+  it("does not expose the internal Function route as an upstream proxy path", async () => {
+    const fetchImpl = vi.fn<typeof fetch>();
+    const handler = createProxyHandler({ environment: LOCAL_ENV, fetchImpl, nowSeconds: () => NOW });
+    const response = await handler(new Request("https://schemawise.vercel.app/api/proxy", {
+      headers: { "x-vercel-forwarded-for": "198.51.100.20" },
+    }));
+
+    expect(response.status).toBe(404);
+    expect(fetchImpl).not.toHaveBeenCalled();
   });
 
   it("preserves status, body, Retry-After, content metadata, and independent Set-Cookie fields", async () => {

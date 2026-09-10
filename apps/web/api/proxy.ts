@@ -1,4 +1,4 @@
-import { createProxyHandler } from "./_proxy-core.js";
+import { createProxyHandler } from "../server/proxy/proxy-core.js";
 
 export const maxDuration = 300;
 

@@ -84,7 +84,7 @@ export function createProxyHandler(options: ProxyHandlerOptions): (request: Requ
 
   return async (request: Request): Promise<Response> => {
     const incomingUrl = new URL(request.url);
-    if (!incomingUrl.pathname.startsWith("/api/")) {
+    if (!incomingUrl.pathname.startsWith("/api/v1/")) {
       return safeError(404, "PROXY_ROUTE_NOT_FOUND", "The requested proxy route does not exist.");
     }
     let clientIp: string;

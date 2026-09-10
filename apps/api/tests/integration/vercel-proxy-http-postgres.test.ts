@@ -5,7 +5,7 @@ import { fileURLToPath } from "node:url";
 import { Pool } from "pg";
 import { runner } from "node-pg-migrate";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
-import { createProxyHandler } from "../../../web/api/_proxy-core.js";
+import { createProxyHandler } from "../../../web/server/proxy/proxy-core.js";
 import {
   AUTH_SESSION_COOKIE_NAME,
   closeProjectPool,

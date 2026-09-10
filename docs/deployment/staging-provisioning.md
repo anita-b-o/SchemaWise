@@ -34,7 +34,7 @@ ADR 016 accepts the implemented Vercel Function proxy. It reads Vercel's sanitiz
 
 ### Vercel Hobby
 
-- Separate Vite project with Root Directory `apps/web`; keep monorepo source inclusion enabled, install from the detected root lockfile, build `npm run build`, output `dist`. The Function is `api/[...path].ts` relative to that project root.
+- Separate Vite project with Root Directory `apps/web`; keep monorepo source inclusion enabled, install from the detected root lockfile, build `npm run build`, output `dist`. The single Function is `api/proxy.ts` relative to that project root, and `apps/web/vercel.json` explicitly rewrites `/api/v1/(.*)` to it.
 - Published relevant limits include 200 projects, 100 deployments/day, 45 build minutes/deployment, one concurrent build, and 120 seconds for external proxied requests. A Function proxy has plan-specific function-duration limits; recheck the active Hobby limit before deploy.
 - 120 s exceeds Render's stated roughly one-minute wake-up, but real cold-start compatibility remains a gate, not a promise.
 
