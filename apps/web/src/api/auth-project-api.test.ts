@@ -48,6 +48,14 @@ describe("authenticated HTTP clients", () => {
     await expect(projectApi.updateProject("id", { name: "Test", schema, expectedRevision: 1 }, "csrf")).rejects.toMatchObject({ kind: "api", status: 409, code: "PROJECT_REVISION_CONFLICT", details: { actualRevision: 2 } } satisfies Partial<HttpApiError>);
   });
 
+  it("forwards an AbortSignal when hydrating a project", async () => {
+    const controller = new AbortController();
+    const fetch = vi.fn().mockResolvedValue(response({ project: { id: "id", name: "Test", schema, revision: 1, createdAt: "now", updatedAt: "now" } }));
+    vi.stubGlobal("fetch", fetch);
+    await projectApi.getProject("id", controller.signal);
+    expect(fetch).toHaveBeenCalledWith(expect.stringContaining("/projects/id"), expect.objectContaining({ credentials: "include", signal: controller.signal }));
+  });
+
   it("does not access browser storage", async () => {
     const local = vi.spyOn(Storage.prototype, "setItem");
     vi.stubGlobal("fetch", vi.fn().mockResolvedValue(response(authResponse)));
