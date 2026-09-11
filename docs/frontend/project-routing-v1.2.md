@@ -1,6 +1,6 @@
 # Project routing and deep links v1.2
 
-Status: design accepted; Tranches 1–3 routing, hydration, navigation, and recovery implemented.
+Status: **FROZEN**; Tranches 1–4 implemented and locally audited on 2026-09-11.
 
 Implementation progress: Tranche 1 provides React Router 7.18.3
 routes for `/` and `/projects/:projectId`, strict UUID v4 validation,
@@ -10,7 +10,8 @@ pathname and POP navigation with the stable blocker, conditionally registers
 `beforeunload`, and adopts a created project without a redundant GET or loading
 flash. Tranche 3 adds detached-draft routing, external-delete/session recovery,
 safe auth reconnection, and the unified OCC route reload. Deployment fallback
-and staging verification remain Tranche 4.
+and Tranche 4 adds the ordered Vercel SPA fallback plus production-build browser
+validation. Real staging validation remains the next deployment gate.
 
 This document defines the browser URL, navigation, route-loading, deployment,
 accessibility, and test contracts for persisted projects. Recovery and
@@ -268,7 +269,7 @@ Vite app entry. No custom development server or Vite configuration is needed.
 
 ## Vercel SPA fallback
 
-The future implementation changes `apps/web/vercel.json` exactly to:
+`apps/web/vercel.json` now contains exactly:
 
 ```json
 {
@@ -289,7 +290,8 @@ The future implementation changes `apps/web/vercel.json` exactly to:
 The API rewrite must remain first and the SPA fallback last, so protected API
 traffic continues through the reviewed Function proxy. Vercel gives filesystem
 assets precedence; the fallback serves the application for direct client-side
-paths. This tranche documents but does not apply the change. See Vercel's
+paths. Configuration regression tests lock the order, and the Function rejects
+direct `/api/proxy` requests unless the original path begins `/api/v1/`. See Vercel's
 [Vite SPA guidance](https://vercel.com/docs/frameworks/frontend/vite) and
 [rewrite reference](https://vercel.com/docs/routing/rewrites).
 
@@ -309,7 +311,7 @@ paths. This tranche documents but does not apply the change. See Vercel's
   name is never included. Update `document.title` only after the matching
   response commits, preventing stale responses from changing it.
 
-## Planned tests
+## Verification
 
 Component/integration tests will cover route `/`, valid and invalid project
 paths; all auth gates and login continuation; hydration success, skeleton, 401,
@@ -324,7 +326,7 @@ router only where browser APIs (`beforeunload`, POP, title/focus) matter. API
 clients remain injected. Tests must assert that auth unknown makes zero project
 GETs, stale A cannot install over B, and hydration invokes no computational API.
 
-The browser E2E sequence is:
+The production-build browser E2E sequence completed locally on 2026-09-11:
 
 1. Open anonymous `/` and register.
 2. Create and save project A; assert URL becomes `/projects/A`.
@@ -339,6 +341,9 @@ The browser E2E sequence is:
 9. Delete the current project; assert preserved Unsaved draft and `/`.
 10. In a new browser context, open a direct deep link anonymously, sign in,
     then verify success; repeat with unavailable ID for the generic 404.
+
+Full evidence is recorded in
+[the v1.2 audit](../testing/project-recovery-v1.2-audit.md).
 
 ## Out of scope
 

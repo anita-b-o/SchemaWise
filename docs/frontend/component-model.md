@@ -3,8 +3,9 @@
 > This is the implemented v1 baseline plus the frozen Educational UX v1.1 Tranches 1–5.
 > The v1.1 contract is defined by [educational-ux-v1.1.md](./educational-ux-v1.1.md) and
 > [educational-content-model.md](./educational-content-model.md).
-> The accepted v1.2 routing extension has Tranches 1–3 implemented, including
-> detached recovery, auth reconnection, and unified OCC reload. It is defined by
+> Project Recovery + Deep Links v1.2 is frozen after Tranches 1–4, including
+> detached recovery, auth reconnection, unified OCC reload, deployment fallback,
+> and production-build browser validation. It is defined by
 > [project-routing-v1.2.md](./project-routing-v1.2.md) and
 > [project-recovery-v1.2.md](./project-recovery-v1.2.md).
 
@@ -98,6 +99,12 @@ map plus the one-shot detached-draft route intent. Open and OCC no longer fetch
 outside the route hydrator. A clean matching draft rehydrates after login; a
 dirty one stays attached without a GET. No global store, query cache, or
 state-machine library was introduced.
+
+Route hydration owns its focus intent through the committed render: direct,
+Open, Back/Forward, and Retry GETs focus the workspace heading, while response
+adoption, clean reconnect, and OCC reload retain their dedicated focus rules.
+Async route failures focus their error heading. The dependency composer is an
+explicit labelled native group.
 
 ## Responsibilities
 

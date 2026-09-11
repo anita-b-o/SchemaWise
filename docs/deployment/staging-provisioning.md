@@ -38,8 +38,8 @@ ADR 016 accepts the implemented Vercel Function proxy. It reads Vercel's sanitiz
 - Published relevant limits include 200 projects, 100 deployments/day, 45 build minutes/deployment, one concurrent build, and 120 seconds for external proxied requests. A Function proxy has plan-specific function-duration limits; recheck the active Hobby limit before deploy.
 - 120 s exceeds Render's stated roughly one-minute wake-up, but real cold-start compatibility remains a gate, not a promise.
 
-Project deep links v1.2 are accepted but not deployed. Its implementation must
-append the SPA fallback after the security-critical API rewrite:
+Project deep links v1.2 are locally frozen but not deployed. The implementation
+now appends the SPA fallback after the security-critical API rewrite:
 
 ```json
 {
@@ -51,11 +51,26 @@ append the SPA fallback after the security-critical API rewrite:
 }
 ```
 
-Do not reverse these entries or bypass `/api/proxy`. The deployment gate must
+Do not reverse these entries or bypass `/api/proxy`. Configuration tests cover
+the three representative proxy endpoints and the Function rejects a direct
+`/api/proxy` request. The staging deployment gate must
 verify a direct refresh at `/projects/<uuid>` returns the SPA and that auth and
-project `/api/v1/*` requests still reach the Function proxy. This paragraph is
-design documentation only; `apps/web/vercel.json` remains unchanged in this
-tranche.
+project `/api/v1/*` requests still reach the Function proxy.
+
+## Project Recovery v1.2 staging handoff
+
+- Deploy only the Vercel Web project from `apps/web`; the changed fallback and
+  frontend bundle require a new Vercel build.
+- Do not redeploy Render: `apps/api`, runtime configuration, database schema,
+  and database data are unchanged.
+- Do not migrate or modify Neon.
+- After deployment, repeat direct valid/invalid project refresh, API proxy
+  method/content-type checks, authenticated flows A–K, console, axe, title,
+  focus, Back/Forward, and the six viewport widths from the local audit.
+- Do not promote to production from this tranche.
+
+Local evidence and the exact smoke checklist are in
+[project-recovery-v1.2-audit.md](../testing/project-recovery-v1.2-audit.md).
 
 ## Controlled manual migration
 

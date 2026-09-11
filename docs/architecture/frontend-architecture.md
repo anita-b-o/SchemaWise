@@ -1,7 +1,7 @@
 # Frontend architecture
 
 Status: implemented MVP plus manual project persistence; Educational UX v1.1
-is frozen. Project routing/recovery v1.2 Tranches 1–3 are implemented.
+and locally audited Project Recovery + Deep Links v1.2 are frozen.
 
 ## Context and boundaries
 
@@ -60,6 +60,11 @@ save-new adoption, and the detached-draft handoff. Successful hydration uses
 the existing `replaceDraft` reset semantics and never invokes analysis. The
 same route hydrator handles direct entry, Retry, clean auth reconnection, and
 confirmed OCC reload; dirty reconnect does not hydrate.
+
+Vercel routing keeps `/api/v1/(.*) -> /api/proxy` before the final
+`/(.*) -> /index.html` SPA fallback. Configuration assertions make this order a
+release invariant, while the Function itself rejects direct `/api/proxy`
+requests. Static assets retain Vercel filesystem precedence.
 
 ### Manual persistence snapshots
 

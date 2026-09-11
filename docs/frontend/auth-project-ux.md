@@ -1,11 +1,11 @@
 # Frontend auth and project UX v1
 
-Status: v1 implemented; Project Recovery + Deep Links v1.2 Tranche 3 implemented.
+Status: v1 implemented; Project Recovery + Deep Links v1.2 **FROZEN** locally.
 
 > Project deep links, route hydration, routed Open/New/Save-new, dirty
 > Back/Forward blocking, and conditional unload protection are implemented
-> through v1.2 Tranche 3, including Delete/404 detachment, auth reconnection,
-> and unified OCC reload. See [project-routing-v1.2.md](./project-routing-v1.2.md)
+> through v1.2 Tranche 4, including Delete/404 detachment, auth reconnection,
+> unified OCC reload, and ordered Vercel deep-link fallback. See [project-routing-v1.2.md](./project-routing-v1.2.md)
 > and [project-recovery-v1.2.md](./project-recovery-v1.2.md).
 
 SchemaWise remains an anonymous-first computational workspace. Authentication
@@ -62,3 +62,7 @@ On login a matching clean draft performs one safe route hydration; a dirty
 draft performs none and exposes Save or confirmed Reload. Delete and a loaded
 project's 404 replace the route with `/`, retain the draft in memory, and make
 the next Save a POST.
+
+The 2026-09-11 production-build browser audit confirmed these request counts,
+focus/title behavior, keyboard-operable recovery surfaces, and race guards.
+See [project-recovery-v1.2-audit.md](../testing/project-recovery-v1.2-audit.md).

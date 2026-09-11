@@ -1,6 +1,6 @@
 # Project recovery v1.2
 
-Status: design accepted; Tranches 1–3 route recovery implemented.
+Status: **FROZEN**; Tranches 1–4 implemented and locally audited on 2026-09-11.
 
 Tranche 1 implements first-entry authenticated hydration, exact persisted
 snapshot/revision recovery, derived-result reset, and the three-part race guard
@@ -8,7 +8,8 @@ snapshot/revision recovery, derived-result reset, and the three-part race guard
 save-new response adoption, dirty SPA/POP blocking, and conditional
 `beforeunload`. Dirty-session login recovery, detached drafts,
 external-delete recovery, and OCC route reload are implemented in Tranche 3.
-Deployment fallback and staging E2E remain intentionally pending for Tranche 4.
+The ordered Vercel fallback and local production-build E2E are complete.
+Deployment and browser verification against real staging remain pending.
 
 This document defines how a routed project, a mutable local draft, and its last
 known persisted snapshot coexist. Routing and deployment contracts live in
@@ -261,5 +262,6 @@ project route; and a response can commit only for the active route request.
    unified dirty blocker plus conditional `beforeunload`.
 3. Implemented: delete/external-delete detached handoff, logout/expiry safe
    reconnection, unified OCC route reload, and integration regressions.
-4. Apply and verify Vercel fallback, then execute the real browser E2E and
-   staging smoke plan without changing Educational UX.
+4. Implemented: ordered Vercel fallback, real local production-build E2E,
+   request-count/race/accessibility/viewport audit, and staging handoff. Real
+   staging smoke remains the deployment gate.
