@@ -1,7 +1,7 @@
 # Frontend architecture
 
 Status: implemented MVP plus manual project persistence; Educational UX v1.1
-is frozen.
+is frozen. Project routing/recovery v1.2 is accepted but not implemented.
 
 ## Context and boundaries
 
@@ -24,18 +24,18 @@ the local session view and orchestration of the server persistence contract.
 
 ## Navigation
 
-Only `/` is required. It renders the workspace directly with compact product
-context and optional inline help. No router dependency is introduced for one
-route. `/workspace`, `/about`, authentication and settings routes would create
-navigation without distinct MVP jobs.
+The implemented v1 has only `/`, no router, and loses workspace/project
+association on refresh. V1.2 accepts React Router in Declarative browser-history
+mode because `/projects/:projectId` is now a real second route and dirty
+Back/Forward handling is a product requirement.
 
-This means refresh recovers authentication but not the in-memory workspace or
-open project. The explicit Open projects flow is the recovery path in v1.
-Deep-linkable projects are a later routing decision, not implicit localStorage.
-
-If substantial educational reference content appears later, `/how-it-works`
-can become the first additional route and justify a router. This is not part of
-the current build.
+`/` remains the anonymous-first new local workspace. `/projects/:projectId`
+references a private persisted project; it waits for auth initialization and
+hydrates through a single route coordinator. The URL identity is separate from
+the loaded server snapshot and mutable draft. No auth, list, settings, sharing,
+or analysis route is added. See [ADR 017](../adr/017-project-deep-links.md),
+[routing](../frontend/project-routing-v1.2.md), and
+[recovery](../frontend/project-recovery-v1.2.md).
 
 ## Architectural decisions
 
@@ -49,6 +49,12 @@ Authentication is the deliberate exception: a focused Context plus reducer
 serves header, forms, logout, and project actions. Project session state stays
 at the workspace boundary and is not merged into either Auth Context or the
 workspace reducer. Server revision and draft revision have distinct meanings.
+
+V1.2 keeps this ownership. A thin route coordinator owns params, auth-gated
+hydration, route request races, dirty navigation, and title/focus. It does not
+absorb draft or auth state. Direct entry, Open, Retry, OCC reload, and safe
+post-login refresh share one loader; successful hydration uses the existing
+`replaceDraft` reset semantics and never invokes analysis.
 
 ### Manual persistence snapshots
 
@@ -97,11 +103,16 @@ Static concept definitions form a separate presentation-only boundary.
 state local, and make no API calls. They are not persisted and cannot affect
 draft or project revisions.
 
-### No client persistence in tranche one
+### No client draft persistence
 
 State lives in memory and resets on reload. `localStorage` recovery and URL
 sharing are separate product features requiring serialization/versioning and
 clear reset semantics. They are deliberately deferred.
+
+V1.2 persists only project identity in the pathname and recovers the server
+snapshot. Detached drafts created by Delete/404 cross the replace-to-`/`
+transition through a one-shot in-memory coordinator intent. They are not stored
+in Web Storage, URL state, or browser history and still disappear on refresh.
 
 ## Responsive architecture
 

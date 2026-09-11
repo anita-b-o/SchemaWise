@@ -3,6 +3,9 @@
 > This is the implemented v1 baseline plus the frozen Educational UX v1.1 Tranches 1–5.
 > The v1.1 contract is defined by [educational-ux-v1.1.md](./educational-ux-v1.1.md) and
 > [educational-content-model.md](./educational-content-model.md).
+> The accepted, not-yet-implemented v1.2 routing extension is defined by
+> [project-routing-v1.2.md](./project-routing-v1.2.md) and
+> [project-recovery-v1.2.md](./project-recovery-v1.2.md).
 
 ## Component hierarchy
 
@@ -72,6 +75,23 @@ last saved snapshot, association, and sync availability separate from the
 workspace draft revision. Panels receive callbacks and DTOs rather than calling
 fetch. Native sections and controls avoid an inaccessible custom dialog while
 still moving initial focus to the close/email control.
+
+V1.2 adds a route boundary without moving project or workspace data into auth:
+
+```text
+BrowserRouter
+└─ AuthProvider
+   └─ WorkspaceRouteCoordinator       params, hydration, blocker, title/focus
+      └─ SchemaWorkspace              draft, ProjectSession, actions/results
+```
+
+The coordinator derives `routeProjectId` from the match and owns the one route
+hydration path used by direct entry, Open, Retry, OCC reload, and safe login
+recovery. `SchemaWorkspace` retains `loadedProjectId`, the persisted snapshot,
+server revision, and local draft. This separates a URL request from a
+successfully hydrated association. A discriminated hydration resource is
+sufficient; v1.2 does not introduce a global store, query cache, or state
+machine library.
 
 ## Responsibilities
 

@@ -38,6 +38,25 @@ ADR 016 accepts the implemented Vercel Function proxy. It reads Vercel's sanitiz
 - Published relevant limits include 200 projects, 100 deployments/day, 45 build minutes/deployment, one concurrent build, and 120 seconds for external proxied requests. A Function proxy has plan-specific function-duration limits; recheck the active Hobby limit before deploy.
 - 120 s exceeds Render's stated roughly one-minute wake-up, but real cold-start compatibility remains a gate, not a promise.
 
+Project deep links v1.2 are accepted but not deployed. Its implementation must
+append the SPA fallback after the security-critical API rewrite:
+
+```json
+{
+  "$schema": "https://openapi.vercel.sh/vercel.json",
+  "rewrites": [
+    { "source": "/api/v1/(.*)", "destination": "/api/proxy" },
+    { "source": "/(.*)", "destination": "/index.html" }
+  ]
+}
+```
+
+Do not reverse these entries or bypass `/api/proxy`. The deployment gate must
+verify a direct refresh at `/projects/<uuid>` returns the SPA and that auth and
+project `/api/v1/*` requests still reach the Function proxy. This paragraph is
+design documentation only; `apps/web/vercel.json` remains unchanged in this
+tranche.
+
 ## Controlled manual migration
 
 The initial staging migration was completed on 2026-09-09. For future controlled migrations, source the direct Neon URL from a local secret manager or mode-600 untracked file (not shell history), then execute:

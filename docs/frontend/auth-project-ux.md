@@ -2,6 +2,11 @@
 
 Status: implemented.
 
+> Project deep links and safe refresh recovery are accepted for v1.2 but not
+> implemented. See [project-routing-v1.2.md](./project-routing-v1.2.md) and
+> [project-recovery-v1.2.md](./project-recovery-v1.2.md). Those documents extend
+> this baseline without changing the implemented v1 behavior described here.
+
 SchemaWise remains an anonymous-first computational workspace. Authentication
 appears only when the user chooses Sign in, Save, or Open projects; successful
 registration and login never replace the current draft. The session cookie is
@@ -51,3 +56,6 @@ recovers auth through the cookie plus `/auth/me`, but resets the workspace and
 forgets the open project. Projects can be reopened through the compact list.
 A project route or query parameter is deferred until deep links/session restore
 become a product requirement.
+
+That requirement is now designed in ADR 017. Until its implementation lands,
+the limitation above remains the observable staging behavior.
