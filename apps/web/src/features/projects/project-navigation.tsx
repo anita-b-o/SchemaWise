@@ -12,6 +12,8 @@ interface ProjectNavigationValue {
   navigateToProject(projectId: string, source?: HTMLElement | null): void;
   navigateToRoot(source?: HTMLElement | null): void;
   adoptCreatedProject(project: ProjectDto): void;
+  detachCurrentProject(message: string): void;
+  consumeDetachIntent(): { readonly message: string } | undefined;
   updateCurrentProjectTitle(name: string): void;
   stay(): void;
   discardAndContinue(): void;
@@ -32,6 +34,7 @@ export function ProjectNavigationCoordinator({ children }: { readonly children: 
   const returnFocus = useRef<HTMLElement | null>(null);
   const promptHeading = useRef<HTMLHeadingElement>(null);
   const proceeding = useRef(false);
+  const detachIntent = useRef<{ message: string } | undefined>(undefined);
 
   const blocker = useBlocker(({ currentLocation, nextLocation }) => {
     if (!dirty || bypassPathname.current === nextLocation.pathname) return false;
@@ -56,6 +59,7 @@ export function ProjectNavigationCoordinator({ children }: { readonly children: 
     requestedNavigation.current = undefined;
     bypassPathname.current = undefined;
     proceeding.current = false;
+    setDirty(false);
   }, [location.key]);
 
   const requestNavigation = useCallback((pathname: string, source?: HTMLElement | null) => {
@@ -71,6 +75,12 @@ export function ProjectNavigationCoordinator({ children }: { readonly children: 
     navigate(pathname, { replace: true, state: { adoptionToken } });
   }, [navigate]);
 
+  const detachCurrentProject = useCallback((message: string) => {
+    detachIntent.current = { message };
+    bypassPathname.current = "/";
+    navigate("/", { replace: true });
+  }, [navigate]);
+
   const value = useMemo<ProjectNavigationValue>(() => ({
     blocked: blocker.state === "blocked",
     locationKey: location.key,
@@ -80,10 +90,16 @@ export function ProjectNavigationCoordinator({ children }: { readonly children: 
     navigateToProject: (projectId, source) => requestNavigation(`/projects/${projectId}`, source),
     navigateToRoot: (source) => requestNavigation("/", source),
     adoptCreatedProject,
+    detachCurrentProject,
+    consumeDetachIntent: () => {
+      const intent = detachIntent.current;
+      detachIntent.current = undefined;
+      return intent;
+    },
     updateCurrentProjectTitle: (name) => { document.title = `${name} — SchemaWise`; },
     stay,
     discardAndContinue,
-  }), [adoptCreatedProject, blocker.state, location.key, location.pathname, requestNavigation]);
+  }), [adoptCreatedProject, blocker.state, detachCurrentProject, location.key, location.pathname, requestNavigation]);
 
   function stay() {
     blocker.reset?.();
@@ -95,6 +111,7 @@ export function ProjectNavigationCoordinator({ children }: { readonly children: 
   function discardAndContinue() {
     if (blocker.state !== "blocked" || proceeding.current) return;
     proceeding.current = true;
+    setDirty(false);
     blocker.proceed();
   }
 

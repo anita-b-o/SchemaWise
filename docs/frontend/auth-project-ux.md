@@ -1,11 +1,11 @@
 # Frontend auth and project UX v1
 
-Status: v1 implemented; Project Recovery + Deep Links v1.2 Tranche 2 implemented.
+Status: v1 implemented; Project Recovery + Deep Links v1.2 Tranche 3 implemented.
 
 > Project deep links, route hydration, routed Open/New/Save-new, dirty
 > Back/Forward blocking, and conditional unload protection are implemented
-> through v1.2 Tranche 2. Delete/external-delete detachment and dirty auth
-> reconnection remain Tranche 3. See [project-routing-v1.2.md](./project-routing-v1.2.md)
+> through v1.2 Tranche 3, including Delete/404 detachment, auth reconnection,
+> and unified OCC reload. See [project-routing-v1.2.md](./project-routing-v1.2.md)
 > and [project-recovery-v1.2.md](./project-recovery-v1.2.md).
 
 SchemaWise remains an anonymous-first computational workspace. Authentication
@@ -57,5 +57,8 @@ Delete. This avoids replaying a mutation whose outcome may be uncertain.
 project after auth initialization. Open selects a route and performs exactly
 one route-hydration GET. Save-new adopts the POST response and replaces `/`
 with the project URL without an immediate GET; Save-existing stays on the same
-URL and history entry. Logout/expiry reconnection and detached draft routing
-are unchanged until Tranche 3.
+URL and history entry. Logout/expiry keeps the project route and visible draft.
+On login a matching clean draft performs one safe route hydration; a dirty
+draft performs none and exposes Save or confirmed Reload. Delete and a loaded
+project's 404 replace the route with `/`, retain the draft in memory, and make
+the next Save a POST.

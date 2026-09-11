@@ -99,15 +99,18 @@ describe("project persistence UX", () => {
 
   it("deletes explicitly, preserves current content, and unlinks it as a local draft", async () => {
     const client = projectsApi();
-    const { user } = await renderAuthenticated(client);
+    const { user, router } = await renderAuthenticated(client);
     await openSaved(user);
     await user.click(screen.getByRole("button", { name: "Open projects" }));
     await user.click(await screen.findByRole("button", { name: "Delete project Exercise" }));
     expect(screen.getByText("Delete “Exercise” permanently?")).toBeTruthy();
     await user.click(screen.getByRole("button", { name: /^Delete project$/ }));
     await waitFor(() => expect(client.deleteProject).toHaveBeenCalledWith(project().id, "csrf-token"));
+    expect(router.state.location.pathname).toBe("/");
+    expect(await screen.findByText(/Your changes are still here/)).toBeTruthy();
     expect((screen.getByRole("textbox", { name: "Relation name" }) as HTMLInputElement).value).toBe("R");
     expect(screen.getByText("Unsaved changes")).toBeTruthy();
+    expect(client.getProject).toHaveBeenCalledTimes(1);
   });
 
   it("keeps the workspace through logout and requires authentication to save again", async () => {
@@ -157,7 +160,7 @@ describe("project persistence UX", () => {
     expect(me).toHaveBeenCalledTimes(2);
     await user.click(screen.getByRole("button", { name: "Dismiss" }));
     await user.click(screen.getByRole("button", { name: "Save" }));
-    expect(await screen.findByText(/Sign in to continue saving/)).toBeTruthy();
+    expect(await screen.findByText("Sign in to save this project.")).toBeTruthy();
     expect((screen.getByRole("textbox", { name: "Relation name" }) as HTMLInputElement).value).toBe("R");
     expect(createProject).toHaveBeenCalledTimes(2);
   });
@@ -283,5 +286,140 @@ describe("project persistence UX", () => {
     await waitFor(() => expect(remove).toHaveBeenCalledWith("beforeunload", handler));
     add.mockRestore();
     remove.mockRestore();
+  });
+
+  it("deletes the current project and saves the detached draft as a new POST without another GET", async () => {
+    const created = { ...project("Recovered copy"), id: B };
+    const createProject = vi.fn(async (input) => ({ ...created, name: input.name, schema: input.schema }));
+    const client = projectsApi({ createProject });
+    const { user, router } = await renderAuthenticated(client);
+    await openSaved(user);
+    await user.click(screen.getByRole("button", { name: "Open projects" }));
+    await user.click(await screen.findByRole("button", { name: "Delete project Exercise" }));
+    await user.click(screen.getByRole("button", { name: /^Delete project$/ }));
+    await waitFor(() => expect(router.state.location.pathname).toBe("/"));
+    await user.click(screen.getByRole("button", { name: "Save" }));
+    await waitFor(() => expect(createProject).toHaveBeenCalledOnce());
+    expect(router.state.location.pathname).toBe(`/projects/${B}`);
+    expect(client.updateProject).not.toHaveBeenCalled();
+    expect(client.getProject).toHaveBeenCalledTimes(1);
+    expect(screen.getByText("Saved")).toBeTruthy();
+  });
+
+  it("deleting a non-current project leaves the loaded route and dirty draft unchanged", async () => {
+    const other = summary({ ...project("Other"), id: B });
+    const client = projectsApi({ listProjects: vi.fn(async () => ({ projects: [summary(), other], total: 2, limit: 20, offset: 0 })) });
+    const { user, router } = await renderAuthenticated(client);
+    await openSaved(user);
+    await user.type(screen.getByRole("textbox", { name: "Relation name" }), " dirty");
+    await user.click(screen.getByRole("button", { name: "Open projects" }));
+    await user.click(await screen.findByRole("button", { name: "Delete project Other" }));
+    await user.click(screen.getByRole("button", { name: /^Delete project$/ }));
+    await waitFor(() => expect(client.deleteProject).toHaveBeenCalledWith(B, "csrf-token"));
+    expect(router.state.location.pathname).toBe(`/projects/${project().id}`);
+    expect(screen.getByDisplayValue("R dirty")).toBeTruthy();
+    expect(screen.getByText("Unsaved changes")).toBeTruthy();
+  });
+
+  it("detaches a PUT 404 and adopts a subsequent POST under a new identity", async () => {
+    const updateProject = vi.fn(async () => { throw new HttpApiError({ kind: "api", status: 404, code: "PROJECT_NOT_FOUND", message: "missing" }); });
+    const createProject = vi.fn(async (input) => ({ ...project(input.name), id: B, schema: input.schema }));
+    const client = projectsApi({ updateProject, createProject });
+    const { user, router } = await renderAuthenticated(client);
+    await openSaved(user);
+    await user.type(screen.getByRole("textbox", { name: "Relation name" }), " local");
+    await user.click(screen.getByRole("button", { name: "Save" }));
+    expect(await screen.findByText("The saved project is no longer available. Your changes are still here and can be saved as a new project.")).toBeTruthy();
+    expect(router.state.location.pathname).toBe("/");
+    expect(screen.getByDisplayValue("R local")).toBeTruthy();
+    await user.click(screen.getByRole("button", { name: "Save" }));
+    await waitFor(() => expect(createProject).toHaveBeenCalledOnce());
+    expect(router.state.location.pathname).toBe(`/projects/${B}`);
+    expect(updateProject).toHaveBeenCalledOnce();
+  });
+
+  it("keeps the OCC draft when common route reload returns 404", async () => {
+    const getProject = vi.fn().mockResolvedValueOnce(project()).mockRejectedValueOnce(new HttpApiError({ kind: "api", status: 404, code: "PROJECT_NOT_FOUND", message: "missing" }));
+    const updateProject = vi.fn(async () => { throw new HttpApiError({ kind: "api", status: 409, code: "PROJECT_REVISION_CONFLICT", message: "conflict" }); });
+    const { user, router } = await renderAuthenticated(projectsApi({ getProject, updateProject }));
+    await openSaved(user);
+    await user.clear(screen.getByRole("textbox", { name: "Project name" })); await user.type(screen.getByRole("textbox", { name: "Project name" }), "Local survivor");
+    await user.click(screen.getByRole("button", { name: "Save" }));
+    await user.click(await screen.findByRole("button", { name: "Reload saved version" }));
+    await user.click(screen.getByRole("button", { name: "Reload and discard" }));
+    expect(await screen.findByText(/Your changes are still here/)).toBeTruthy();
+    expect(screen.getByDisplayValue("Local survivor")).toBeTruthy();
+    expect(router.state.location.pathname).toBe("/");
+    expect(getProject).toHaveBeenCalledTimes(2);
+  });
+
+  it("auto-rehydrates a clean project once after logout/login", async () => {
+    const getProject = vi.fn().mockResolvedValueOnce(project()).mockResolvedValueOnce(project("Server after login", 2));
+    const auth = authApi();
+    const { user, router } = await renderAuthenticated(projectsApi({ getProject }), auth);
+    await openSaved(user);
+    await user.click(screen.getByRole("button", { name: "Log out" }));
+    expect(router.state.location.pathname).toBe(`/projects/${project().id}`);
+    expect(screen.getByDisplayValue("Exercise")).toBeTruthy();
+    await user.click(screen.getByRole("button", { name: "Sign in" }));
+    await user.type(screen.getByLabelText("Email"), "person@example.com"); await user.type(screen.getByLabelText("Password"), "password-long");
+    await user.click(document.querySelector<HTMLButtonElement>('.auth-form button[type="submit"]')!);
+    expect(await screen.findByDisplayValue("Server after login")).toBeTruthy();
+    expect(getProject).toHaveBeenCalledTimes(2);
+    expect(router.state.location.pathname).toBe(`/projects/${project().id}`);
+  });
+
+  it("preserves a dirty project after logout/login with zero reconnect GETs", async () => {
+    const getProject = vi.fn(async () => project());
+    const { user, router } = await renderAuthenticated(projectsApi({ getProject }));
+    await openSaved(user);
+    await user.type(screen.getByRole("textbox", { name: "Relation name" }), " local");
+    await user.click(screen.getByRole("button", { name: "Log out" }));
+    await user.click(screen.getByRole("button", { name: "Sign in" }));
+    await user.type(screen.getByLabelText("Email"), "person@example.com"); await user.type(screen.getByLabelText("Password"), "password-long");
+    await user.click(document.querySelector<HTMLButtonElement>('.auth-form button[type="submit"]')!);
+    expect(await screen.findByText("Signed in. This project has unsaved local changes.")).toBeTruthy();
+    expect(screen.getByDisplayValue("R local")).toBeTruthy();
+    expect(getProject).toHaveBeenCalledTimes(1);
+    expect(router.state.location.pathname).toBe(`/projects/${project().id}`);
+  });
+
+  it("preserves a dirty draft and OCC revision across a PUT 401, login, and manual retry", async () => {
+    const updateProject = vi.fn()
+      .mockRejectedValueOnce(new HttpApiError({ kind: "api", status: 401, code: "UNAUTHENTICATED", message: "expired" }))
+      .mockImplementation(async (_id, input) => ({ ...project(input.name, input.expectedRevision + 1), schema: input.schema }));
+    const getProject = vi.fn(async () => project());
+    const { user, router } = await renderAuthenticated(projectsApi({ getProject, updateProject }));
+    await openSaved(user);
+    await user.type(screen.getByRole("textbox", { name: "Relation name" }), " local");
+    await user.click(screen.getByRole("button", { name: "Save" }));
+    expect(await screen.findByText("Sign in to save this project.")).toBeTruthy();
+    expect(screen.getByDisplayValue("R local")).toBeTruthy();
+    expect(router.state.location.pathname).toBe(`/projects/${project().id}`);
+    await user.click(screen.getByRole("button", { name: "Sign in" }));
+    await user.type(screen.getByLabelText("Email"), "person@example.com"); await user.type(screen.getByLabelText("Password"), "password-long");
+    await user.click(document.querySelector<HTMLButtonElement>('.auth-form button[type="submit"]')!);
+    expect(await screen.findByText("Signed in. This project has unsaved local changes.")).toBeTruthy();
+    expect(getProject).toHaveBeenCalledTimes(1);
+    await user.click(screen.getByRole("button", { name: "Save" }));
+    await waitFor(() => expect(updateProject).toHaveBeenCalledTimes(2));
+    expect(updateProject.mock.calls[1]?.[1]).toEqual(expect.objectContaining({ expectedRevision: 1 }));
+    expect(screen.getByText("Saved")).toBeTruthy();
+  });
+
+  it("retains the OCC draft and conflict after a route-hydrator network error", async () => {
+    const getProject = vi.fn().mockResolvedValueOnce(project()).mockRejectedValueOnce(new HttpApiError({ kind: "network", message: "offline" }));
+    const updateProject = vi.fn(async () => { throw new HttpApiError({ kind: "api", status: 409, code: "PROJECT_REVISION_CONFLICT", message: "conflict" }); });
+    const { user, router } = await renderAuthenticated(projectsApi({ getProject, updateProject }));
+    await openSaved(user);
+    await user.clear(screen.getByRole("textbox", { name: "Project name" })); await user.type(screen.getByRole("textbox", { name: "Project name" }), "Network survivor");
+    await user.click(screen.getByRole("button", { name: "Save" }));
+    await user.click(await screen.findByRole("button", { name: "Reload saved version" }));
+    await user.click(screen.getByRole("button", { name: "Reload and discard" }));
+    expect(await screen.findByText("Could not load the saved version. Your local draft is unchanged.")).toBeTruthy();
+    expect(screen.getByDisplayValue("Network survivor")).toBeTruthy();
+    expect(screen.getByRole("heading", { name: "This project was updated elsewhere." })).toBeTruthy();
+    expect(router.state.location.pathname).toBe(`/projects/${project().id}`);
+    expect(getProject).toHaveBeenCalledTimes(2);
   });
 });

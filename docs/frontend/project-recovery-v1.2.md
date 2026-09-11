@@ -1,13 +1,14 @@
 # Project recovery v1.2
 
-Status: design accepted; Tranches 1–2 route recovery and protected navigation implemented.
+Status: design accepted; Tranches 1–3 route recovery implemented.
 
 Tranche 1 implements first-entry authenticated hydration, exact persisted
 snapshot/revision recovery, derived-result reset, and the three-part race guard
 (abort, request ID, and route ID). Tranche 2 implements routed Open/New,
 save-new response adoption, dirty SPA/POP blocking, and conditional
-`beforeunload`. Dirty-session login recovery, detachment, external-delete
-recovery, and OCC route reload remain intentionally pending for Tranche 3.
+`beforeunload`. Dirty-session login recovery, detached drafts,
+external-delete recovery, and OCC route reload are implemented in Tranche 3.
+Deployment fallback and staging E2E remain intentionally pending for Tranche 4.
 
 This document defines how a routed project, a mutable local draft, and its last
 known persisted snapshot coexist. Routing and deployment contracts live in
@@ -167,9 +168,8 @@ content. After DELETE:
 1. retain current name and schema;
 2. clear loaded ID, revision, persisted snapshot, conflict, and hydration
    association;
-3. reset derived results only if existing v1 product behavior later requires
-   it (v1 currently preserves visible content; v1.2 does not make analysis part
-   of persistence identity);
+3. preserve derived results because they still describe the exact unchanged
+   local draft; only a successful remote replacement resets them;
 4. replace the URL with `/` through the one-shot in-memory detachment intent;
 5. display Unsaved and the recovery explanation.
 
@@ -177,8 +177,8 @@ No draft is serialized into URL, Web Storage, or history state. Browser refresh
 after this transition starts a normal empty `/` workspace.
 
 If PUT Save returns 404 because another session deleted the project, perform
-the identical detach/replace transition. The message is `This saved project is
-no longer available. Your local draft is unchanged and can be saved as a new
+the identical detach/replace transition. The message is `The saved project is
+no longer available. Your changes are still here and can be saved as a new
 project.` The next Save POSTs. A 404 from an explicit OCC reload of a dirty
 loaded project also detaches and preserves the draft rather than hiding it
 behind a first-entry not-found screen.
@@ -200,10 +200,9 @@ Example: A starts, navigation to B commits, A is aborted, B starts, and a late A
 response fails both the request-ID and current-param checks. It cannot replace
 B's draft, revision, status, title, errors, or focus.
 
-Through Tranche 2, direct entry, Open Projects, and Retry use the route
-hydrator; Open has no panel-owned GET. Clean post-login recovery and OCC reload
-will join that coordinator in Tranche 3. The existing separately confirmed OCC
-GET remains only as a compatibility path until then.
+Direct entry, Open Projects, Retry, clean post-login recovery, and confirmed OCC
+reload all use the same route hydrator; Open and OCC own no parallel GET.
+Dirty post-login recovery intentionally issues no GET.
 
 ## Error resolution matrix
 
@@ -260,7 +259,7 @@ project route; and a response can commit only for the active route request.
    Save/Open/New/Delete behavior in this tranche.
 2. Route all Open/New/Save-new navigation through the coordinator and add the
    unified dirty blocker plus conditional `beforeunload`.
-3. Add delete/external-delete detached handoff, logout/expiry safe reconnection,
-   and OCC route reload; complete integration regressions.
+3. Implemented: delete/external-delete detached handoff, logout/expiry safe
+   reconnection, unified OCC route reload, and integration regressions.
 4. Apply and verify Vercel fallback, then execute the real browser E2E and
    staging smoke plan without changing Educational UX.

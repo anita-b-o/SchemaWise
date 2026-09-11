@@ -8,6 +8,7 @@ export interface ProjectSession {
   readonly serverRevision?: number;
   readonly persistedSnapshot?: ProjectSnapshot;
   readonly syncUnavailable: boolean;
+  readonly detached?: boolean;
 }
 
 export const initialProjectSession: ProjectSession = { name: "Untitled project", syncUnavailable: false };
@@ -25,6 +26,15 @@ export function sessionFromProject(project: ProjectDto): ProjectSession {
 }
 
 export function isProjectDirty(session: ProjectSession, draft: SchemaDraft): boolean {
+  if (session.detached) return true;
   if (!session.persistedSnapshot) return session.name !== "Untitled project" || draft.relationName !== "" || draft.attributes.length > 0 || draft.functionalDependencies.length > 0;
   return JSON.stringify({ name: session.name, schema: draftToPersistedSchema(draft) }) !== JSON.stringify(session.persistedSnapshot);
+}
+
+export function isRouteLoadedProjectCoherent(routeProjectId: string | undefined, loadedProjectId: string | undefined): boolean {
+  return Boolean(routeProjectId && loadedProjectId && routeProjectId.toLowerCase() === loadedProjectId.toLowerCase());
+}
+
+export function shouldAutoRehydrateAfterAuth(input: { readonly routeProjectId?: string; readonly loadedProjectId?: string; readonly dirty: boolean }): boolean {
+  return !input.dirty && isRouteLoadedProjectCoherent(input.routeProjectId, input.loadedProjectId);
 }

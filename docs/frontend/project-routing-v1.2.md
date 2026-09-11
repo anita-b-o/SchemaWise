@@ -1,6 +1,6 @@
 # Project routing and deep links v1.2
 
-Status: design accepted; Tranches 1–2 routing, hydration, and protected navigation implemented.
+Status: design accepted; Tranches 1–3 routing, hydration, navigation, and recovery implemented.
 
 Implementation progress: Tranche 1 provides React Router 7.18.3
 routes for `/` and `/projects/:projectId`, strict UUID v4 validation,
@@ -8,8 +8,9 @@ auth-gated/race-safe hydration, retry/error states, title management, and focus
 after a successful route load. Tranche 2 routes Open/New/Save-new, protects
 pathname and POP navigation with the stable blocker, conditionally registers
 `beforeunload`, and adopts a created project without a redundant GET or loading
-flash. Detached-draft routing, external-delete/session recovery, OCC route
-reload changes, and deployment fallback remain Tranche 3 or later.
+flash. Tranche 3 adds detached-draft routing, external-delete/session recovery,
+safe auth reconnection, and the unified OCC route reload. Deployment fallback
+and staging verification remain Tranche 4.
 
 This document defines the browser URL, navigation, route-loading, deployment,
 accessibility, and test contracts for persisted projects. Recovery and
@@ -172,8 +173,8 @@ does not fetch or install a snapshot. The
 route hydrator is the only Open/direct-entry/refresh loading path. If
 dirty, the common route blocker confirms before the navigation commits. The
 panel stays open while blocked and closes naturally when navigation commits.
-The separately confirmed OCC reload remains compatible with its existing GET
-until Tranche 3 unifies that recovery path.
+The separately confirmed OCC reload now requests the common route hydrator; it
+does not own a second project GET path.
 
 ### Save new
 

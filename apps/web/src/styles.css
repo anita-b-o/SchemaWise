@@ -289,7 +289,7 @@ summary { width: fit-content; min-height: 2.75rem; padding-block: 0.7rem; cursor
 .panel-note { margin: var(--space-3) 0 0; color: var(--text-secondary); font-size: 0.82rem; }
 .project-notice { margin: calc(var(--space-4) * -1) 0 var(--space-6); color: var(--text-secondary); font-size: 0.85rem; }
 .project-notice--error { display: flex; justify-content: space-between; align-items: center; gap: var(--space-4); padding: var(--space-3) var(--space-4); color: #76271f; background: var(--danger-surface); border-left: 3px solid var(--danger); }
-.project-notice p { margin: 0; }
+.project-notice p { min-width: 0; margin: 0; overflow-wrap: anywhere; }
 .project-list { margin: var(--space-4) 0 0; padding: 0; list-style: none; border-top: 1px solid var(--border-default); }
 .project-list li { display: grid; grid-template-columns: minmax(0, 1fr) auto; align-items: center; gap: var(--space-3); border-bottom: 1px solid var(--border-default); }
 .project-list__open { display: grid; gap: var(--space-1); min-height: 4.5rem; padding: var(--space-3) 0; text-align: left; color: var(--text-primary); background: transparent; border: 0; cursor: pointer; }
@@ -333,6 +333,7 @@ summary { width: fit-content; min-height: 2.75rem; padding-block: 0.7rem; cursor
   .decomposition-steps dl > div { grid-template-columns: 1fr; gap: var(--space-1); }
   .project-bar { grid-template-columns: 1fr; align-items: stretch; }
   .project-actions { justify-content: flex-start; }
+  .project-notice--error { align-items: stretch; flex-direction: column; }
   .account-email { flex-basis: 100%; }
   .project-list li { grid-template-columns: 1fr; padding-bottom: var(--space-2); }
 }

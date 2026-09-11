@@ -9,7 +9,7 @@ import { HttpApiError } from "../../api/http-api";
 import type { ProjectApi } from "../../api/project-api";
 import type { SchemaWiseApi } from "../../api/schemawise-api";
 import type { ProjectDto } from "../../api/schemawise-contracts";
-import { AuthProvider } from "../auth/auth-context";
+import { AuthProvider, useAuth } from "../auth/auth-context";
 import { isCanonicalUuidV4 } from "./project-route-utils";
 
 const A = "11111111-1111-4111-8111-111111111111";
@@ -58,7 +58,8 @@ function computationApi(): SchemaWiseApi {
 
 function RouteNavigation() {
   const navigate = useNavigate();
-  return <><button onClick={() => navigate(`/projects/${A}`)}>Go A</button><button onClick={() => navigate(`/projects/${B}`)}>Go B</button></>;
+  const auth = useAuth();
+  return <><button onClick={() => navigate(`/projects/${A}`)}>Go A</button><button onClick={() => navigate(`/projects/${B}`)}>Go B</button><button onClick={auth.setUnauthenticated}>Expire</button><button onClick={() => auth.setAuthenticated(authResponse)}>Authenticate</button></>;
 }
 
 function renderRoute(path: string, options: { auth?: AuthApi; projects?: ProjectApi; computations?: SchemaWiseApi; navigation?: boolean; strict?: boolean } = {}) {
@@ -185,11 +186,13 @@ describe("project routes and hydration", () => {
   it("ignores a late A success after B succeeds, including title and focus", async () => {
     const first = deferred<ProjectDto>();
     const second = deferred<ProjectDto>();
-    const getProject = vi.fn((id: string) => id === A ? first.promise : second.promise);
+    const signals: AbortSignal[] = [];
+    const getProject = vi.fn((id: string, signal?: AbortSignal) => { if (signal) signals.push(signal); return id === A ? first.promise : second.promise; });
     const user = userEvent.setup();
     renderRoute(`/projects/${A}`, { projects: projectsApi({ getProject }), navigation: true });
     await waitFor(() => expect(getProject).toHaveBeenCalledWith(A, expect.any(AbortSignal)));
     await user.click(screen.getByRole("button", { name: "Go B" }));
+    expect(signals[0]?.aborted).toBe(true);
     second.resolve(project(B, "Project B", 3));
     expect(await screen.findByDisplayValue("Project B")).toBeTruthy();
     const heading = screen.getByRole("heading", { level: 1, name: "Define a relation and its dependencies." });
@@ -228,5 +231,28 @@ describe("project routes and hydration", () => {
     const heading = await screen.findByRole("heading", { level: 1, name: "Define a relation and its dependencies." });
     await waitFor(() => expect(document.activeElement).toBe(heading));
     expect(document.title).toBe("Recovered project — SchemaWise");
+  });
+
+  it("aborts an old reconnect GET and ignores its late response after a second login", async () => {
+    const stale = deferred<ProjectDto>();
+    const getProject = vi.fn()
+      .mockResolvedValueOnce(project(A, "Initial"))
+      .mockImplementationOnce((_id: string, _signal?: AbortSignal) => stale.promise)
+      .mockResolvedValueOnce(project(A, "Fresh reconnect", 9));
+    const user = userEvent.setup();
+    renderRoute(`/projects/${A}`, { projects: projectsApi({ getProject }), navigation: true });
+    expect(await screen.findByDisplayValue("Initial")).toBeTruthy();
+    await user.click(screen.getByRole("button", { name: "Expire" }));
+    await user.click(screen.getByRole("button", { name: "Authenticate" }));
+    await waitFor(() => expect(getProject).toHaveBeenCalledTimes(2));
+    const reconnectSignal = getProject.mock.calls[1]?.[1] as AbortSignal;
+    await user.click(screen.getByRole("button", { name: "Expire" }));
+    expect(reconnectSignal.aborted).toBe(true);
+    await user.click(screen.getByRole("button", { name: "Authenticate" }));
+    expect(await screen.findByDisplayValue("Fresh reconnect")).toBeTruthy();
+    stale.resolve(project(A, "Stale reconnect", 8));
+    await Promise.resolve();
+    expect(screen.getByDisplayValue("Fresh reconnect")).toBeTruthy();
+    expect(getProject).toHaveBeenCalledTimes(3);
   });
 });

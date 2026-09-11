@@ -1,7 +1,7 @@
 # Frontend architecture
 
 Status: implemented MVP plus manual project persistence; Educational UX v1.1
-is frozen. Project routing/recovery v1.2 Tranches 1–2 are implemented.
+is frozen. Project routing/recovery v1.2 Tranches 1–3 are implemented.
 
 ## Context and boundaries
 
@@ -55,10 +55,11 @@ workspace reducer. Server revision and draft revision have distinct meanings.
 V1.2 keeps this ownership. The implemented thin project-route hydrator owns
 params, auth-gated hydration, route request races, Retry, and title/focus. It
 does not absorb draft or auth state. A sibling project-navigation coordinator
-owns navigation intents, the stable dirty blocker, unload registration, and
-save-new adoption. Successful hydration uses the existing `replaceDraft` reset
-semantics and never invokes analysis. Delete/external-delete transitions,
-auth reconnection, and OCC route reload remain Tranche 3.
+owns navigation intents, the stable dirty blocker, unload registration,
+save-new adoption, and the detached-draft handoff. Successful hydration uses
+the existing `replaceDraft` reset semantics and never invokes analysis. The
+same route hydrator handles direct entry, Retry, clean auth reconnection, and
+confirmed OCC reload; dirty reconnect does not hydrate.
 
 ### Manual persistence snapshots
 
@@ -114,10 +115,10 @@ sharing are separate product features requiring serialization/versioning and
 clear reset semantics. They are deliberately deferred.
 
 V1.2 persists only project identity in the pathname and recovers the server
-snapshot. Tranche 3 will move detached drafts created by Delete/404 across the
+snapshot. Tranche 3 moves detached drafts created by Delete/404 across the
 replace-to-`/` transition through a one-shot in-memory coordinator intent.
-They will not be stored in Web Storage, URL state, or browser history and will
-still disappear on refresh.
+They are not stored in Web Storage, URL state, or browser history and still
+disappear on refresh.
 
 ## Responsive architecture
 

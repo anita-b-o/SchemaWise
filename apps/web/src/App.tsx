@@ -1,15 +1,15 @@
 import { useMemo } from "react";
-import { createBrowserRouter, Link, Route, RouterProvider, Routes } from "react-router-dom";
+import { createBrowserRouter, Link, RouterProvider } from "react-router-dom";
 import type { AuthApi } from "./api/auth-api";
 import type { ProjectApi } from "./api/project-api";
 import type { SchemaWiseApi } from "./api/schemawise-api";
 import { AuthProvider } from "./features/auth/auth-context";
 import { ProjectRoute } from "./features/projects/project-route";
-import { WorkspacePage } from "./features/workspace/components/WorkspacePage";
+import { ProjectNavigationCoordinator } from "./features/projects/project-navigation";
 
 export function AppRoutes({ api, projectsApi }: { readonly api?: SchemaWiseApi; readonly projectsApi?: ProjectApi }) {
   return (
-    <>
+    <ProjectNavigationCoordinator>
       <header className="site-header">
         <div className="shell site-header__inner">
           <Link className="wordmark" to="/" aria-label="SchemaWise home">SchemaWise</Link>
@@ -17,12 +17,9 @@ export function AppRoutes({ api, projectsApi }: { readonly api?: SchemaWiseApi; 
         </div>
       </header>
       <main className="shell workspace-page">
-        <Routes>
-          <Route path="/" element={<WorkspacePage routed {...(api ? { api } : {})} {...(projectsApi ? { projectsApi } : {})} />} />
-          <Route path="/projects/:projectId" element={<ProjectRoute {...(api ? { api } : {})} {...(projectsApi ? { projectsApi } : {})} />} />
-        </Routes>
+        <ProjectRoute {...(api ? { api } : {})} {...(projectsApi ? { projectsApi } : {})} />
       </main>
-    </>
+    </ProjectNavigationCoordinator>
   );
 }
 
