@@ -1,8 +1,10 @@
 # SchemaWise Educational UX v1.1
 
 Status: diseño aprobado. Tranche 1 implementada para Candidate Keys, Prime
-Attributes, Minimal Cover y primitivas de notación; las tranches posteriores
-permanecen pendientes. No se modifican contratos ni algoritmos.
+Attributes, Minimal Cover y primitivas de notación. Tranche 2 implementada para
+jerarquía y reasoning educativo de 2NF, 3NF y BCNF. Closure education y las
+tranches posteriores permanecen pendientes. No se modifican contratos ni
+algoritmos.
 
 ## 1. Objetivo educativo
 

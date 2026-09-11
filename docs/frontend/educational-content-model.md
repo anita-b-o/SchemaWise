@@ -142,6 +142,11 @@ buildBcnfStepExplanation(step, snapshot)
 buildPreservationExplanation(response, snapshot)
 ```
 
+Tranche 2 implementa los tres builders de normal forms y builders contextuales
+para las relaciones 2NF→3NF y 3NF→BCNF. Las violaciones reciben el DTO, el
+snapshot analizado y las garantías del contrato; la UI no calcula cierres,
+superkeys, atributos prime ni formas normales.
+
 Los parámetros incluyen sólo el DTO y snapshot necesarios. Los builders no
 reciben las FDs originales salvo para presentarlas; esto hace más difícil que
 una implementación accidental intente analizarlas.

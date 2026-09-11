@@ -24,7 +24,7 @@ export interface FormalReasoningContent {
 export interface EducationalExplanation {
   readonly summary: readonly ContentToken[];
   readonly formal?: FormalReasoningContent;
-  readonly concepts?: readonly ("candidate-key" | "primary-key" | "prime-attribute" | "minimal-cover")[];
+  readonly concepts?: readonly ("candidate-key" | "primary-key" | "prime-attribute" | "minimal-cover" | "superkey")[];
 }
 
 export const text = (value: string): ContentToken => ({ kind: "text", value });

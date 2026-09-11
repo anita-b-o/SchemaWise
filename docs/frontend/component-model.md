@@ -1,6 +1,6 @@
 # Frontend component model
 
-> This is the implemented v1 baseline plus the Educational UX v1.1 Tranche 1.
+> This is the implemented v1 baseline plus the Educational UX v1.1 Tranches 1 and 2.
 > The remaining v1.1 extension is defined by [educational-ux-v1.1.md](./educational-ux-v1.1.md) and
 > [educational-content-model.md](./educational-content-model.md).
 

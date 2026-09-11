@@ -52,7 +52,7 @@ export function AnalysisResults({ result, analyzedSnapshot, outOfDate, synthesis
 
       <MinimalCoverResult result={result} snapshot={analyzedSnapshot} lookup={lookup} />
 
-      <ViolationDetails result={result} lookup={lookup} />
+      <ViolationDetails result={result} lookup={lookup} snapshot={analyzedSnapshot} />
 
       {!result.normalForms.third.satisfied || !result.normalForms.bcnf.satisfied ? (
         <section className="analysis-section transformations" aria-labelledby="transformations-heading">

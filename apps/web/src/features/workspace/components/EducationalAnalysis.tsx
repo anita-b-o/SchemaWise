@@ -9,33 +9,30 @@ interface EducationalResultProps {
   readonly lookup: ReadonlyMap<string, string>;
 }
 
-function Content({ tokens, lookup }: { readonly tokens: readonly ContentToken[]; readonly lookup: ReadonlyMap<string, string> }) {
+export function Content({ tokens, lookup }: { readonly tokens: readonly ContentToken[]; readonly lookup: ReadonlyMap<string, string> }) {
   return tokens.map((token, index) => token.kind === "text"
     ? <span key={index}>{token.value}</span>
     : <MathematicalNotation key={index} value={token} lookup={lookup} />);
 }
 
-function FormalReasoning({ content, lookup }: { readonly content: FormalReasoningContent; readonly lookup: ReadonlyMap<string, string> }) {
+export function FormalReasoning({ content, lookup }: { readonly content: FormalReasoningContent; readonly lookup: ReadonlyMap<string, string> }) {
   return (
-    <details className="formal-reasoning">
-      <summary>Formal reasoning</summary>
-      <div className="formal-reasoning__content">
+    <div className="formal-reasoning__content">
         <p><strong>Rule.</strong> <Content tokens={content.rule} lookup={lookup} /></p>
         <p className="formal-reasoning__label"><strong>Evidence.</strong></p>
         <ul>
           {content.evidence.map((fact, index) => <li key={index}><Content tokens={fact.content} lookup={lookup} /></li>)}
         </ul>
         <p><strong>Conclusion.</strong> <Content tokens={content.conclusion} lookup={lookup} /></p>
-      </div>
-    </details>
+    </div>
   );
 }
 
-function Explanation({ explanation, lookup }: { readonly explanation: EducationalExplanation; readonly lookup: ReadonlyMap<string, string> }) {
+export function EducationalExplanationView({ explanation, lookup, includeFormal = true }: { readonly explanation: EducationalExplanation; readonly lookup: ReadonlyMap<string, string>; readonly includeFormal?: boolean }) {
   return (
     <div className="educational-explanation">
       <p><Content tokens={explanation.summary} lookup={lookup} /></p>
-      {explanation.formal ? <FormalReasoning content={explanation.formal} lookup={lookup} /> : null}
+      {includeFormal && explanation.formal ? <details className="formal-reasoning"><summary>Formal reasoning</summary><FormalReasoning content={explanation.formal} lookup={lookup} /></details> : null}
     </div>
   );
 }
@@ -54,7 +51,7 @@ export function CandidateKeysResult({ result, snapshot, lookup }: EducationalRes
         <summary>Why {result.candidateKeys.length === 1 ? "is this a candidate key" : "are these candidate keys"}?</summary>
         <div className="educational-disclosure__content">
           <p>A candidate key is a minimal set of attributes that functionally determines every attribute in the relation.</p>
-          {explanations.map((explanation, index) => <Explanation key={`${result.candidateKeys[index]?.join(":")}:${index}`} explanation={explanation} lookup={lookup} />)}
+          {explanations.map((explanation, index) => <EducationalExplanationView key={`${result.candidateKeys[index]?.join(":")}:${index}`} explanation={explanation} lookup={lookup} />)}
           {result.candidateKeys.length === 0 ? <p>The response contains an empty list of candidate keys. This is different from a candidate key that is the empty set.</p> : null}
         </div>
       </details>
@@ -73,8 +70,8 @@ export function PrimeAttributesResult({ result, lookup }: EducationalResultProps
         <summary>Why {result.primeAttributes.length === 1 ? "is this attribute prime" : "are these attributes prime"}?</summary>
         <div className="educational-disclosure__content">
           <p>A prime attribute belongs to at least one candidate key.</p>
-          {explanations.map((explanation, index) => <Explanation key={`${result.primeAttributes[index]}:${index}`} explanation={explanation} lookup={lookup} />)}
-          {emptyExplanation ? <Explanation explanation={emptyExplanation} lookup={lookup} /> : null}
+          {explanations.map((explanation, index) => <EducationalExplanationView key={`${result.primeAttributes[index]}:${index}`} explanation={explanation} lookup={lookup} />)}
+          {emptyExplanation ? <EducationalExplanationView explanation={emptyExplanation} lookup={lookup} /> : null}
         </div>
       </details>
     </div>
@@ -96,7 +93,7 @@ export function MinimalCoverResult({ result, lookup }: EducationalResultProps) {
       <details className="educational-disclosure">
         <summary>Why is this a minimal cover?</summary>
         <div className="educational-disclosure__content">
-          <Explanation explanation={explanation} lookup={lookup} />
+          <EducationalExplanationView explanation={explanation} lookup={lookup} />
         </div>
       </details>
     </section>
