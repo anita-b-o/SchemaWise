@@ -43,7 +43,7 @@ describe("normal form educational reasoning", () => {
     expect(within(group).getAllByText("B → C").length).toBeGreaterThan(0);
     await user.click(within(group).getByText("Formal reasoning"));
     expect(within(group).getByText("Neither 3NF condition is true, so this dependency violates 3NF.")).toBeTruthy();
-    expect(screen.getByLabelText("BCNF implies 3NF implies 2NF")).toBeTruthy();
+    expect(screen.getByText("BCNF implies 3NF implies 2NF", { selector: ".visually-hidden" })).toBeTruthy();
   });
 
   it("explains Case B: 3NF satisfied but BCNF violated via the prime exception", () => {

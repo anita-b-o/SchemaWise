@@ -102,7 +102,7 @@ describe("schema analysis interactions", () => {
     await loadExample(user);
     await user.click(screen.getByRole("button", { name: "Analyze schema" }));
     await screen.findByRole("heading", { name: "R(A, B, C)" });
-    const levelOneEmptySets = document.querySelectorAll(".key-fact > code .mathematical-notation, .key-fact > code > [aria-hidden], #minimal-cover-heading + code > [aria-hidden]");
+    const levelOneEmptySets = document.querySelectorAll(".key-fact > code > [aria-hidden], .analysis-section > code > [aria-hidden]");
     expect([...levelOneEmptySets].filter((element) => element.textContent === "∅")).toHaveLength(2);
     const candidateKeyList = screen.getByRole("heading", { name: "Candidate keys" }).parentElement?.querySelector(".notation-list");
     expect(candidateKeyList?.textContent).toContain("∅");

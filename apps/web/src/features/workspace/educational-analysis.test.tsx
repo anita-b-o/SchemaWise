@@ -178,7 +178,7 @@ describe("minimal cover education", () => {
     );
     section = screen.getByRole("heading", { name: "Minimal cover" }).closest("section")!;
     expect(section.querySelector(".notation-list")?.textContent).toContain("∅ → A");
-    expect(section.textContent).toContain("functional dependency: the empty set determines A");
+    expect(section.textContent).toContain("functional dependency: the empty set functionally determines A");
   });
 });
 
@@ -189,6 +189,8 @@ describe("accessible progressive disclosure and notation", () => {
     const why = screen.getByText("Why is this a candidate key?");
     expect(why.tagName).toBe("SUMMARY");
     expect(why.tabIndex).toBe(0);
+    await user.tab();
+    expect(document.activeElement).toBe(screen.getByRole("button", { name: "What is a candidate key?" }));
     await user.tab();
     expect(document.activeElement).toBe(why);
     await user.click(why);
@@ -210,7 +212,7 @@ describe("accessible progressive disclosure and notation", () => {
     expect(container.textContent).toContain("set containing A and B");
     expect(container.textContent).toContain("closure of A");
     expect(container.textContent).toContain("closure of A equals set containing A and B");
-    expect(container.textContent).toContain("functional dependency: A determines the empty set");
+    expect(container.textContent).toContain("functional dependency: A functionally determines the empty set");
     expect(container.textContent).toContain("relation R with attributes A, B and C");
     expect(container.querySelectorAll("[aria-label]")).toHaveLength(0);
   });
