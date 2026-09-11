@@ -1,7 +1,7 @@
 import { StrictMode } from "react";
 import { render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import { MemoryRouter, useNavigate } from "react-router-dom";
+import { createMemoryRouter, RouterProvider, useNavigate } from "react-router-dom";
 import { describe, expect, it, vi } from "vitest";
 import { AppRoutes } from "../../App";
 import type { AuthApi } from "../../api/auth-api";
@@ -65,16 +65,18 @@ function renderRoute(path: string, options: { auth?: AuthApi; projects?: Project
   const auth = options.auth ?? authApi();
   const projects = options.projects ?? projectsApi();
   const computations = options.computations ?? computationApi();
-  const tree = (
-    <MemoryRouter initialEntries={[path]}>
+  const router = createMemoryRouter([{
+    path: "*",
+    element: (
       <AuthProvider api={auth}>
         {options.navigation ? <RouteNavigation /> : null}
         <AppRoutes api={computations} projectsApi={projects} />
       </AuthProvider>
-    </MemoryRouter>
-  );
+    ),
+  }], { initialEntries: [path] });
+  const tree = <RouterProvider router={router} />;
   render(options.strict ? <StrictMode>{tree}</StrictMode> : tree);
-  return { auth, projects, computations };
+  return { auth, projects, computations, router };
 }
 
 function deferred<T>() {

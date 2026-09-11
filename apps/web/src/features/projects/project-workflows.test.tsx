@@ -1,14 +1,16 @@
-import { render, screen, waitFor } from "@testing-library/react";
+import { act, fireEvent, render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
+import { createMemoryRouter, RouterProvider } from "react-router-dom";
 import { describe, expect, it, vi } from "vitest";
 import type { AuthApi } from "../../api/auth-api";
 import { HttpApiError } from "../../api/http-api";
 import type { ProjectApi } from "../../api/project-api";
 import type { ProjectDto, ProjectSummaryDto } from "../../api/schemawise-contracts";
 import { AuthProvider } from "../auth/auth-context";
-import { SchemaWorkspace } from "../workspace/components/SchemaWorkspace";
+import { AppRoutes } from "../../App";
 
 const authResponse = { user: { id: "user-id", email: "person@example.com" }, csrfToken: "csrf-token" };
+const B = "22222222-2222-4222-8222-222222222222";
 const exampleSchema = { schemaVersion: 1 as const, relation: { name: "R", attributes: [{ id: "a", name: "A" }, { id: "b", name: "B" }, { id: "c", name: "C" }] }, functionalDependencies: [{ left: ["a"], right: ["b"] }, { left: ["b"], right: ["c"] }] };
 
 function project(name = "Exercise", revision = 1): ProjectDto { return { id: "11111111-1111-4111-8111-111111111111", name, schema: exampleSchema, revision, createdAt: "2026-09-09T12:00:00Z", updatedAt: "2026-09-09T12:00:00Z" }; }
@@ -17,11 +19,15 @@ function authApi(overrides: Partial<AuthApi> = {}): AuthApi { return { me: vi.fn
 function projectsApi(overrides: Partial<ProjectApi> = {}): ProjectApi {
   return { createProject: vi.fn(async (input) => ({ ...project(input.name), schema: input.schema })), listProjects: vi.fn(async () => ({ projects: [summary()], total: 1, limit: 20, offset: 0 })), getProject: vi.fn(async () => project()), updateProject: vi.fn(async (_id, input) => ({ ...project(input.name, input.expectedRevision + 1), schema: input.schema })), deleteProject: vi.fn(async () => undefined), ...overrides };
 }
-async function renderAuthenticated(client = projectsApi(), auth = authApi()) {
+async function renderAuthenticated(client = projectsApi(), auth = authApi(), initialEntries: string[] = ["/"], initialIndex = initialEntries.length - 1) {
   const user = userEvent.setup();
-  render(<AuthProvider api={auth}><SchemaWorkspace projectsApi={client} /></AuthProvider>);
+  const router = createMemoryRouter([{
+    path: "*",
+    element: <AuthProvider api={auth}><AppRoutes projectsApi={client} /></AuthProvider>,
+  }], { initialEntries, initialIndex });
+  render(<RouterProvider router={router} />);
   await screen.findByText("person@example.com");
-  return { user, client, auth };
+  return { user, client, auth, router };
 }
 async function openSaved(user: ReturnType<typeof userEvent.setup>) {
   await user.click(screen.getByRole("button", { name: "Open projects" }));
@@ -32,15 +38,17 @@ async function openSaved(user: ReturnType<typeof userEvent.setup>) {
 
 describe("project persistence UX", () => {
   it("saves a new incomplete draft without analyzing and marks it saved", async () => {
-    const { user, client } = await renderAuthenticated();
+    const { user, client, router } = await renderAuthenticated();
     await user.click(screen.getByRole("button", { name: "Save" }));
     await waitFor(() => expect(client.createProject).toHaveBeenCalledWith({ name: "Untitled project", schema: { schemaVersion: 1, relation: { name: "", attributes: [] }, functionalDependencies: [] } }, "csrf-token"));
     expect(screen.getByText("Saved")).toBeTruthy();
+    expect(router.state.location.pathname).toBe(`/projects/${project().id}`);
+    expect(client.getProject).not.toHaveBeenCalled();
   });
 
   it("uses PUT with expectedRevision, and only persisted edits make the project dirty", async () => {
     const client = projectsApi();
-    const { user } = await renderAuthenticated(client);
+    const { user, router } = await renderAuthenticated(client);
     await openSaved(user);
     expect(screen.getByText("Saved")).toBeTruthy();
     const attribute = screen.getByRole("textbox", { name: "Attribute 1 name" });
@@ -49,6 +57,8 @@ describe("project persistence UX", () => {
     await user.click(screen.getByRole("button", { name: "Save" }));
     await waitFor(() => expect(client.updateProject).toHaveBeenCalledWith(project().id, expect.objectContaining({ expectedRevision: 1 }), "csrf-token"));
     expect(screen.getByText("Saved")).toBeTruthy();
+    expect(router.state.location.pathname).toBe(`/projects/${project().id}`);
+    expect(client.getProject).toHaveBeenCalledTimes(1);
   });
 
   it("confirms before open/new replacement and resets analysis with the draft", async () => {
@@ -57,13 +67,13 @@ describe("project persistence UX", () => {
     await user.click(screen.getByRole("button", { name: "Open projects" }));
     await screen.findByRole("heading", { name: "Open projects" });
     await user.click(screen.getByRole("button", { name: /ExerciseR · 3 attributes/ }));
-    expect(screen.getByText("Discard unsaved changes?")).toBeTruthy();
+    expect(screen.getByRole("heading", { name: "Unsaved changes" })).toBeTruthy();
     await user.click(screen.getByRole("button", { name: "Discard and continue" }));
     expect(await screen.findByDisplayValue("Exercise")).toBeTruthy();
     await user.clear(screen.getByRole("textbox", { name: "Relation name" }));
     await user.type(screen.getByRole("textbox", { name: "Relation name" }), "Changed");
     await user.click(screen.getByRole("button", { name: "New project" }));
-    expect(screen.getByText("Discard unsaved changes?")).toBeTruthy();
+    expect(screen.getByRole("heading", { name: "Unsaved changes" })).toBeTruthy();
     await user.click(screen.getByRole("button", { name: "Discard and continue" }));
     expect(screen.getByDisplayValue("Untitled project")).toBeTruthy();
     expect((screen.getByRole("textbox", { name: "Relation name" }) as HTMLInputElement).value).toBe("");
@@ -150,5 +160,128 @@ describe("project persistence UX", () => {
     expect(await screen.findByText(/Sign in to continue saving/)).toBeTruthy();
     expect((screen.getByRole("textbox", { name: "Relation name" }) as HTMLInputElement).value).toBe("R");
     expect(createProject).toHaveBeenCalledTimes(2);
+  });
+
+  it("replaces the root history entry when a new draft is saved", async () => {
+    const { user, router } = await renderAuthenticated(projectsApi(), authApi(), ["/before", "/"], 1);
+    await user.click(screen.getByRole("button", { name: "Save" }));
+    expect(await screen.findByText("Saved")).toBeTruthy();
+    expect(router.state.location.pathname).toBe(`/projects/${project().id}`);
+    await act(async () => { await router.navigate(-1); });
+    expect(router.state.location.pathname).toBe("/before");
+  });
+
+  it("keeps the project panel open while dirty navigation is blocked and returns focus on Stay", async () => {
+    const { user, router } = await renderAuthenticated();
+    await user.type(screen.getByRole("textbox", { name: "Relation name" }), "Draft");
+    await user.click(screen.getByRole("button", { name: "Open projects" }));
+    const openProject = await screen.findByRole("button", { name: /ExerciseR · 3 attributes/ });
+    await user.click(openProject);
+    expect(router.state.location.pathname).toBe("/");
+    expect(screen.getByRole("heading", { name: "Open projects" })).toBeTruthy();
+    const promptHeading = screen.getByRole("heading", { name: "Unsaved changes" });
+    expect(promptHeading).toBeTruthy();
+    await waitFor(() => expect(document.activeElement).toBe(promptHeading));
+    await user.click(screen.getByRole("button", { name: "Stay" }));
+    expect(router.state.location.pathname).toBe("/");
+    expect(screen.getByDisplayValue("Draft")).toBeTruthy();
+    await waitFor(() => expect(document.activeElement).toBe(openProject));
+    await user.click(openProject);
+    await user.click(screen.getByRole("button", { name: "Discard and continue" }));
+    expect(await screen.findByDisplayValue("Exercise")).toBeTruthy();
+    expect(router.state.location.pathname).toBe(`/projects/${project().id}`);
+  });
+
+  it("resets root identity, draft, and derived state only after a committed New navigation", async () => {
+    const { user, router } = await renderAuthenticated();
+    await user.click(screen.getByRole("button", { name: "Load example" }));
+    await user.click(screen.getByRole("button", { name: "Analyze schema" }));
+    await user.click(screen.getByRole("button", { name: "New project" }));
+    expect(screen.getByRole("heading", { name: "Unsaved changes" })).toBeTruthy();
+    expect(screen.getByDisplayValue("R")).toBeTruthy();
+    await user.click(screen.getByRole("button", { name: "Discard and continue" }));
+    await waitFor(() => expect((screen.getByRole("textbox", { name: "Relation name" }) as HTMLInputElement).value).toBe(""));
+    expect(screen.getByDisplayValue("Untitled project")).toBeTruthy();
+    expect(screen.getByText("Not saved")).toBeTruthy();
+    expect(screen.getByText("Define your relation and dependencies, then analyze the schema.")).toBeTruthy();
+    expect(router.state.location.pathname).toBe("/");
+  });
+
+  it("protects Back and preserves the original POP for discard, then allows Forward", async () => {
+    const getProject = vi.fn(async (id: string) => project(id === B ? "Project B" : "Project A"));
+    const client = projectsApi({ getProject: vi.fn(async (id: string) => ({ ...await getProject(id), id })) });
+    const { user, router } = await renderAuthenticated(client);
+    await act(async () => { await router.navigate(`/projects/${project().id}`); });
+    expect(await screen.findByDisplayValue("Project A")).toBeTruthy();
+    await act(async () => { await router.navigate(`/projects/${B}`); });
+    expect(await screen.findByDisplayValue("Project B")).toBeTruthy();
+
+    await act(async () => { await router.navigate(-1); });
+    expect(await screen.findByDisplayValue("Project A")).toBeTruthy();
+    await act(async () => { await router.navigate(-1); });
+    expect(await screen.findByDisplayValue("Untitled project")).toBeTruthy();
+    await act(async () => { await router.navigate(1); });
+    expect(await screen.findByDisplayValue("Project A")).toBeTruthy();
+    await act(async () => { await router.navigate(1); });
+    expect(await screen.findByDisplayValue("Project B")).toBeTruthy();
+    fireEvent.change(screen.getByRole("textbox", { name: "Relation name" }), { target: { value: "Enrollment dirty" } });
+
+    await act(async () => { await router.navigate(-1); });
+    expect(screen.getByRole("heading", { name: "Unsaved changes" })).toBeTruthy();
+    expect(router.state.location.pathname).toBe(`/projects/${B}`);
+    await user.click(screen.getByRole("button", { name: "Stay" }));
+    expect(router.state.location.pathname).toBe(`/projects/${B}`);
+
+    await act(async () => { await router.navigate(-1); });
+    await user.click(screen.getByRole("button", { name: "Discard and continue" }));
+    expect(await screen.findByDisplayValue("Project A")).toBeTruthy();
+    expect(router.state.location.pathname).toBe(`/projects/${project().id}`);
+    await act(async () => { await router.navigate(1); });
+    expect(await screen.findByDisplayValue("Project B")).toBeTruthy();
+    expect(router.state.location.pathname).toBe(`/projects/${B}`);
+  });
+
+  it("navigates a clean loaded project to a new root workspace", async () => {
+    const { user, router } = await renderAuthenticated();
+    await openSaved(user);
+    await user.click(screen.getByRole("button", { name: "New project" }));
+    expect(await screen.findByDisplayValue("Untitled project")).toBeTruthy();
+    expect((screen.getByRole("textbox", { name: "Relation name" }) as HTMLInputElement).value).toBe("");
+    expect(router.state.location.pathname).toBe("/");
+    expect(screen.queryByRole("heading", { name: "Unsaved changes" })).toBeNull();
+  });
+
+  it("registers beforeunload only while dirty and removes it after Save", async () => {
+    const add = vi.spyOn(window, "addEventListener");
+    const remove = vi.spyOn(window, "removeEventListener");
+    const { user } = await renderAuthenticated();
+    expect(add.mock.calls.filter(([type]) => type === "beforeunload")).toHaveLength(0);
+    await user.type(screen.getByRole("textbox", { name: "Relation name" }), "Draft");
+    await waitFor(() => expect(add.mock.calls.filter(([type]) => type === "beforeunload")).toHaveLength(1));
+    const handler = add.mock.calls.find(([type]) => type === "beforeunload")?.[1];
+    const event = new Event("beforeunload", { cancelable: true });
+    window.dispatchEvent(event);
+    expect(event.defaultPrevented).toBe(true);
+    await user.click(screen.getByRole("button", { name: "Save" }));
+    expect(await screen.findByText("Saved")).toBeTruthy();
+    await waitFor(() => expect(remove).toHaveBeenCalledWith("beforeunload", handler));
+    add.mockRestore();
+    remove.mockRestore();
+  });
+
+  it("removes the old draft unload handler after discard navigation", async () => {
+    const add = vi.spyOn(window, "addEventListener");
+    const remove = vi.spyOn(window, "removeEventListener");
+    const { user } = await renderAuthenticated();
+    await user.type(screen.getByRole("textbox", { name: "Relation name" }), "Draft");
+    await waitFor(() => expect(add.mock.calls.some(([type]) => type === "beforeunload")).toBe(true));
+    const handler = add.mock.calls.find(([type]) => type === "beforeunload")?.[1];
+    await user.click(screen.getByRole("button", { name: "Open projects" }));
+    await user.click(await screen.findByRole("button", { name: /ExerciseR · 3 attributes/ }));
+    await user.click(screen.getByRole("button", { name: "Discard and continue" }));
+    expect(await screen.findByDisplayValue("Exercise")).toBeTruthy();
+    await waitFor(() => expect(remove).toHaveBeenCalledWith("beforeunload", handler));
+    add.mockRestore();
+    remove.mockRestore();
   });
 });
