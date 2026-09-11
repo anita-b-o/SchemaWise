@@ -31,7 +31,7 @@ describe("validation and formatters", () => {
 });
 
 describe("deterministic explanations", () => {
-  it("builds 2NF, 3NF, BCNF and 1NF semantic copy", () => { const lookup = new Map([["a", "A"], ["b", "B"], ["c", "C"]]); expect(explainSecondNormalForm({ candidateKey: ["a", "b"], determinant: ["a"], dependent: "c" }, lookup).reasons).toContain("Candidate key: {A, B}"); expect(explainThirdNormalForm({ determinant: ["b"], dependent: "c" }, ["a"], lookup).reasons).toContain("C is not a prime attribute."); expect(explainBcnf({ determinant: ["b"], dependent: "c" }, lookup).reasons[1]).toContain("BCNF"); expect(ONE_NF_NOTICE).not.toContain("1NF:"); });
+  it("builds 2NF, 3NF, BCNF and 1NF semantic copy", () => { const lookup = new Map([["a", "A"], ["b", "B"], ["c", "C"]]); expect(explainSecondNormalForm({ candidateKey: ["a", "b"], determinant: ["a"], dependent: "c" }, lookup, request).reasons).toContain("Candidate key: {A, B}"); expect(explainThirdNormalForm({ determinant: ["b"], dependent: "c" }, ["a"], lookup, request).reasons).toContain("C is not a prime attribute."); expect(explainBcnf({ determinant: ["b"], dependent: "c" }, lookup, request).reasons[1]).toContain("BCNF"); expect(ONE_NF_NOTICE).not.toContain("1NF:"); });
 });
 
 void SchemaWiseApiError;
