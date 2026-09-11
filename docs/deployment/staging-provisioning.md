@@ -1,14 +1,14 @@
 # Free staging provisioning plan
 
-Status: **Neon provisioned; Render is next**. The isolated Neon Free staging database is migrated and validated. No Render/Vercel resource, DNS, application deploy, production resource, or push has been created.
+Status: **Staging provisioned, deployed, and audited** on 2026-09-11. The isolated Neon Free database, Render API, and Vercel Web/Function proxy are operational. No production resource was created or modified. See the [staging audit](../testing/schemawise-v1-staging-audit.md).
 
 ## Topology
 
 ```text
-Browser -> https://<vercel-project>.vercel.app
+Browser -> https://schemawise-staging.vercel.app
              /       Vite SPA
              /api/*  same-origin Vercel Function proxy
-                       -> https://<render-service>.onrender.com/api/*
+                       -> https://schemawise-api-staging.onrender.com/api/*
                             -> Neon Free PostgreSQL
 ```
 
@@ -20,10 +20,10 @@ ADR 016 accepts the implemented Vercel Function proxy. It reads Vercel's sanitiz
 
 ### Neon Free
 
-- Project `schemawise-staging`, branch `main`, database `schemawise_staging`; AWS N. Virginia (`aws-us-east-1`), PostgreSQL 17.11. This is isolated from production and contains no application data.
+- Project `schemawise-staging`, branch `main`, database `schemawise_staging`; AWS N. Virginia (`aws-us-east-1`), PostgreSQL 17. This is isolated from production.
 - Runtime uses the pooled host pattern `ep-***-pooler.c-11.us-east-1.aws.neon.tech`; controlled migrations use the direct `ep-***.c-11.us-east-1.aws.neon.tech` endpoint. Both use `sslmode=verify-full` and `channel_binding=require`; credentials remain outside Git.
 - Keep `DATABASE_POOL_MAX=5`. The pooled endpoint is for the single future Render API; the direct endpoint is only for migrations and administrative operations.
-- Verified 2026-09-09: migrations 001–004 passed, `pgmigrations` contains exactly those four names, `projects`/`users`/`sessions` each contain zero rows, and a pooled `SELECT 1` through `createProjectPool` passed.
+- Verified read-only on 2026-09-11: migrations 001–004 remain applied, ownership/revision/session constraints remain present, `/ready` reaches PostgreSQL, and retained smoke data totals one user, one project, and one active session. No PII was queried or displayed.
 - Current Free allowance: 100 CU-hours/month/project, 0.5 GB storage/project, 5 GB public egress/month, ten branches, maximum 2 CU, and restore history up to six hours or 1 GB of changes, whichever is reached first. Scale-to-zero is fixed after five inactive minutes; the first connection after suspension has wake-up latency. This is disposable staging, not a production backup or latency benchmark.
 
 ### Render Free Web Service
@@ -51,10 +51,10 @@ Do not keep `DATABASE_MIGRATION_URL` in Render runtime configuration. Verify rea
 
 ## Provisioning order
 
-1. Neon Free; isolated DB; manual migration and verification.
-2. Render Free; staging-only runtime variables; deploy; direct `/health` and `/ready` check.
-3. Vercel Hobby; `VITE_SCHEMAWISE_API_URL=/`; deploy Web and Function.
-4. Complete API/proxy/browser/security smoke gates before declaring the environment operational.
+1. [x] Neon Free; isolated DB; manual migration and verification.
+2. [x] Render Free; staging-only runtime variables; deploy; direct `/health` and `/ready` check.
+3. [x] Vercel Hobby; `VITE_SCHEMAWISE_API_URL=/`; deploy Web and Function.
+4. [x] Complete API/proxy/browser/security smoke gates and formal staging audit.
 
 ## Sources checked 2026-09-09
 

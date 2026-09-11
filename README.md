@@ -50,8 +50,9 @@ DATABASE_URL=postgresql://USER:PASSWORD@HOST:PORT/TEST_DATABASE \
 npm run build
 ```
 
-Deployment v1 is designed but intentionally not provisioned. Start with the
-[deployment architecture](docs/deployment/deployment-architecture-v1.md) and
-[verification checklist](docs/deployment/deployment-checklist.md). The API must
-remain at exactly one replica until its in-memory Auth rate limiter gains a
-shared store.
+SchemaWise v1 staging is deployed and formally closed as **ready with
+limitations**. See the [staging audit](docs/testing/schemawise-v1-staging-audit.md),
+[deployment architecture](docs/deployment/deployment-architecture-v1.md), and
+[verification checklist](docs/deployment/deployment-checklist.md). Staging is
+not production-equivalent. The API must remain at exactly one replica until its
+in-memory Auth rate limiter gains a shared store.
