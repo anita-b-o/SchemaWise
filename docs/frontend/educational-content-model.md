@@ -32,8 +32,9 @@ estructurado y procedencia explícita.
 
 ## Core model
 
-Diseño TypeScript conceptual para implementación futura; no se añade código en
-esta tranche:
+La tranche 1 implementa este diseño en
+`apps/web/src/features/explanations/educational-content.ts`, limitado a los
+tokens y conceptos que ya consume la UI:
 
 ```ts
 type ConceptId =
@@ -55,16 +56,16 @@ type ContentToken =
   | { kind: "text"; value: string }
   | { kind: "attribute"; id: string }
   | { kind: "attribute-set"; ids: readonly string[] }
-  | { kind: "fd"; left: readonly string[]; right: readonly string[] }
-  | { kind: "closure"; start: readonly string[]; result: readonly string[] }
-  | { kind: "relation"; attributeIds: readonly string[] };
+  | { kind: "functional-dependency"; dependency: FunctionalDependencyDto }
+  | { kind: "closure"; ids: readonly string[] }
+  | { kind: "relation"; snapshot: SchemaInputDto };
 
 type ExplanationFact = {
   source: "dto" | "snapshot" | "operation-contract";
   content: readonly ContentToken[];
 };
 
-type FormalReasoning = {
+type FormalReasoningContent = {
   rule: readonly ContentToken[];
   evidence: readonly ExplanationFact[];
   conclusion: readonly ContentToken[];
@@ -72,10 +73,15 @@ type FormalReasoning = {
 
 type EducationalExplanation = {
   summary: readonly ContentToken[];
-  formal?: FormalReasoning;
-  concepts?: readonly ConceptId[];
+  formal?: FormalReasoningContent;
+  concepts?: readonly ("candidate-key" | "primary-key" |
+    "prime-attribute" | "minimal-cover")[];
 };
 ```
+
+`closure` representa únicamente la expresión visual `X⁺`; no contiene ni
+calcula el resultado de un cierre. El union de conceptos se ampliará por
+tranche, cuando exista un consumidor real.
 
 `summary` es el único campo obligatorio. `formal` existe cuando hay una regla
 aplicada a evidencia contextual. `concepts` sólo referencia definiciones

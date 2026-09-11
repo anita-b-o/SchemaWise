@@ -1,8 +1,9 @@
 import type { AnalysisResponseDto, BcnfDecompositionResponseDto, DependencyPreservationResponseDto, SchemaInputDto, ThirdNormalFormSynthesisResponseDto } from "../../../api/schemawise-contracts";
-import { formatAttributeSet, formatFunctionalDependency, formatRelation } from "../schema-formatters";
+import { formatRelation } from "../schema-formatters";
 import { TRANSFORMATION_COPY } from "../transformation-explanations";
 import type { TransformationState } from "../workspace-reducer";
 import { BcnfResult } from "./BcnfResult";
+import { CandidateKeysResult, MinimalCoverResult, PrimeAttributesResult } from "./EducationalAnalysis";
 import { NormalFormSummary } from "./NormalFormSummary";
 import { SynthesisResult } from "./SynthesisResult";
 import { ViolationDetails } from "./ViolationDetails";
@@ -43,30 +44,13 @@ export function AnalysisResults({ result, analyzedSnapshot, outOfDate, synthesis
       ) : null}
 
       <section className="analysis-section key-facts" aria-label="Key facts">
-        <div>
-          <h3>Candidate keys</h3>
-          <div className="notation-list">
-            {result.candidateKeys.map((key, index) => <code key={`${key.join(":")}:${index}`}>{formatAttributeSet(key, lookup)}</code>)}
-          </div>
-        </div>
-        <div>
-          <h3>Prime attributes</h3>
-          <code>{formatAttributeSet(result.primeAttributes, lookup)}</code>
-          <p className="section-help">An attribute is prime if it belongs to at least one candidate key.</p>
-        </div>
+        <CandidateKeysResult result={result} snapshot={analyzedSnapshot} lookup={lookup} />
+        <PrimeAttributesResult result={result} snapshot={analyzedSnapshot} lookup={lookup} />
       </section>
 
       <NormalFormSummary normalForms={result.normalForms} />
 
-      <section className="analysis-section" aria-labelledby="minimal-cover-heading">
-        <h3 id="minimal-cover-heading">Minimal cover</h3>
-        <p className="section-help">An equivalent minimal set of functional dependencies.</p>
-        {result.minimalCover.length === 0 ? <code>∅</code> : (
-          <div className="notation-list">
-            {result.minimalCover.map((dependency, index) => <code key={`${dependency.left.join(":")}:${dependency.right.join(":")}:${index}`}>{formatFunctionalDependency(dependency, lookup)}</code>)}
-          </div>
-        )}
-      </section>
+      <MinimalCoverResult result={result} snapshot={analyzedSnapshot} lookup={lookup} />
 
       <ViolationDetails result={result} lookup={lookup} />
 

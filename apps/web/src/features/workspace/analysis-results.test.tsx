@@ -52,9 +52,13 @@ describe("schema analysis interactions", () => {
 
     expect(api.analyzeSchema).toHaveBeenCalledTimes(1);
     expect(await screen.findByRole("heading", { name: "R(A, B, C)" })).toBeTruthy();
-    expect(screen.getByText("{A}")).toBeTruthy();
-    expect(screen.getByText("{B, C}")).toBeTruthy();
-    expect(screen.getByText("{A, B}")).toBeTruthy();
+    const candidateKeys = screen.getByRole("heading", { name: "Candidate keys" }).parentElement?.querySelector(".notation-list");
+    if (!candidateKeys) throw new Error("Candidate key results were not found");
+    expect(within(candidateKeys as HTMLElement).getByText("{A}")).toBeTruthy();
+    expect(within(candidateKeys as HTMLElement).getByText("{B, C}")).toBeTruthy();
+    const primeAttributes = screen.getByRole("heading", { name: "Prime attributes" }).parentElement;
+    if (!primeAttributes) throw new Error("Prime attribute results were not found");
+    expect(primeAttributes.querySelector(":scope > code")?.textContent).toContain("{A, B}");
     const minimalCover = screen.getByRole("heading", { name: "Minimal cover" }).closest("section");
     if (!minimalCover) throw new Error("Minimal cover section was not found");
     expect(within(minimalCover).getByText("A → B")).toBeTruthy();
@@ -98,7 +102,10 @@ describe("schema analysis interactions", () => {
     await loadExample(user);
     await user.click(screen.getByRole("button", { name: "Analyze schema" }));
     await screen.findByRole("heading", { name: "R(A, B, C)" });
-    expect(screen.getAllByText("∅")).toHaveLength(3);
+    const levelOneEmptySets = document.querySelectorAll(".key-fact > code .mathematical-notation, .key-fact > code > [aria-hidden], #minimal-cover-heading + code > [aria-hidden]");
+    expect([...levelOneEmptySets].filter((element) => element.textContent === "∅")).toHaveLength(2);
+    const candidateKeyList = screen.getByRole("heading", { name: "Candidate keys" }).parentElement?.querySelector(".notation-list");
+    expect(candidateKeyList?.textContent).toContain("∅");
   });
 
   it("uses the analyzed snapshot for labels and marks edits out of date", async () => {
@@ -110,13 +117,20 @@ describe("schema analysis interactions", () => {
     await user.clear(first);
     await user.type(first, "Customer");
     await user.click(screen.getByRole("button", { name: "Analyze schema" }));
-    expect(await screen.findByText("{Customer}")).toBeTruthy();
+    await screen.findByRole("heading", { name: "R(Customer, B, C)" });
     await user.clear(first);
     await user.type(first, "Client");
     expect(screen.getByText("Results are out of date")).toBeTruthy();
     expect(screen.getByText("The schema has changed since this analysis. Analyze again to update the results.")).toBeTruthy();
-    expect(screen.getByText("{Customer}")).toBeTruthy();
-    expect(screen.queryByText("{Client}")).toBeNull();
+    const results = screen.getByRole("heading", { name: "R(Customer, B, C)" }).closest("article");
+    if (!results) throw new Error("Analysis results were not found");
+    expect(results.querySelector(".notation-list")?.textContent).toContain("{Customer}");
+    expect(within(results).queryByText("{Client}")).toBeNull();
+    const candidateSection = within(results).getByRole("heading", { name: "Candidate keys" }).parentElement;
+    if (!candidateSection) throw new Error("Candidate key section was not found");
+    await user.click(within(candidateSection).getByText(/^Why /));
+    expect([...candidateSection.querySelectorAll(".educational-disclosure [aria-hidden]")].map((node) => node.textContent)).toContain("{Customer}");
+    expect(candidateSection.textContent).not.toContain("Client");
     expect(screen.getByRole("button", { name: "Analyze again" })).toBeTruthy();
   });
 

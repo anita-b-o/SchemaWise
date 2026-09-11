@@ -1,7 +1,8 @@
 # SchemaWise Educational UX v1.1
 
-Status: diseño aprobado para implementación futura. Esta tranche no modifica
-código, contratos ni algoritmos.
+Status: diseño aprobado. Tranche 1 implementada para Candidate Keys, Prime
+Attributes, Minimal Cover y primitivas de notación; las tranches posteriores
+permanecen pendientes. No se modifican contratos ni algoritmos.
 
 ## 1. Objetivo educativo
 

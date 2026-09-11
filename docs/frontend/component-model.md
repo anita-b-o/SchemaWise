@@ -1,7 +1,7 @@
 # Frontend component model
 
-> This is the implemented v1 baseline. The planned v1.1 educational extension
-> is defined by [educational-ux-v1.1.md](./educational-ux-v1.1.md) and
+> This is the implemented v1 baseline plus the Educational UX v1.1 Tranche 1.
+> The remaining v1.1 extension is defined by [educational-ux-v1.1.md](./educational-ux-v1.1.md) and
 > [educational-content-model.md](./educational-content-model.md).
 
 ## Component hierarchy
@@ -23,9 +23,11 @@ App
    │  └─ ClosureTool
    └─ ResultsWorkspace
       ├─ AnalysisOverview
+      │  ├─ CandidateKeysResult
+      │  └─ PrimeAttributesResult
       ├─ NormalFormSummary
       ├─ ViolationDetails
-      ├─ MinimalCover
+      ├─ MinimalCoverResult
       ├─ SynthesisResult
       └─ BcnfResult
          └─ DependencyPreservationResult
