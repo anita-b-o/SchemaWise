@@ -1,5 +1,11 @@
 # Workspace UX
 
+> Educational UX v1.1 extends this implemented v1 baseline. The normative
+> progressive-disclosure, explanation, notation, mobile and data-sufficiency
+> decisions are documented in
+> [educational-ux-v1.1.md](./educational-ux-v1.1.md). Where this baseline uses a
+> shorter explanation, the v1.1 document takes precedence for future work.
+
 ## Jerarquía de escritorio
 
 En desktop el workspace usa dos regiones, pero no dos columnas simétricas. El
@@ -178,6 +184,13 @@ B -> C
 ```
 
 ## Deterministic explanations
+
+Educational UX v1.1 keeps these templates deterministic but splits them into
+Level 2 contextual summaries and Level 3 formal reasoning. Builders must follow
+the provenance-aware model in
+[educational-content-model.md](./educational-content-model.md); in particular,
+they may use violation collection semantics but may not reconstruct Closure or
+Minimal Cover traces.
 
 Templates resolve IDs through the response relation, never recompute the
 analysis and never parse server messages.

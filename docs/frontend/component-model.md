@@ -1,5 +1,9 @@
 # Frontend component model
 
+> This is the implemented v1 baseline. The planned v1.1 educational extension
+> is defined by [educational-ux-v1.1.md](./educational-ux-v1.1.md) and
+> [educational-content-model.md](./educational-content-model.md).
+
 ## Component hierarchy
 
 The first implementation should prefer cohesive feature components over a
@@ -26,6 +30,13 @@ App
       └─ BcnfResult
          └─ DependencyPreservationResult
 ```
+
+For Educational UX v1.1, extend these cohesive result components rather than
+adding a parallel tutorial tree. The only new semantic responsibilities are
+`CandidateKeyExplanation`, `PrimeAttributeOrigins`, `FormalReasoning`,
+`ConceptHelp`, accessible math-notation primitives and
+`PropertyProvenance`. Generic educational card/container wrappers remain
+explicitly deferred.
 
 `AttributeSet` and `FunctionalDependencyNotation` are small shared primitives
 justified by repeated formatting. The input editor uses native checkbox groups
@@ -106,6 +117,11 @@ src/
 Do not create barrel files initially. Imports should reveal feature ownership.
 
 ## State ownership
+
+Educational disclosure state, active glossary concept and optional evidence
+selection stay UI-local. They are not fields of the workspace reducer, project
+session, persisted schema or dirty comparison; opening help must not change
+draft revision, server revision or trigger a calculation.
 
 One `useReducer` at workspace level is sufficient. The canonical draft stores
 relation, attributes and FDs by stable ID; form-only state such as an open

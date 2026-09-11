@@ -1,6 +1,7 @@
 # Frontend architecture
 
-Status: implemented MVP plus manual project persistence.
+Status: implemented MVP plus manual project persistence; Educational UX v1.1
+is designed but not implemented.
 
 ## Context and boundaries
 
@@ -76,6 +77,20 @@ Pure formatters resolve IDs to names and render attribute sets, FDs and
 violation explanations. They may express facts guaranteed by the DTO's context
 but do not independently calculate normal forms. Contract anomalies degrade to
 an explicit unknown-attribute label and operation error instead of crashing.
+
+Educational UX v1.1 formalizes this boundary as pure, result-specific builders
+over typed DTOs and immutable operation snapshots. Mathematical notation is
+structured so visual glyphs and accessible names can differ. Builders record
+whether a fact comes from the DTO, a trivial snapshot comparison or an
+operation guarantee; there is deliberately no frontend-computed mathematical
+provenance. See
+[`docs/frontend/educational-content-model.md`](../frontend/educational-content-model.md).
+
+The analysis response is sufficient for deterministic candidate-key,
+prime-attribute and normal-form explanations, but not for candidate-key closure
+expansions or Minimal Cover execution traces. Those claims are omitted rather
+than reconstructed. Closure coverage may be compared as sets against its own
+captured snapshot after the API has calculated the closure.
 
 ### No client persistence in tranche one
 
