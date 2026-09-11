@@ -105,7 +105,7 @@ export function FunctionalDependencyEditor({ attributes, dependencies, onAdd, on
         </ol>
       ) : <p className="empty-note">Describe how attribute values determine one another.</p>}
 
-      <div className="dependency-composer" aria-labelledby="dependency-composer-heading">
+      <div className="dependency-composer" role="group" aria-labelledby="dependency-composer-heading">
         <div className="composer-heading">
           <h3 id="dependency-composer-heading">{composer.editingIndex === undefined ? "Add a dependency" : "Edit dependency"}</h3>
           <p>Select every attribute that belongs on each side.</p>

@@ -16,12 +16,14 @@ import { isRouteLoadedProjectCoherent, shouldAutoRehydrateAfterAuth } from "./pr
 type ProjectHydration =
   | { readonly status: "idle" | "waiting-for-auth" }
   | { readonly status: "loading"; readonly projectId: string; readonly requestId: string; readonly reason: RouteHydrationReason }
-  | { readonly status: "loaded"; readonly projectId: string; readonly project: ProjectDto; readonly reason: RouteHydrationReason }
+  | { readonly status: "loaded"; readonly projectId: string; readonly project: ProjectDto; readonly reason: RouteHydrationReason; readonly focusAfterHydration: boolean }
   | { readonly status: "not-found" | "error"; readonly projectId: string; readonly reason: RouteHydrationReason };
 
-function RouteState({ heading, message, status = false, onRetry }: { readonly heading?: string; readonly message: string; readonly status?: boolean; readonly onRetry?: () => void }) {
+function RouteState({ heading, message, status = false, focusHeading = false, onRetry }: { readonly heading?: string; readonly message: string; readonly status?: boolean; readonly focusHeading?: boolean; readonly onRetry?: () => void }) {
+  const headingRef = useRef<HTMLHeadingElement>(null);
+  useEffect(() => { if (focusHeading) headingRef.current?.focus(); }, [focusHeading]);
   return <section className="route-state" {...(heading ? { "aria-labelledby": "route-state-heading" } : {})}>
-    {heading ? <h1 id="route-state-heading">{heading}</h1> : null}
+    {heading ? <h1 ref={headingRef} tabIndex={focusHeading ? -1 : undefined} id="route-state-heading">{heading}</h1> : null}
     <p {...(status ? { role: "status" as const } : {})}>{message}</p>
     {onRetry ? <button className="button button--primary" type="button" onClick={onRetry}>Retry</button> : null}
   </section>;
@@ -75,7 +77,7 @@ export function ProjectRoute({ projectsApi = defaultProjectApi, api }: { readonl
       activeRef.current = undefined;
       consumeProjectAdoption(adoptionToken);
       lastLoadedProjectRef.current = adoptedProject;
-      setHydration({ status: "loaded", projectId: routeProjectId, project: adoptedProject, reason: "initial" });
+      setHydration({ status: "loaded", projectId: routeProjectId, project: adoptedProject, reason: "initial", focusAfterHydration: false });
       return;
     }
     if (auth.status !== "authenticated") {
@@ -105,7 +107,7 @@ export function ProjectRoute({ projectsApi = defaultProjectApi, api }: { readonl
       if (project.id.toLowerCase() !== routeProjectId) { setHydration({ status: "error", projectId: routeProjectId, reason }); return; }
       setDirtyReconnectPreserved(false);
       lastLoadedProjectRef.current = project;
-      setHydration({ status: "loaded", projectId: routeProjectId, project, reason });
+      setHydration({ status: "loaded", projectId: routeProjectId, project, reason, focusAfterHydration: !matchingVisible });
     }).catch((error: unknown) => {
       if (controller.signal.aborted || activeRef.current?.requestId !== requestId || routeIdRef.current !== routeProjectId) return;
       activeRef.current = undefined;
@@ -139,12 +141,12 @@ export function ProjectRoute({ projectsApi = defaultProjectApi, api }: { readonl
   if (!isRoot && !match) content = <RouteState heading="Page not found." message="Check the address and try again." />;
   else if (!valid) content = <RouteState heading="Invalid project link." message="Check the address and try again." />;
   else if (isRoot) content = <WorkspacePage {...(api ? { api } : {})} projectsApi={projectsApi} />;
-  else if (matchingVisible) content = <WorkspacePage {...(hydration.status === "loaded" && hydration.projectId === routeProjectId ? { initialProject: hydration.project } : lastLoadedProjectRef.current ? { initialProject: lastLoadedProjectRef.current } : {})} {...(api ? { api } : {})} projectsApi={projectsApi} />;
+  else if (matchingVisible) content = <WorkspacePage {...(hydration.status === "loaded" && hydration.projectId === routeProjectId ? { initialProject: hydration.project, focusAfterHydration: hydration.focusAfterHydration } : lastLoadedProjectRef.current ? { initialProject: lastLoadedProjectRef.current } : {})} {...(api ? { api } : {})} projectsApi={projectsApi} />;
   else if (auth.status === "unknown") content = <RouteState message="Checking your session…" status />;
   else if (auth.status === "unauthenticated") content = <><RouteState heading="Sign in to open this project." message="This project requires an authenticated session." /><button className="button button--primary" type="button" onClick={() => setAuthOpen(true)}>Sign in</button>{authOpen ? <AuthPanel onClose={() => setAuthOpen(false)} /> : null}</>;
-  else if (hydration.status === "loaded" && hydration.projectId === routeProjectId) content = <WorkspacePage initialProject={hydration.project} focusAfterHydration {...(api ? { api } : {})} projectsApi={projectsApi} />;
-  else if (hydration.status === "not-found" && hydration.projectId === routeProjectId) content = <RouteState heading="Project not found or unavailable." message="The project cannot be opened from this account." />;
-  else if (hydration.status === "error" && hydration.projectId === routeProjectId) content = <RouteState heading="Could not load project." message="Your workspace was not changed." onRetry={() => requestHydration("retry")} />;
+  else if (hydration.status === "loaded" && hydration.projectId === routeProjectId) content = <WorkspacePage initialProject={hydration.project} focusAfterHydration={hydration.focusAfterHydration} {...(api ? { api } : {})} projectsApi={projectsApi} />;
+  else if (hydration.status === "not-found" && hydration.projectId === routeProjectId) content = <RouteState heading="Project not found or unavailable." message="The project cannot be opened from this account." focusHeading />;
+  else if (hydration.status === "error" && hydration.projectId === routeProjectId) content = <RouteState heading="Could not load project." message="Your workspace was not changed." focusHeading onRetry={() => requestHydration("retry")} />;
   else content = <RouteState message="Opening your project…" status />;
 
   return <ProjectRouteProvider value={coordination}>{content}</ProjectRouteProvider>;
