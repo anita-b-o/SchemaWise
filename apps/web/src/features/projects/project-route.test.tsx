@@ -169,14 +169,16 @@ describe("project routes and hydration", () => {
   it("maps 404 separately from retryable errors and retries the same route", async () => {
     const user = userEvent.setup();
     renderRoute(`/projects/${A}`, { projects: projectsApi({ getProject: vi.fn(async () => { throw new HttpApiError({ kind: "api", status: 404, code: "PROJECT_NOT_FOUND", message: "missing" }); }) }) });
-    expect(await screen.findByRole("heading", { name: "Project not found or unavailable." })).toBeTruthy();
+    const missingHeading = await screen.findByRole("heading", { name: "Project not found or unavailable." });
+    expect(document.activeElement).toBe(missingHeading);
     expect(screen.queryByRole("button", { name: "Retry" })).toBeNull();
 
     const getProject = vi.fn()
       .mockRejectedValueOnce(new HttpApiError({ kind: "network", message: "offline" }))
       .mockResolvedValueOnce(project());
     renderRoute(`/projects/${A}`, { projects: projectsApi({ getProject }) });
-    expect(await screen.findByRole("heading", { name: "Could not load project." })).toBeTruthy();
+    const errorHeading = await screen.findByRole("heading", { name: "Could not load project." });
+    expect(document.activeElement).toBe(errorHeading);
     expect(document.title).toBe("SchemaWise");
     await user.click(screen.getByRole("button", { name: "Retry" }));
     expect(await screen.findByDisplayValue("Recovered project")).toBeTruthy();
@@ -230,6 +232,9 @@ describe("project routes and hydration", () => {
     load.resolve(project());
     const heading = await screen.findByRole("heading", { level: 1, name: "Define a relation and its dependencies." });
     await waitFor(() => expect(document.activeElement).toBe(heading));
+    await new Promise((resolve) => setTimeout(resolve, 0));
+    expect(heading.getAttribute("tabindex")).toBe("-1");
+    expect(document.activeElement).toBe(heading);
     expect(document.title).toBe("Recovered project — SchemaWise");
   });
 

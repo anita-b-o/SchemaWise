@@ -15,7 +15,7 @@ function destinationFor(url: string): string | undefined {
   return config.rewrites.find(({ source }) => new RegExp(`^${source}$`).test(pathname))?.destination;
 }
 
-describe("Vercel proxy routing", () => {
+describe("Vercel routing", () => {
   it.each([
     "/api/v1/analysis",
     "/api/v1/auth/me",
@@ -24,10 +24,20 @@ describe("Vercel proxy routing", () => {
     expect(destinationFor(url)).toBe("/api/proxy");
   });
 
-  it("does not add a named route parameter that could alter the original query", () => {
+  it("keeps the API proxy ahead of the SPA deep-link fallback", () => {
     expect(config.rewrites).toEqual([
       { source: "/api/v1/(.*)", destination: "/api/proxy" },
+      { source: "/(.*)", destination: "/index.html" },
     ]);
+  });
+
+  it.each([
+    "/",
+    "/projects/11111111-1111-4111-8111-111111111111",
+    "/projects/foo",
+    "/foo",
+  ])("serves the SPA shell for %s", (url) => {
+    expect(destinationFor(url)).toBe("/index.html");
   });
 
   it("keeps only the intended entrypoint under api", () => {
