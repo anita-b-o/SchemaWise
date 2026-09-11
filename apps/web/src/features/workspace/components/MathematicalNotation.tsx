@@ -35,7 +35,7 @@ function notation(value: MathematicalNotationProps["value"], lookup?: ReadonlyMa
       const right = names(value.dependency.right, lookup);
       return {
         visual: formatFunctionalDependency(value.dependency, lookup),
-        spoken: `functional dependency: ${readableList(left)} determines ${readableList(right)}`,
+        spoken: `functional dependency: ${readableList(left)} functionally determines ${readableList(right)}`,
       };
     }
     case "closure": {

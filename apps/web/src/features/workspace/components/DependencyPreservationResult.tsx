@@ -14,7 +14,7 @@ export function DependencyPreservationResult({ result, snapshot }: DependencyPre
 
   return (
     <section className="preservation-result" aria-labelledby="preservation-result-heading">
-      <h5 id="preservation-result-heading">Dependency preservation</h5>
+      <h6 id="preservation-result-heading">Dependency preservation</h6>
       <p className={result.preserved ? "property-status property-status--positive" : "property-status property-status--negative"}>
         {result.preserved ? "✓ Preserved" : "× Not preserved"}
       </p>

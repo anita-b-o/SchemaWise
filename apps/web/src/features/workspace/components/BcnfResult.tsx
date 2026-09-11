@@ -23,14 +23,14 @@ export function BcnfResult({ result, snapshot, outOfDate, preservation, preserva
 
   return (
     <section className="transformation-result" aria-labelledby="bcnf-result-heading">
-      <h4 id="bcnf-result-heading">BCNF decomposition</h4>
-      <h5>Final relations</h5>
+      <h5 id="bcnf-result-heading">BCNF decomposition</h5>
+      <h6>Final relations</h6>
       <div className="final-relations">
         {result.relations.map((relation, index) => <MathematicalNotation key={`${relation.attributes.join(":")}:${index}`} value={{ kind: "attribute-set", ids: relation.attributes }} lookup={lookup} />)}
       </div>
 
       <div className="decomposition-steps">
-        <h5>Decomposition steps</h5>
+        <h6>Decomposition steps</h6>
         <ol>
           {result.steps.map((step, index) => {
             const sourceIds = new Set(step.source);

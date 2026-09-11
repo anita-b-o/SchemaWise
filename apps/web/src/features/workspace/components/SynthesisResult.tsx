@@ -15,7 +15,7 @@ export function SynthesisResult({ result, snapshot }: SynthesisResultProps) {
 
   return (
     <section className="transformation-result" aria-labelledby="synthesis-result-heading">
-      <h4 id="synthesis-result-heading">3NF synthesis</h4>
+      <h5 id="synthesis-result-heading">3NF synthesis</h5>
       <ol className="relation-result-list">
         {result.relations.map((relation, index) => (
           <li key={`${relation.attributes.join(":")}:${index}`}>
