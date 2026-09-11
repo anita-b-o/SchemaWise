@@ -1,6 +1,13 @@
 # Project routing and deep links v1.2
 
-Status: design accepted; implementation pending.
+Status: design accepted; Tranche 1 routing and hydration implemented.
+
+Implementation progress: Tranche 1 provides declarative React Router 7.18.3
+routes for `/` and `/projects/:projectId`, strict UUID v4 validation,
+auth-gated/race-safe hydration, retry/error states, title management, and focus
+after a successful route load. Open/New/Save navigation, dirty navigation
+blocking, Back/Forward confirmation, `beforeunload`, detached-draft routing,
+external-delete routing, and deployment fallback remain Tranche 2 or later.
 
 This document defines the browser URL, navigation, route-loading, deployment,
 accessibility, and test contracts for persisted projects. Recovery and
@@ -10,10 +17,10 @@ frozen and remains unchanged.
 
 ## Baseline audit
 
-The implemented frontend has no router. `main.tsx` renders `App`, `App` wraps a
-single `SchemaWorkspace` in `AuthProvider`, and the wordmark is a plain link to
-`/`. Consequently, refresh recreates the workspace even when `/auth/me`
-recovers the session.
+Before Tranche 1 the frontend had no router. The implemented root is now
+`BrowserRouter -> AuthProvider -> AppRoutes`; both routes share one
+`WorkspacePage`/`SchemaWorkspace`, and project routes add only auth and
+hydration coordination.
 
 The current behavior is:
 

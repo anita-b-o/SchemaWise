@@ -2,8 +2,7 @@ import { useEffect, useReducer, useRef, useState } from "react";
 import { schemawiseApi, SchemaWiseApiError, type SchemaWiseApi } from "../../../api/schemawise-api";
 import { projectApi as defaultProjectApi, type ProjectApi } from "../../../api/project-api";
 import { HttpApiError } from "../../../api/http-api";
-import type { ErrorCode } from "../../../api/schemawise-contracts";
-import type { ProjectSummaryDto } from "../../../api/schemawise-contracts";
+import type { ErrorCode, ProjectDto, ProjectSummaryDto } from "../../../api/schemawise-contracts";
 import { AuthPanel } from "../../auth/AuthPanel";
 import { useAuth } from "../../auth/auth-context";
 import { ProjectListPanel } from "../../projects/ProjectListPanel";
@@ -19,6 +18,7 @@ import { validateDraft } from "../workspace-validation";
 interface SchemaWorkspaceProps {
   readonly api?: SchemaWiseApi;
   readonly projectsApi?: ProjectApi;
+  readonly initialProject?: ProjectDto;
 }
 
 const API_ERROR_MESSAGES: Partial<Record<ErrorCode, string>> = {
@@ -50,10 +50,12 @@ function focusFirstIssue(field: string) {
   document.querySelector<HTMLElement>(selector)?.focus();
 }
 
-export function SchemaWorkspace({ api = schemawiseApi, projectsApi = defaultProjectApi }: SchemaWorkspaceProps) {
+export function SchemaWorkspace({ api = schemawiseApi, projectsApi = defaultProjectApi, initialProject }: SchemaWorkspaceProps) {
   const auth = useAuth();
-  const [state, dispatch] = useReducer(workspaceReducer, undefined, createInitialWorkspaceState);
-  const [project, setProject] = useState<ProjectSession>(initialProjectSession);
+  const [state, dispatch] = useReducer(workspaceReducer, initialProject, (loaded) => loaded
+    ? workspaceReducer(createInitialWorkspaceState(), { type: "replaceDraft", draft: persistedSchemaToDraft(loaded.schema) })
+    : createInitialWorkspaceState());
+  const [project, setProject] = useState<ProjectSession>(() => initialProject ? sessionFromProject(initialProject) : initialProjectSession);
   const [authOpen, setAuthOpen] = useState(false);
   const [projectsOpen, setProjectsOpen] = useState(false);
   const [projectList, setProjectList] = useState<readonly ProjectSummaryDto[]>([]);
@@ -109,9 +111,9 @@ export function SchemaWorkspace({ api = schemawiseApi, projectsApi = defaultProj
   }, []);
 
   useEffect(() => {
-    if (auth.status === "unauthenticated" && project.projectId) setProject((current) => ({ ...current, syncUnavailable: true }));
+    if (auth.status === "unauthenticated" && project.loadedProjectId) setProject((current) => ({ ...current, syncUnavailable: true }));
     if (auth.status === "authenticated") setProject((current) => current.syncUnavailable ? { ...current, syncUnavailable: false } : current);
-  }, [auth.status, project.projectId]);
+  }, [auth.status, project.loadedProjectId]);
 
   useEffect(() => { if (pendingReplace) replaceCancelRef.current?.focus(); }, [pendingReplace]);
   useEffect(() => { if (pendingDelete) deleteCancelRef.current?.focus(); }, [pendingDelete]);
@@ -172,10 +174,10 @@ export function SchemaWorkspace({ api = schemawiseApi, projectsApi = defaultProj
     setProjectBusy(true); setProjectError(undefined);
     try {
       const schema = draftToPersistedSchema(state.draft);
-      const saved = project.projectId && project.serverRevision
-        ? await projectsApi.updateProject(project.projectId, { name: project.name, schema, expectedRevision: project.serverRevision }, auth.csrfToken)
+      const saved = project.loadedProjectId && project.serverRevision
+        ? await projectsApi.updateProject(project.loadedProjectId, { name: project.name, schema, expectedRevision: project.serverRevision }, auth.csrfToken)
         : await projectsApi.createProject({ name: project.name, schema }, auth.csrfToken);
-      setProject(sessionFromProject(saved, state.revision));
+      setProject(sessionFromProject(saved));
       setConflict(false);
     } catch (error) {
       if (error instanceof HttpApiError && error.status === 409 && error.code === "PROJECT_REVISION_CONFLICT") { setConfirmConflictReload(false); setConflict(true); }
@@ -203,11 +205,11 @@ export function SchemaWorkspace({ api = schemawiseApi, projectsApi = defaultProj
     try {
       const loaded = await projectsApi.getProject(id);
       dispatch({ type: "replaceDraft", draft: persistedSchemaToDraft(loaded.schema) });
-      setProject(sessionFromProject(loaded, state.revision + 1));
+      setProject(sessionFromProject(loaded));
       setProjectsOpen(false); setPendingReplace(undefined); setConflict(false); setConfirmConflictReload(false);
       setTimeout(() => projectNameRef.current?.focus());
     } catch (error) {
-      if (error instanceof HttpApiError && error.status === 404 && error.code === "PROJECT_NOT_FOUND" && id === project.projectId) unlinkUnavailableProject();
+      if (error instanceof HttpApiError && error.status === 404 && error.code === "PROJECT_NOT_FOUND" && id === project.loadedProjectId) unlinkUnavailableProject();
       else await handleProjectFailure(error);
     }
     finally { setProjectBusy(false); }
@@ -229,13 +231,13 @@ export function SchemaWorkspace({ api = schemawiseApi, projectsApi = defaultProj
     setProjectBusy(true); setProjectError(undefined);
     try {
       await projectsApi.deleteProject(pendingDelete.id, auth.csrfToken);
-      if (pendingDelete.id === project.projectId) setProject({ ...initialProjectSession, name: project.name });
+      if (pendingDelete.id === project.loadedProjectId) setProject({ ...initialProjectSession, name: project.name });
       setProjectList((current) => current.filter(({ id }) => id !== pendingDelete.id));
       setPendingDelete(undefined);
       setTimeout(() => document.querySelector<HTMLButtonElement>(".projects-panel .panel-heading button")?.focus());
     } catch (error) {
       if (error instanceof HttpApiError && error.status === 404 && error.code === "PROJECT_NOT_FOUND") {
-        if (pendingDelete.id === project.projectId) unlinkUnavailableProject();
+        if (pendingDelete.id === project.loadedProjectId) unlinkUnavailableProject();
         else setProjectError("That project is no longer available.");
         setProjectList((current) => current.filter(({ id }) => id !== pendingDelete.id));
         setPendingDelete(undefined);
@@ -360,7 +362,7 @@ export function SchemaWorkspace({ api = schemawiseApi, projectsApi = defaultProj
     <>
     <section className="project-bar" aria-label="Project controls">
       <div className="project-title-field"><label htmlFor="project-name">Project name</label><input ref={projectNameRef} id="project-name" type="text" maxLength={120} value={project.name} onChange={(event) => setProject((current) => ({ ...current, name: event.target.value }))} /></div>
-      <span className={`save-state ${dirty ? "save-state--dirty" : ""}`} aria-live="polite">{project.syncUnavailable ? "Sign in to save" : project.savedSnapshot && !dirty ? "Saved" : dirty ? "Unsaved changes" : "Not saved"}</span>
+      <span className={`save-state ${dirty ? "save-state--dirty" : ""}`} aria-live="polite">{project.syncUnavailable ? "Sign in to save" : project.persistedSnapshot && !dirty ? "Saved" : dirty ? "Unsaved changes" : "Not saved"}</span>
       <div className="project-actions">
         <button className="button button--secondary" type="button" onClick={requestNew}>New project</button>
         <button className="button button--secondary" type="button" onClick={() => void openProjectList()}>Open projects</button>
@@ -375,7 +377,7 @@ export function SchemaWorkspace({ api = schemawiseApi, projectsApi = defaultProj
     {projectsOpen ? <ProjectListPanel projects={projectList} total={projectTotal} loading={projectBusy} {...(projectError ? { error: projectError } : {})} onOpen={requestOpen} onDelete={(selected) => { deleteReturnFocus.current = document.activeElement instanceof HTMLElement ? document.activeElement : null; setPendingDelete(selected); }} onClose={closeProjects} /> : null}
     {pendingReplace ? <div className="inline-confirmation" role="alert"><p>Discard unsaved changes?</p><div className="button-row"><button ref={replaceCancelRef} className="button button--secondary" type="button" onClick={() => { setPendingReplace(undefined); setTimeout(() => replaceReturnFocus.current?.focus()); }}>Cancel</button><button className="button button--danger-solid" type="button" onClick={() => pendingReplace.type === "new" ? newProject() : void loadProject(pendingReplace.id)}>Discard and continue</button></div></div> : null}
     {pendingDelete ? <div className="inline-confirmation" role="alert"><p>Delete “{pendingDelete.name}” permanently?</p><div className="button-row"><button ref={deleteCancelRef} className="button button--secondary" type="button" onClick={() => { setPendingDelete(undefined); setTimeout(() => deleteReturnFocus.current?.focus()); }}>Cancel</button><button className="button button--danger-solid" type="button" onClick={() => void confirmDelete()}>Delete project</button></div></div> : null}
-    {conflict ? <section className="conflict-panel" aria-labelledby="conflict-heading"><h2 ref={conflictHeadingRef} tabIndex={-1} id="conflict-heading">This project was updated elsewhere.</h2><p>The saved version changed since you opened this project. Your changes have not been overwritten. Reloading will permanently discard your unsaved local changes.</p>{confirmConflictReload ? <div className="inline-confirmation" role="alert"><p>Discard local changes and reload the saved version?</p><div className="button-row"><button ref={conflictKeepRef} className="button button--secondary" type="button" onClick={() => { setConfirmConflictReload(false); setTimeout(() => conflictHeadingRef.current?.focus()); }}>Keep local changes</button><button className="button button--danger-solid" type="button" onClick={() => project.projectId && void loadProject(project.projectId)}>Reload and discard</button></div></div> : <div className="button-row"><button className="button button--primary" type="button" onClick={() => setConfirmConflictReload(true)}>Reload saved version</button><button className="button button--secondary" type="button" onClick={() => { setConflict(false); setTimeout(() => saveButtonRef.current?.focus()); }}>Cancel</button></div>}</section> : null}
+    {conflict ? <section className="conflict-panel" aria-labelledby="conflict-heading"><h2 ref={conflictHeadingRef} tabIndex={-1} id="conflict-heading">This project was updated elsewhere.</h2><p>The saved version changed since you opened this project. Your changes have not been overwritten. Reloading will permanently discard your unsaved local changes.</p>{confirmConflictReload ? <div className="inline-confirmation" role="alert"><p>Discard local changes and reload the saved version?</p><div className="button-row"><button ref={conflictKeepRef} className="button button--secondary" type="button" onClick={() => { setConfirmConflictReload(false); setTimeout(() => conflictHeadingRef.current?.focus()); }}>Keep local changes</button><button className="button button--danger-solid" type="button" onClick={() => project.loadedProjectId && void loadProject(project.loadedProjectId)}>Reload and discard</button></div></div> : <div className="button-row"><button className="button button--primary" type="button" onClick={() => setConfirmConflictReload(true)}>Reload saved version</button><button className="button button--secondary" type="button" onClick={() => { setConflict(false); setTimeout(() => saveButtonRef.current?.focus()); }}>Cancel</button></div>}</section> : null}
     <div className="workspace-layout">
       <div className="workspace-primary">
       <section className="schema-editor" aria-label="Schema editor">

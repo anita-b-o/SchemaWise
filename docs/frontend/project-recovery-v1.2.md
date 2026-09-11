@@ -1,6 +1,12 @@
 # Project recovery v1.2
 
-Status: design accepted; implementation pending.
+Status: design accepted; Tranche 1 route recovery implemented.
+
+Tranche 1 implements first-entry authenticated hydration, exact persisted
+snapshot/revision recovery, derived-result reset, and the three-part race guard
+(abort, request ID, and route ID). Dirty-session login recovery, detachment,
+external-delete recovery, and navigation blocking remain intentionally pending
+for Tranche 2.
 
 This document defines how a routed project, a mutable local draft, and its last
 known persisted snapshot coexist. Routing and deployment contracts live in

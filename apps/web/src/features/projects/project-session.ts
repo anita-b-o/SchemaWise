@@ -3,11 +3,10 @@ import type { SchemaDraft } from "../workspace/workspace-reducer";
 
 export interface ProjectSnapshot { readonly name: string; readonly schema: PersistedSchemaDto; }
 export interface ProjectSession {
-  readonly projectId?: string;
+  readonly loadedProjectId?: string;
   readonly name: string;
   readonly serverRevision?: number;
-  readonly savedSnapshot?: ProjectSnapshot;
-  readonly savedDraftRevision?: number;
+  readonly persistedSnapshot?: ProjectSnapshot;
   readonly syncUnavailable: boolean;
 }
 
@@ -21,11 +20,11 @@ export function persistedSchemaToDraft(schema: PersistedSchemaDto): SchemaDraft 
   return { relationName: schema.relation.name, attributes: schema.relation.attributes.map(({ id, name }) => ({ id, name })), functionalDependencies: schema.functionalDependencies.map(({ left, right }) => ({ left: [...left], right: [...right] })) };
 }
 
-export function sessionFromProject(project: ProjectDto, draftRevision: number): ProjectSession {
-  return { projectId: project.id, name: project.name, serverRevision: project.revision, savedSnapshot: { name: project.name, schema: project.schema }, savedDraftRevision: draftRevision, syncUnavailable: false };
+export function sessionFromProject(project: ProjectDto): ProjectSession {
+  return { loadedProjectId: project.id, name: project.name, serverRevision: project.revision, persistedSnapshot: { name: project.name, schema: project.schema }, syncUnavailable: false };
 }
 
 export function isProjectDirty(session: ProjectSession, draft: SchemaDraft): boolean {
-  if (!session.savedSnapshot) return session.name !== "Untitled project" || draft.relationName !== "" || draft.attributes.length > 0 || draft.functionalDependencies.length > 0;
-  return JSON.stringify({ name: session.name, schema: draftToPersistedSchema(draft) }) !== JSON.stringify(session.savedSnapshot);
+  if (!session.persistedSnapshot) return session.name !== "Untitled project" || draft.relationName !== "" || draft.attributes.length > 0 || draft.functionalDependencies.length > 0;
+  return JSON.stringify({ name: session.name, schema: draftToPersistedSchema(draft) }) !== JSON.stringify(session.persistedSnapshot);
 }

@@ -3,7 +3,8 @@
 > This is the implemented v1 baseline plus the frozen Educational UX v1.1 Tranches 1–5.
 > The v1.1 contract is defined by [educational-ux-v1.1.md](./educational-ux-v1.1.md) and
 > [educational-content-model.md](./educational-content-model.md).
-> The accepted, not-yet-implemented v1.2 routing extension is defined by
+> The accepted v1.2 routing extension has Tranche 1 implemented; later recovery
+> and navigation work remains pending. It is defined by
 > [project-routing-v1.2.md](./project-routing-v1.2.md) and
 > [project-recovery-v1.2.md](./project-recovery-v1.2.md).
 
@@ -81,17 +82,18 @@ V1.2 adds a route boundary without moving project or workspace data into auth:
 ```text
 BrowserRouter
 └─ AuthProvider
-   └─ WorkspaceRouteCoordinator       params, hydration, blocker, title/focus
-      └─ SchemaWorkspace              draft, ProjectSession, actions/results
+   └─ AppRoutes
+      ├─ /                             WorkspacePage -> SchemaWorkspace
+      └─ /projects/:projectId          ProjectRoute -> WorkspacePage -> SchemaWorkspace
 ```
 
-The coordinator derives `routeProjectId` from the match and owns the one route
-hydration path used by direct entry, Open, Retry, OCC reload, and safe login
-recovery. `SchemaWorkspace` retains `loadedProjectId`, the persisted snapshot,
-server revision, and local draft. This separates a URL request from a
-successfully hydrated association. A discriminated hydration resource is
-sufficient; v1.2 does not introduce a global store, query cache, or state
-machine library.
+`ProjectRoute` derives `routeProjectId` from the match and owns the Tranche 1
+direct-entry and Retry hydration path. `SchemaWorkspace` retains
+`loadedProjectId`, the persisted snapshot, server revision, and local draft.
+This separates a URL request from a successfully hydrated association. Open,
+OCC reload, and post-login dirty recovery remain on the existing workspace
+flow until Tranche 2 unifies their navigation semantics. No global store,
+query cache, or state-machine library was introduced.
 
 ## Responsibilities
 

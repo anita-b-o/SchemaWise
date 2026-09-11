@@ -1,7 +1,7 @@
 # Frontend architecture
 
 Status: implemented MVP plus manual project persistence; Educational UX v1.1
-is frozen. Project routing/recovery v1.2 is accepted but not implemented.
+is frozen. Project routing/recovery v1.2 Tranche 1 is implemented.
 
 ## Context and boundaries
 
@@ -24,10 +24,10 @@ the local session view and orchestration of the server persistence contract.
 
 ## Navigation
 
-The implemented v1 has only `/`, no router, and loses workspace/project
-association on refresh. V1.2 accepts React Router in Declarative browser-history
-mode because `/projects/:projectId` is now a real second route and dirty
-Back/Forward handling is a product requirement.
+React Router 7.18.3 now runs in Declarative browser-history mode. `/` and
+`/projects/:projectId` are real routes; authenticated deep links recover their
+persisted workspace on refresh. Dirty Back/Forward handling remains the next
+tranche.
 
 `/` remains the anonymous-first new local workspace. `/projects/:projectId`
 references a private persisted project; it waits for auth initialization and
@@ -50,11 +50,11 @@ serves header, forms, logout, and project actions. Project session state stays
 at the workspace boundary and is not merged into either Auth Context or the
 workspace reducer. Server revision and draft revision have distinct meanings.
 
-V1.2 keeps this ownership. A thin route coordinator owns params, auth-gated
-hydration, route request races, dirty navigation, and title/focus. It does not
-absorb draft or auth state. Direct entry, Open, Retry, OCC reload, and safe
-post-login refresh share one loader; successful hydration uses the existing
-`replaceDraft` reset semantics and never invokes analysis.
+V1.2 keeps this ownership. The implemented thin project-route coordinator owns
+params, auth-gated hydration, route request races, Retry, and title/focus. It
+does not absorb draft or auth state. Successful hydration uses the existing
+`replaceDraft` reset semantics and never invokes analysis. Dirty navigation
+and unification of Open/OCC reload with route navigation remain Tranche 2.
 
 ### Manual persistence snapshots
 

@@ -1,9 +1,14 @@
-import { SchemaWorkspace } from "./features/workspace/components/SchemaWorkspace";
+import { BrowserRouter, Route, Routes } from "react-router-dom";
+import type { AuthApi } from "./api/auth-api";
+import type { ProjectApi } from "./api/project-api";
+import type { SchemaWiseApi } from "./api/schemawise-api";
 import { AuthProvider } from "./features/auth/auth-context";
+import { ProjectRoute } from "./features/projects/project-route";
+import { WorkspacePage } from "./features/workspace/components/WorkspacePage";
 
-export function App() {
+export function AppRoutes({ api, projectsApi }: { readonly api?: SchemaWiseApi; readonly projectsApi?: ProjectApi }) {
   return (
-    <AuthProvider>
+    <>
       <header className="site-header">
         <div className="shell site-header__inner">
           <a className="wordmark" href="/" aria-label="SchemaWise home">SchemaWise</a>
@@ -11,13 +16,15 @@ export function App() {
         </div>
       </header>
       <main className="shell workspace-page">
-        <div className="page-introduction">
-          <p className="eyebrow">Schema workspace</p>
-          <h1>Define a relation and its dependencies.</h1>
-          <p>Model the facts your relation stores. SchemaWise will use this input to explain normalization step by step.</p>
-        </div>
-        <SchemaWorkspace />
+        <Routes>
+          <Route path="/" element={<WorkspacePage {...(api ? { api } : {})} {...(projectsApi ? { projectsApi } : {})} />} />
+          <Route path="/projects/:projectId" element={<ProjectRoute {...(api ? { api } : {})} {...(projectsApi ? { projectsApi } : {})} />} />
+        </Routes>
       </main>
-    </AuthProvider>
+    </>
   );
+}
+
+export function App({ authApi, api, projectsApi }: { readonly authApi?: AuthApi; readonly api?: SchemaWiseApi; readonly projectsApi?: ProjectApi }) {
+  return <BrowserRouter><AuthProvider {...(authApi ? { api: authApi } : {})}><AppRoutes {...(api ? { api } : {})} {...(projectsApi ? { projectsApi } : {})} /></AuthProvider></BrowserRouter>;
 }

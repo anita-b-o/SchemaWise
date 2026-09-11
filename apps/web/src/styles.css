@@ -36,6 +36,9 @@ button { min-height: 2.75rem; }
 .wordmark { color: var(--text-primary); font-size: 1.05rem; font-weight: 760; letter-spacing: -0.02em; text-decoration: none; }
 .site-header__context { padding-left: var(--space-3); border-left: 1px solid var(--border-default); color: var(--text-secondary); font-size: 0.85rem; }
 .workspace-page { padding-block: clamp(2.5rem, 7vw, 5rem); }
+.route-state { max-width: 42rem; padding-block: clamp(1rem, 4vw, 3rem); }
+.route-state p { color: var(--text-secondary); }
+.route-state .button { margin-top: var(--space-3); }
 .page-introduction { max-width: 44rem; margin-bottom: var(--space-8); }
 .eyebrow, .section-number { margin: 0 0 var(--space-2); color: var(--accent); font-size: 0.72rem; font-weight: 750; letter-spacing: 0.13em; text-transform: uppercase; }
 h1, h2, h3, p { margin-top: 0; }
