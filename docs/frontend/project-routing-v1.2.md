@@ -1,13 +1,15 @@
 # Project routing and deep links v1.2
 
-Status: design accepted; Tranche 1 routing and hydration implemented.
+Status: design accepted; Tranches 1–2 routing, hydration, and protected navigation implemented.
 
-Implementation progress: Tranche 1 provides declarative React Router 7.18.3
+Implementation progress: Tranche 1 provides React Router 7.18.3
 routes for `/` and `/projects/:projectId`, strict UUID v4 validation,
 auth-gated/race-safe hydration, retry/error states, title management, and focus
-after a successful route load. Open/New/Save navigation, dirty navigation
-blocking, Back/Forward confirmation, `beforeunload`, detached-draft routing,
-external-delete routing, and deployment fallback remain Tranche 2 or later.
+after a successful route load. Tranche 2 routes Open/New/Save-new, protects
+pathname and POP navigation with the stable blocker, conditionally registers
+`beforeunload`, and adopts a created project without a redundant GET or loading
+flash. Detached-draft routing, external-delete/session recovery, OCC route
+reload changes, and deployment fallback remain Tranche 3 or later.
 
 This document defines the browser URL, navigation, route-loading, deployment,
 accessibility, and test contracts for persisted projects. Recovery and
@@ -22,7 +24,7 @@ Before Tranche 1 the frontend had no router. The implemented root is now
 `WorkspacePage`/`SchemaWorkspace`, and project routes add only auth and
 hydration coordination.
 
-The current behavior is:
+The audited Tranche 1 behavior before this tranche was:
 
 - New resets the reducer and `ProjectSession`; it is local and creates no
   server resource. Dirty New/Open actions use one inline discard confirmation.
@@ -53,7 +55,10 @@ The current behavior is:
 
 ## Routing decision
 
-Use React Router in Declarative mode with browser history. Use only route
+Use React Router with browser history. The implementation uses the stable data
+router provider because `useBlocker` requires its router context, while keeping
+all loading and mutations in the existing component/API coordination (there
+are no route loaders or actions). Use only route
 matching, params, links/navigation, location, and the stable navigation-blocker
 surface; do not introduce data loaders, actions, framework mode, a server cache,
 or route-based analysis.
@@ -162,10 +167,13 @@ hydration.
 
 ### Open project
 
-Selecting a project closes the panel and navigates to `/projects/${id}`. It
+Selecting a project navigates to `/projects/${id}`. It
 does not fetch or install a snapshot. The
-route hydration coordinator is the only Open/refresh/reload loading path. If
-dirty, the common route blocker confirms before the navigation commits.
+route hydrator is the only Open/direct-entry/refresh loading path. If
+dirty, the common route blocker confirms before the navigation commits. The
+panel stays open while blocked and closes naturally when navigation commits.
+The separately confirmed OCC reload remains compatible with its existing GET
+until Tranche 3 unifies that recovery path.
 
 ### Save new
 
@@ -176,7 +184,8 @@ a misleading empty version of the same just-saved draft. The trade-off is that
 Back returns to the entry before that new workspace; opening an already saved
 project continues to use push and therefore creates normal project history.
 
-The transition is tagged as an already-hydrated persistence transition so it
+The transition is tagged with an opaque ephemeral location-state token whose
+project response lives only in a one-shot in-memory map, so it
 does not GET the just-created project or reset the draft. Failed POST leaves `/`
 and all local state unchanged.
 

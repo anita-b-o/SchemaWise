@@ -1,11 +1,12 @@
 # Frontend auth and project UX v1
 
-Status: implemented.
+Status: v1 implemented; Project Recovery + Deep Links v1.2 Tranche 2 implemented.
 
-> Project deep links and safe refresh recovery are accepted for v1.2 but not
-> implemented. See [project-routing-v1.2.md](./project-routing-v1.2.md) and
-> [project-recovery-v1.2.md](./project-recovery-v1.2.md). Those documents extend
-> this baseline without changing the implemented v1 behavior described here.
+> Project deep links, route hydration, routed Open/New/Save-new, dirty
+> Back/Forward blocking, and conditional unload protection are implemented
+> through v1.2 Tranche 2. Delete/external-delete detachment and dirty auth
+> reconnection remain Tranche 3. See [project-routing-v1.2.md](./project-routing-v1.2.md)
+> and [project-recovery-v1.2.md](./project-recovery-v1.2.md).
 
 SchemaWise remains an anonymous-first computational workspace. Authentication
 appears only when the user chooses Sign in, Save, or Open projects; successful
@@ -22,8 +23,9 @@ Save does not depend on Analyze and never starts analysis.
 Dirty state compares only project name plus persisted relation, attributes, and
 functional dependencies with the last server snapshot. Analysis, closure, and
 transformations do not affect it. Loading a project replaces the draft and
-resets computed results. New and Open require explicit discard confirmation
-when local persisted fields differ from the last snapshot.
+resets computed results. New, Open, internal pathname navigation, and browser
+Back/Forward share one accessible discard confirmation. Reload/close gets the
+browser-native warning only while that same persisted draft is dirty.
 
 OCC conflicts are never retried. A 409 leaves local edits intact and offers
 `Reload saved version` or `Cancel`. Reload explicitly warns that local changes
@@ -49,13 +51,11 @@ On `INVALID_CSRF_TOKEN`, the frontend calls `/auth/me` once to refresh session
 state and never repeats the mutation. The user must explicitly retry Save or
 Delete. This avoids replaying a mutation whose outcome may be uncertain.
 
-## Refresh limitation
+## Routed recovery
 
-V1 intentionally keeps route `/` and introduces no router. Browser refresh
-recovers auth through the cookie plus `/auth/me`, but resets the workspace and
-forgets the open project. Projects can be reopened through the compact list.
-A project route or query parameter is deferred until deep links/session restore
-become a product requirement.
-
-That requirement is now designed in ADR 017. Until its implementation lands,
-the limitation above remains the observable staging behavior.
+`/` is a new local workspace and `/projects/:projectId` recovers an owned saved
+project after auth initialization. Open selects a route and performs exactly
+one route-hydration GET. Save-new adopts the POST response and replaces `/`
+with the project URL without an immediate GET; Save-existing stays on the same
+URL and history entry. Logout/expiry reconnection and detached draft routing
+are unchanged until Tranche 3.

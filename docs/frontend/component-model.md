@@ -3,8 +3,8 @@
 > This is the implemented v1 baseline plus the frozen Educational UX v1.1 Tranches 1–5.
 > The v1.1 contract is defined by [educational-ux-v1.1.md](./educational-ux-v1.1.md) and
 > [educational-content-model.md](./educational-content-model.md).
-> The accepted v1.2 routing extension has Tranche 1 implemented; later recovery
-> and navigation work remains pending. It is defined by
+> The accepted v1.2 routing extension has Tranches 1–2 implemented; detached
+> recovery and auth reconnection work remains pending. It is defined by
 > [project-routing-v1.2.md](./project-routing-v1.2.md) and
 > [project-recovery-v1.2.md](./project-recovery-v1.2.md).
 
@@ -80,20 +80,22 @@ still moving initial focus to the close/email control.
 V1.2 adds a route boundary without moving project or workspace data into auth:
 
 ```text
-BrowserRouter
+RouterProvider (browser history; stable blocker context)
 └─ AuthProvider
    └─ AppRoutes
-      ├─ /                             WorkspacePage -> SchemaWorkspace
-      └─ /projects/:projectId          ProjectRoute -> WorkspacePage -> SchemaWorkspace
+      ├─ /                             WorkspacePage -> ProjectNavigationCoordinator -> SchemaWorkspace
+      └─ /projects/:projectId          ProjectRoute -> WorkspacePage -> ProjectNavigationCoordinator -> SchemaWorkspace
 ```
 
 `ProjectRoute` derives `routeProjectId` from the match and owns the Tranche 1
 direct-entry and Retry hydration path. `SchemaWorkspace` retains
 `loadedProjectId`, the persisted snapshot, server revision, and local draft.
-This separates a URL request from a successfully hydrated association. Open,
-OCC reload, and post-login dirty recovery remain on the existing workspace
-flow until Tranche 2 unifies their navigation semantics. No global store,
-query cache, or state-machine library was introduced.
+This separates a URL request from a successfully hydrated association.
+`ProjectNavigationCoordinator` owns all route navigation requests, one stable blocker,
+focus return, conditional `beforeunload`, and the one-shot save-new adoption
+map. Open no longer fetches in the panel. OCC reload stays compatible with its
+existing explicit GET; post-login dirty recovery remains Tranche 3. No global
+store, query cache, or state-machine library was introduced.
 
 ## Responsibilities
 

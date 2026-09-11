@@ -87,6 +87,9 @@ summary { width: fit-content; min-height: 2.75rem; padding-block: 0.7rem; cursor
 .technical-id input { min-height: 2.25rem; padding-block: var(--space-1); font-family: ui-monospace, SFMono-Regular, Consolas, monospace; font-size: 0.75rem; }
 .inline-confirmation { display: flex; justify-content: space-between; align-items: center; gap: var(--space-4); margin-top: var(--space-3); padding: var(--space-3); color: #76271f; background: var(--danger-surface); border-left: 3px solid var(--danger); }
 .inline-confirmation p { margin: 0; font-size: 0.85rem; }
+.navigation-confirmation { margin-bottom: var(--space-6); overflow-wrap: anywhere; }
+.navigation-confirmation h2 { margin-bottom: var(--space-1); font-size: 1rem; }
+.navigation-confirmation > div { min-width: 0; }
 .example-confirmation { margin: var(--space-4) var(--space-6) 0; }
 .dependency-list { margin: 0 0 var(--space-6); padding: 0; list-style: none; border-top: 1px solid var(--border-default); }
 .dependency-list li { display: flex; justify-content: space-between; align-items: center; gap: var(--space-4); min-height: 3.5rem; border-bottom: 1px solid var(--border-default); }

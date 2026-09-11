@@ -1,7 +1,7 @@
 # Frontend architecture
 
 Status: implemented MVP plus manual project persistence; Educational UX v1.1
-is frozen. Project routing/recovery v1.2 Tranche 1 is implemented.
+is frozen. Project routing/recovery v1.2 Tranches 1–2 are implemented.
 
 ## Context and boundaries
 
@@ -24,10 +24,12 @@ the local session view and orchestration of the server persistence contract.
 
 ## Navigation
 
-React Router 7.18.3 now runs in Declarative browser-history mode. `/` and
+React Router 7.18.3 now runs through the stable browser data-router provider
+(without loaders/actions) so `useBlocker` can protect navigation. `/` and
 `/projects/:projectId` are real routes; authenticated deep links recover their
-persisted workspace on refresh. Dirty Back/Forward handling remains the next
-tranche.
+persisted workspace on refresh. Open/New use route navigation, Save-new uses
+replace plus one-shot response adoption, and one dirty guard covers links and
+Back/Forward. `beforeunload` exists only while the visible draft is dirty.
 
 `/` remains the anonymous-first new local workspace. `/projects/:projectId`
 references a private persisted project; it waits for auth initialization and
@@ -50,11 +52,13 @@ serves header, forms, logout, and project actions. Project session state stays
 at the workspace boundary and is not merged into either Auth Context or the
 workspace reducer. Server revision and draft revision have distinct meanings.
 
-V1.2 keeps this ownership. The implemented thin project-route coordinator owns
+V1.2 keeps this ownership. The implemented thin project-route hydrator owns
 params, auth-gated hydration, route request races, Retry, and title/focus. It
-does not absorb draft or auth state. Successful hydration uses the existing
-`replaceDraft` reset semantics and never invokes analysis. Dirty navigation
-and unification of Open/OCC reload with route navigation remain Tranche 2.
+does not absorb draft or auth state. A sibling project-navigation coordinator
+owns navigation intents, the stable dirty blocker, unload registration, and
+save-new adoption. Successful hydration uses the existing `replaceDraft` reset
+semantics and never invokes analysis. Delete/external-delete transitions,
+auth reconnection, and OCC route reload remain Tranche 3.
 
 ### Manual persistence snapshots
 
@@ -110,9 +114,10 @@ sharing are separate product features requiring serialization/versioning and
 clear reset semantics. They are deliberately deferred.
 
 V1.2 persists only project identity in the pathname and recovers the server
-snapshot. Detached drafts created by Delete/404 cross the replace-to-`/`
-transition through a one-shot in-memory coordinator intent. They are not stored
-in Web Storage, URL state, or browser history and still disappear on refresh.
+snapshot. Tranche 3 will move detached drafts created by Delete/404 across the
+replace-to-`/` transition through a one-shot in-memory coordinator intent.
+They will not be stored in Web Storage, URL state, or browser history and will
+still disappear on refresh.
 
 ## Responsive architecture
 

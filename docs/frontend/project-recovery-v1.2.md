@@ -1,12 +1,13 @@
 # Project recovery v1.2
 
-Status: design accepted; Tranche 1 route recovery implemented.
+Status: design accepted; Tranches 1–2 route recovery and protected navigation implemented.
 
 Tranche 1 implements first-entry authenticated hydration, exact persisted
 snapshot/revision recovery, derived-result reset, and the three-part race guard
-(abort, request ID, and route ID). Dirty-session login recovery, detachment,
-external-delete recovery, and navigation blocking remain intentionally pending
-for Tranche 2.
+(abort, request ID, and route ID). Tranche 2 implements routed Open/New,
+save-new response adoption, dirty SPA/POP blocking, and conditional
+`beforeunload`. Dirty-session login recovery, detachment, external-delete
+recovery, and OCC route reload remain intentionally pending for Tranche 3.
 
 This document defines how a routed project, a mutable local draft, and its last
 known persisted snapshot coexist. Routing and deployment contracts live in
@@ -106,6 +107,9 @@ Save -> Saved at revision N+1
 
 For a detached `/` draft, Save POSTs and the already-hydrated replace transition
 described in the routing document adopts the response without a redundant GET.
+The handoff is keyed by an opaque token in `location.state`; the returned DTO
+stays in memory and is consumed once. Back/Forward after that consumption uses
+normal server hydration.
 
 ## Logout and session expiration
 
@@ -196,9 +200,10 @@ Example: A starts, navigation to B commits, A is aborted, B starts, and a late A
 response fails both the request-ID and current-param checks. It cannot replace
 B's draft, revision, status, title, errors, or focus.
 
-The same route coordinator must be used by direct entry, Open Projects, Retry,
-clean post-login recovery, and OCC reload. There must not be separate
-`openFromPanel` and `loadFromRoute` implementations.
+Through Tranche 2, direct entry, Open Projects, and Retry use the route
+hydrator; Open has no panel-owned GET. Clean post-login recovery and OCC reload
+will join that coordinator in Tranche 3. The existing separately confirmed OCC
+GET remains only as a compatibility path until then.
 
 ## Error resolution matrix
 

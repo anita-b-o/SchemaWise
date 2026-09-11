@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from "react";
-import { useParams } from "react-router-dom";
+import { useLocation, useParams } from "react-router-dom";
 import { HttpApiError } from "../../api/http-api";
 import { projectApi as defaultProjectApi, type ProjectApi } from "../../api/project-api";
 import type { SchemaWiseApi } from "../../api/schemawise-api";
@@ -7,6 +7,7 @@ import type { ProjectDto } from "../../api/schemawise-contracts";
 import { AuthPanel } from "../auth/AuthPanel";
 import { useAuth } from "../auth/auth-context";
 import { WorkspacePage } from "../workspace/components/WorkspacePage";
+import { consumeProjectAdoption, peekProjectAdoption } from "./project-route-adoption";
 import { isCanonicalUuidV4 } from "./project-route-utils";
 
 export type ProjectHydration =
@@ -27,18 +28,28 @@ function RouteState({ heading, message, status = false, onRetry }: { readonly he
 
 export function ProjectRoute({ projectsApi = defaultProjectApi, api }: { readonly projectsApi?: ProjectApi; readonly api?: SchemaWiseApi }) {
   const { projectId = "" } = useParams();
+  const location = useLocation();
   const auth = useAuth();
   const [hydration, setHydration] = useState<ProjectHydration>();
   const [retryVersion, setRetryVersion] = useState(0);
   const [authOpen, setAuthOpen] = useState(false);
   const valid = isCanonicalUuidV4(projectId);
   const routeProjectId = valid ? projectId.toLowerCase() : projectId;
+  const adoptionToken = typeof location.state === "object" && location.state !== null && "adoptionToken" in location.state && typeof location.state.adoptionToken === "string"
+    ? location.state.adoptionToken
+    : undefined;
+  const adoptedProject = valid ? peekProjectAdoption(adoptionToken, routeProjectId) : undefined;
+  const adoptedRouteRef = useRef<string | undefined>(undefined);
+  if (adoptedProject) adoptedRouteRef.current = routeProjectId;
+  else if (adoptedRouteRef.current !== routeProjectId) adoptedRouteRef.current = undefined;
   const routeIdRef = useRef(routeProjectId);
   const activeRef = useRef<{ projectId: string; requestId: string; retryVersion: number; controller: AbortController } | undefined>(undefined);
   const effectGeneration = useRef(0);
   routeIdRef.current = routeProjectId;
 
-  const loaded = hydration?.status === "loaded" && hydration.projectId === routeProjectId ? hydration : undefined;
+  const loaded: Extract<ProjectHydration, { status: "loaded" }> | undefined = adoptedProject
+    ? { status: "loaded", projectId: routeProjectId, project: adoptedProject }
+    : hydration?.status === "loaded" && hydration.projectId === routeProjectId ? hydration : undefined;
 
   useEffect(() => {
     document.title = loaded ? `${loaded.project.name} — SchemaWise` : "SchemaWise";
@@ -46,6 +57,15 @@ export function ProjectRoute({ projectsApi = defaultProjectApi, api }: { readonl
 
   useEffect(() => {
     const generation = ++effectGeneration.current;
+    if (adoptedRouteRef.current === routeProjectId) {
+      activeRef.current?.controller.abort();
+      activeRef.current = undefined;
+      if (adoptedProject) {
+        setHydration({ status: "loaded", projectId: routeProjectId, project: adoptedProject });
+        consumeProjectAdoption(adoptionToken);
+      }
+      return;
+    }
     if (!valid || auth.status !== "authenticated") {
       activeRef.current?.controller.abort();
       activeRef.current = undefined;
@@ -89,7 +109,7 @@ export function ProjectRoute({ projectsApi = defaultProjectApi, api }: { readonl
         }
       });
     };
-  }, [auth.setUnauthenticated, auth.status, projectsApi, retryVersion, routeProjectId, valid]);
+  }, [adoptedProject, adoptionToken, auth.setUnauthenticated, auth.status, projectsApi, retryVersion, routeProjectId, valid]);
 
   if (!valid) return <RouteState heading="Invalid project link." message="Check the address and try again." />;
   if (auth.status === "unknown") return <RouteState message="Checking your session…" status />;
@@ -101,7 +121,7 @@ export function ProjectRoute({ projectsApi = defaultProjectApi, api }: { readonl
       </>
     );
   }
-  if (loaded) return <WorkspacePage key={loaded.projectId} initialProject={loaded.project} projectsApi={projectsApi} {...(api ? { api } : {})} focusAfterHydration />;
+  if (loaded) return <WorkspacePage key={loaded.projectId} initialProject={loaded.project} projectsApi={projectsApi} {...(api ? { api } : {})} focusAfterHydration={adoptedRouteRef.current !== routeProjectId} routed />;
   if (hydration?.status === "not-found" && hydration.projectId === routeProjectId) return <RouteState heading="Project not found or unavailable." message="The project cannot be opened from this account." />;
   if (hydration?.status === "error" && hydration.projectId === routeProjectId) return <RouteState heading="Could not load project." message="Your workspace was not changed." onRetry={() => setRetryVersion((value) => value + 1)} />;
   return <RouteState message="Opening your project…" status />;

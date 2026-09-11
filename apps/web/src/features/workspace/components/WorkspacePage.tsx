@@ -2,9 +2,10 @@ import { useEffect, useRef } from "react";
 import type { ProjectApi } from "../../../api/project-api";
 import type { SchemaWiseApi } from "../../../api/schemawise-api";
 import type { ProjectDto } from "../../../api/schemawise-contracts";
+import { ProjectNavigationCoordinator } from "../../projects/project-navigation";
 import { SchemaWorkspace } from "./SchemaWorkspace";
 
-export function WorkspacePage({ initialProject, focusAfterHydration = false, api, projectsApi }: { readonly initialProject?: ProjectDto; readonly focusAfterHydration?: boolean; readonly api?: SchemaWiseApi; readonly projectsApi?: ProjectApi }) {
+export function WorkspacePage({ initialProject, focusAfterHydration = false, routed = false, api, projectsApi }: { readonly initialProject?: ProjectDto; readonly focusAfterHydration?: boolean; readonly routed?: boolean; readonly api?: SchemaWiseApi; readonly projectsApi?: ProjectApi }) {
   const headingRef = useRef<HTMLHeadingElement>(null);
   const hydrationFocusMoved = useRef(false);
 
@@ -16,7 +17,7 @@ export function WorkspacePage({ initialProject, focusAfterHydration = false, api
     }
   }, [focusAfterHydration, initialProject]);
 
-  return (
+  const content = (
     <>
       <div className="page-introduction">
         <p className="eyebrow">Schema workspace</p>
@@ -26,4 +27,6 @@ export function WorkspacePage({ initialProject, focusAfterHydration = false, api
       <SchemaWorkspace {...(initialProject ? { initialProject } : {})} {...(api ? { api } : {})} {...(projectsApi ? { projectsApi } : {})} />
     </>
   );
+
+  return routed ? <ProjectNavigationCoordinator>{content}</ProjectNavigationCoordinator> : content;
 }
