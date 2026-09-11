@@ -1,4 +1,5 @@
 import type { FunctionalDependencyDto, SchemaInputDto } from "../../api/schemawise-contracts";
+import type { ConceptId } from "./concept-definitions";
 
 export type EducationalSource = "dto" | "snapshot" | "dto+snapshot" | "operation-contract" | "derived-presentation";
 
@@ -26,7 +27,7 @@ export interface FormalReasoningContent {
 export interface EducationalExplanation {
   readonly summary: readonly ContentToken[];
   readonly formal?: FormalReasoningContent;
-  readonly concepts?: readonly ("candidate-key" | "primary-key" | "prime-attribute" | "minimal-cover" | "superkey")[];
+  readonly concepts?: readonly ConceptId[];
 }
 
 export interface TransformationExplanation {

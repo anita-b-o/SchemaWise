@@ -7,6 +7,7 @@ import { CandidateKeysResult, MinimalCoverResult, PrimeAttributesResult } from "
 import { NormalFormSummary } from "./NormalFormSummary";
 import { SynthesisResult } from "./SynthesisResult";
 import { ViolationDetails } from "./ViolationDetails";
+import { ConceptGlossary } from "./ConceptHelp";
 
 interface AnalysisResultsProps {
   readonly result: AnalysisResponseDto;
@@ -88,6 +89,7 @@ export function AnalysisResults({ result, analyzedSnapshot, outOfDate, synthesis
           ) : null}
         </section>
       ) : null}
+      <ConceptGlossary />
     </article>
   );
 }

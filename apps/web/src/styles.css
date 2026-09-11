@@ -155,6 +155,21 @@ summary { width: fit-content; min-height: 2.75rem; padding-block: 0.7rem; cursor
 .key-facts { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: var(--space-8); }
 .key-facts h3 { margin-bottom: var(--space-2); }
 .key-fact { min-width: 0; }
+.concept-help { min-width: 0; margin: calc(var(--space-2) * -1) 0 var(--space-3); }
+.concept-help__trigger { min-height: 2.75rem; padding: var(--space-2); color: var(--accent); background: transparent; border: 0; border-radius: var(--radius-sm); cursor: pointer; font-size: 0.78rem; font-weight: 700; text-align: left; }
+.concept-help__trigger:hover { background: var(--surface-subtle); }
+.concept-help__definition { max-width: 38rem; margin: var(--space-1) 0 var(--space-3); padding: var(--space-3); color: var(--text-secondary); background: var(--surface-subtle); border-left: 2px solid var(--accent); font-size: 0.8rem; overflow-wrap: anywhere; }
+.concept-help__definition strong { color: var(--text-primary); }
+.concept-help__definition p { margin: var(--space-1) 0 0; }
+.concept-help__definition .concept-help__note { margin-top: var(--space-2); }
+.concept-reference > details > summary { color: var(--accent); }
+.concept-reference__count { margin-left: var(--space-2); color: var(--text-secondary); font-size: 0.75rem; font-weight: 500; }
+.concept-reference .section-help { margin: 0 0 var(--space-4); }
+.concept-reference__list { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 0 var(--space-8); margin: 0; }
+.concept-reference__list > div { min-width: 0; padding: var(--space-3) 0; border-top: 1px solid var(--border-default); }
+.concept-reference__list dt { font-size: 0.84rem; font-weight: 750; }
+.concept-reference__list dd { margin: var(--space-1) 0 0; color: var(--text-secondary); font-size: 0.8rem; overflow-wrap: anywhere; }
+.concept-reference__list dd span { display: block; margin-top: var(--space-1); }
 .notation-list { display: grid; justify-items: start; gap: var(--space-2); }
 .analysis-section code { color: var(--text-primary); background: transparent; font-size: 0.92rem; overflow-wrap: anywhere; }
 .mathematical-notation { white-space: normal; word-break: break-word; }
@@ -212,8 +227,8 @@ summary { width: fit-content; min-height: 2.75rem; padding-block: 0.7rem; cursor
 .transformation-error { margin: var(--space-2) 0 var(--space-4); padding: var(--space-3) var(--space-4); color: #76271f; background: var(--danger-surface); border-left: 3px solid var(--danger); }
 .transformation-error p { margin: var(--space-1) 0 0; font-size: 0.82rem; }
 .transformation-result { margin-top: var(--space-3); padding-top: var(--space-6); border-top: 1px solid var(--border-strong); }
-.transformation-result h4 { margin-bottom: var(--space-4); font-size: 1.05rem; }
-.transformation-result h5 { margin: var(--space-4) 0 var(--space-2); font-size: 0.86rem; }
+.transformation-result h5 { margin-bottom: var(--space-4); font-size: 1.05rem; }
+.transformation-result h6 { margin: var(--space-4) 0 var(--space-2); font-size: 0.86rem; }
 .transformation-result code, .preservation-result code { font-family: ui-monospace, SFMono-Regular, Consolas, monospace; overflow-wrap: anywhere; }
 .relation-result-list { display: grid; gap: 0; margin: 0; padding: 0; list-style: none; border-top: 1px solid var(--border-default); }
 .relation-result-list li { display: grid; grid-template-columns: minmax(5rem, 0.6fr) minmax(0, 1fr) minmax(10rem, 1fr); gap: var(--space-3); align-items: center; padding: var(--space-3) 0; border-bottom: 1px solid var(--border-default); }
@@ -300,6 +315,8 @@ summary { width: fit-content; min-height: 2.75rem; padding-block: 0.7rem; cursor
   .closure-tool .button { width: 100%; }
   .closure-result__summary, .closure-coverage { grid-template-columns: 1fr; }
   .key-facts { grid-template-columns: 1fr; gap: var(--space-6); }
+  .concept-help__trigger { width: 100%; }
+  .concept-reference__list { grid-template-columns: 1fr; }
   .educational-disclosure, .educational-disclosure > summary { width: 100%; }
   .educational-disclosure__content { padding-left: var(--space-2); }
   .normal-form-row { grid-template-columns: 3.5rem minmax(7rem, 1fr); }

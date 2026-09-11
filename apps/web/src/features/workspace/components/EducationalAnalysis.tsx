@@ -2,6 +2,7 @@ import type { AnalysisResponseDto, SchemaInputDto } from "../../../api/schemawis
 import type { ContentToken, EducationalExplanation, FormalReasoningContent, TransformationExplanation } from "../../explanations/educational-content";
 import { buildCandidateKeyExplanation, buildEmptyPrimeAttributesExplanation, buildMinimalCoverExplanation, buildPrimeAttributeExplanation } from "../../explanations/explanation-builders";
 import { MathematicalNotation } from "./MathematicalNotation";
+import { ConceptHelp } from "./ConceptHelp";
 
 interface EducationalResultProps {
   readonly result: AnalysisResponseDto;
@@ -59,6 +60,7 @@ export function CandidateKeysResult({ result, snapshot, lookup }: EducationalRes
   return (
     <div className="key-fact">
       <h3>Candidate keys</h3>
+      <ConceptHelp concept="candidate-key" label="What is a candidate key?" />
       {result.candidateKeys.length === 0 ? <p className="empty-result">No candidate keys were returned.</p> : (
         <div className="notation-list">
           {result.candidateKeys.map((key, index) => <MathematicalNotation key={`${key.join(":")}:${index}`} value={{ kind: "attribute-set", ids: key }} lookup={lookup} />)}
@@ -67,7 +69,6 @@ export function CandidateKeysResult({ result, snapshot, lookup }: EducationalRes
       <details className="educational-disclosure">
         <summary>Why {result.candidateKeys.length === 1 ? "is this a candidate key" : "are these candidate keys"}?</summary>
         <div className="educational-disclosure__content">
-          <p>A candidate key is a minimal set of attributes that functionally determines every attribute in the relation.</p>
           {explanations.map((explanation, index) => <EducationalExplanationView key={`${result.candidateKeys[index]?.join(":")}:${index}`} explanation={explanation} lookup={lookup} />)}
           {result.candidateKeys.length === 0 ? <p>The response contains an empty list of candidate keys. This is different from a candidate key that is the empty set.</p> : null}
         </div>
@@ -82,11 +83,11 @@ export function PrimeAttributesResult({ result, lookup }: EducationalResultProps
   return (
     <div className="key-fact">
       <h3>Prime attributes</h3>
+      <ConceptHelp concept="prime-attribute" label="What is a prime attribute?" />
       <MathematicalNotation value={{ kind: "attribute-set", ids: result.primeAttributes }} lookup={lookup} />
       <details className="educational-disclosure">
         <summary>Why {result.primeAttributes.length === 1 ? "is this attribute prime" : "are these attributes prime"}?</summary>
         <div className="educational-disclosure__content">
-          <p>A prime attribute belongs to at least one candidate key.</p>
           {explanations.map((explanation, index) => <EducationalExplanationView key={`${result.primeAttributes[index]}:${index}`} explanation={explanation} lookup={lookup} />)}
           {emptyExplanation ? <EducationalExplanationView explanation={emptyExplanation} lookup={lookup} /> : null}
         </div>
@@ -100,6 +101,7 @@ export function MinimalCoverResult({ result, lookup }: EducationalResultProps) {
   return (
     <section className="analysis-section" aria-labelledby="minimal-cover-heading">
       <h3 id="minimal-cover-heading">Minimal cover</h3>
+      <ConceptHelp concept="minimal-cover" label="What is a minimal cover?" />
       {result.minimalCover.length === 0 ? <MathematicalNotation value={{ kind: "attribute-set", ids: [] }} lookup={lookup} /> : (
         <div className="notation-list">
           {result.minimalCover.map((dependency, index) => (

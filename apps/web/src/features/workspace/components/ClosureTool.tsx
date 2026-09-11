@@ -4,6 +4,7 @@ import type { AttributeDraft, ClosureState } from "../workspace-reducer";
 import type { ValidationIssue } from "../workspace-validation";
 import { Content, FormalReasoning } from "./EducationalAnalysis";
 import { MathematicalNotation } from "./MathematicalNotation";
+import { ConceptHelp } from "./ConceptHelp";
 
 interface ClosureToolProps {
   readonly attributes: readonly AttributeDraft[];
@@ -20,7 +21,7 @@ function ClosureExplanation({ model, selected, closure, lookup }: {
 }) {
   return (
     <>
-      <div className="closure-result" aria-live="polite">
+      <div className="closure-result">
         <dl className="closure-result__summary">
           <div><dt>Selected set</dt><dd><MathematicalNotation value={{ kind: "attribute-set", ids: selected }} lookup={lookup} /></dd></div>
           <div><dt>Closure</dt><dd><MathematicalNotation value={{ kind: "closure-result", selectedIds: selected, closureIds: closure }} lookup={lookup} /></dd></div>
@@ -84,6 +85,7 @@ export function ClosureTool({ attributes, issues, state, onCalculate }: ClosureT
             <div>
               <p className="section-number" aria-hidden="true">04</p>
               <h2 id="closure-tool-heading">Attribute closure</h2>
+              <ConceptHelp concept="attribute-closure" label="What is attribute closure?" />
             </div>
             <p>Select a set of attributes to calculate its closure under the current functional dependencies.</p>
           </div>

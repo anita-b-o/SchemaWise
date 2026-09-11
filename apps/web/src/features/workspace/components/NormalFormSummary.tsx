@@ -1,5 +1,6 @@
 import type { NormalFormDiagnosticsDto } from "../../../api/schemawise-contracts";
 import { BCNF_SATISFIED, ONE_NF_NOTICE, SECOND_NF_SATISFIED, SECOND_TO_THIRD_CONTEXT, THIRD_NF_SATISFIED, THIRD_TO_BCNF_CONTEXT } from "../../explanations/explanation-builders";
+import { ConceptHelp } from "./ConceptHelp";
 
 interface NormalFormSummaryProps {
   readonly normalForms: NormalFormDiagnosticsDto;
@@ -16,6 +17,7 @@ export function NormalFormSummary({ normalForms }: NormalFormSummaryProps) {
   return (
     <section className="analysis-section" aria-labelledby="normal-forms-heading">
       <h3 id="normal-forms-heading">Normal forms</h3>
+      <ConceptHelp concept="bcnf" label="About the hierarchy" />
       <div className="normal-form-summary">
         <div className="normal-form-row normal-form-row--assumed">
           <span className="normal-form-name">1NF*</span>
@@ -35,7 +37,7 @@ export function NormalFormSummary({ normalForms }: NormalFormSummaryProps) {
       </div>
       {normalForms.second.satisfied && !normalForms.third.satisfied ? <p className="normal-form-context">{SECOND_TO_THIRD_CONTEXT}</p> : null}
       {normalForms.third.satisfied && !normalForms.bcnf.satisfied ? <p className="normal-form-context">{THIRD_TO_BCNF_CONTEXT}</p> : null}
-      <div className="normal-form-implication" aria-label="BCNF implies 3NF implies 2NF"><span aria-hidden="true">BCNF ⇒ 3NF ⇒ 2NF</span><span className="visually-hidden">BCNF implies 3NF implies 2NF</span></div>
+      <p className="normal-form-implication"><span aria-hidden="true">BCNF ⇒ 3NF ⇒ 2NF</span><span className="visually-hidden">BCNF implies 3NF implies 2NF</span></p>
       <p className="one-nf-notice">{ONE_NF_NOTICE}</p>
     </section>
   );
