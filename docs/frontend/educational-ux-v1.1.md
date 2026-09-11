@@ -1,12 +1,13 @@
 # SchemaWise Educational UX v1.1
 
-Status: diseño aprobado. Tranche 1 implementada para Candidate Keys, Prime
+Status: **EDUCATIONAL UX V1.1: FROZEN** (2026-09-11). Tranche 1 implementada para Candidate Keys, Prime
 Attributes, Minimal Cover y primitivas de notación. Tranche 2 implementada para
 jerarquía y reasoning educativo de 2NF, 3NF y BCNF. Tranche 3 implementada para
 Attribute Closure, cobertura de la relación y relación conceptual con
 superkeys/candidate keys. Tranche 4 implementada para provenance de 3NF
-Synthesis y BCNF Decomposition y reasoning de Dependency Preservation. La
-tranche 5 permanece pendiente. No se
+Synthesis y BCNF Decomposition y reasoning de Dependency Preservation. Tranche
+5 implementada para Concept Help, glossary, accessibility y responsive
+hardening. No se
 modifican contratos ni algoritmos.
 
 ## 1. Objetivo educativo
@@ -520,9 +521,10 @@ Se adopta un sistema híbrido:
 
 - **definición inline breve** la primera vez que un concepto es esencial para
   interpretar el resultado;
-- **popover no modal** para definiciones breves opcionales en desktop, abierto
-  por botón con texto o término subrayado y también usable por teclado;
-- **disclosure inline** en mobile y para reglas/evidencia esenciales;
+- **ConceptHelp inline** para definiciones breves opcionales, abierto por un
+  botón con nombre accesible y región asociada; conserva el mismo DOM y patrón
+  en desktop y mobile;
+- **disclosure inline** para reglas/evidencia esenciales;
 - **glossary panel en flujo**, al final de Analysis, como índice reusable. No es
   drawer obligatorio ni ruta nueva.
 
@@ -898,8 +900,8 @@ que la UI representa evidencia, no que redescubre el resultado.
    garantías y dependency preservation claramente separados. Usa disclosures
    hermanos para Why y formal reasoning, conserva el resultado durante retries
    y resuelve toda notación contra el analyzed snapshot histórico.
-5. **Concept help and hardening:** glossary responsive, accesibilidad, mobile y
-   regresión integral A–F.
+5. **Concept help and hardening (implementada):** glossary responsive,
+   accesibilidad, mobile y regresión integral A–F.
 
 Cada tranche debe incluir tests frontend proporcionales y no modificar el
 Normalization Engine ni API v1.
@@ -912,15 +914,20 @@ Normalization Engine ni API v1.
   vocabularios fijos: guaranteed, observed/checked, not checked.
 - **Los mismos hechos se repiten entre 3NF y BCNF.** Se acepta porque las reglas
   difieren; cada explicación mantiene su contexto.
-- **La ayuda híbrida añade patrones.** En mobile todo contenido esencial cae a
-  disclosure inline; popover sólo mejora desktop.
+- **La ayuda híbrida añade patrones.** ConceptHelp mantiene un patrón inline
+  único en todos los viewports y el glossary queda cerrado por defecto.
 - **Copy contractual puede quedar desactualizado respecto del engine.** Builders
   y documentación se testean contra DTO kind y garantías versionadas.
 - **No mostrar trazas limita la pedagogía.** Es preferible a inventarlas; una
   futura trace requiere decisión explícita de API/engine.
 
-## 28. Next step
+## 28. Freeze
 
-Implementar la tranche 5, **Concept help and hardening**: glossary responsive,
-accesibilidad y mobile hardening, seguido de una auditoría integral de v1.1. No
-adelantar cambios de producción/deployment ni lógica matemática en el frontend.
+**EDUCATIONAL UX V1.1: FROZEN.** La auditoría integral está registrada en
+[`docs/testing/educational-ux-v1.1-audit.md`](../testing/educational-ux-v1.1-audit.md).
+No quedan defects Critical, High o Medium abiertos dentro del scope. La
+validación manual con NVDA/VoiceOver, dispositivos físicos y staging permanece
+como verificación externa posterior, no como defecto conocido.
+
+El siguiente paso es una auditoría visual real de staging después de un futuro
+push/deploy autorizado. Este freeze no realiza push ni deployment.

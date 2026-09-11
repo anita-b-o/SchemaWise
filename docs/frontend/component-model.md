@@ -1,7 +1,7 @@
 # Frontend component model
 
-> This is the implemented v1 baseline plus the Educational UX v1.1 Tranches 1–4.
-> The remaining v1.1 extension is defined by [educational-ux-v1.1.md](./educational-ux-v1.1.md) and
+> This is the implemented v1 baseline plus the frozen Educational UX v1.1 Tranches 1–5.
+> The v1.1 contract is defined by [educational-ux-v1.1.md](./educational-ux-v1.1.md) and
 > [educational-content-model.md](./educational-content-model.md).
 
 ## Component hierarchy
@@ -29,8 +29,9 @@ App
       ├─ ViolationDetails
       ├─ MinimalCoverResult
       ├─ SynthesisResult
-      └─ BcnfResult
-         └─ DependencyPreservationResult
+      ├─ BcnfResult
+      │  └─ DependencyPreservationResult
+      └─ ConceptGlossary
 ```
 
 For Educational UX v1.1, extend these cohesive result components rather than
@@ -45,6 +46,12 @@ justified by repeated formatting. The input editor uses native checkbox groups
 while the product limit remains six attributes. Generic
 `Card`, `Stack`, `Badge` abstractions are deferred until repetition proves a
 stable API; initial styles can use semantic classes and tokens.
+
+`ConceptHelp` owns one text button, its `aria-expanded`/`aria-controls`
+relationship and one concise inline definition. `ConceptGlossary` renders the
+same 16-entry TypeScript source as a closed native disclosure and semantic
+definition list. Neither component reads workspace state, persists open state
+or performs network work.
 
 The persistence extension keeps three ownership boundaries:
 

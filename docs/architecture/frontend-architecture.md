@@ -1,7 +1,7 @@
 # Frontend architecture
 
 Status: implemented MVP plus manual project persistence; Educational UX v1.1
-is designed but not implemented.
+is frozen.
 
 ## Context and boundaries
 
@@ -92,6 +92,11 @@ expansions or Minimal Cover execution traces. Those claims are omitted rather
 than reconstructed. Closure coverage may be compared as sets against its own
 captured snapshot after the API has calculated the closure.
 
+Static concept definitions form a separate presentation-only boundary.
+`ConceptHelp` and the glossary consume one TypeScript source, keep disclosure
+state local, and make no API calls. They are not persisted and cannot affect
+draft or project revisions.
+
 ### No client persistence in tranche one
 
 State lives in memory and resets on reload. `localStorage` recovery and URL
@@ -139,8 +144,8 @@ reader behavior is tested.
    example action.
 3. Connect analysis and render overview, minimal cover and explanations.
 4. Add 3NF synthesis and BCNF decomposition/preservation.
-5. Add the closure tool, responsive refinement and full accessibility/browser
-   verification.
+5. Add the closure tool, contextual concept reference, responsive refinement
+   and full accessibility/browser verification.
 
 The first slice should be independently typechecked and tested before visual
 construction expands.

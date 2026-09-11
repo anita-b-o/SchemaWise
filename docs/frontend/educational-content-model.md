@@ -235,19 +235,20 @@ una implementación accidental intente analizarlas.
 Las definiciones son contenido estático separado de explicaciones:
 
 ```ts
-type GlossaryEntry = {
+type ConceptDefinition = {
   id: ConceptId;
   term: string;
-  shortDefinition: readonly ContentToken[];
-  formalDefinition?: readonly ContentToken[];
-  related?: readonly ConceptId[];
-  caution?: readonly ContentToken[];
+  definition: string;
+  optionalNote?: string;
 };
 ```
 
-`caution` sostiene contrastes que previenen errores frecuentes, por ejemplo
-prime vs primary, 1NF assumed vs checked y preservation vs data loss. Un entry
-no contiene estado abierto ni decide popover/disclosure.
+`optionalNote` sostiene contrastes que previenen errores frecuentes, por
+ejemplo prime vs primary, 1NF assumed vs checked y preservation vs data loss.
+Una definición no contiene estado abierto ni decide layout. Las 16 definiciones
+canónicas viven exclusivamente en
+`apps/web/src/features/explanations/concept-definitions.ts`; no se serializan ni
+se obtienen del API.
 
 Las definiciones canónicas están inventariadas en
 `educational-ux-v1.1.md#16-estrategia-de-glossary-y-ayuda-conceptual`.
