@@ -11,6 +11,7 @@ import {
 
 const SECRET = "proxy-http-security-test-secret-32-bytes";
 const CSRF_SECRET = "proxy-http-csrf-test-secret-32-bytes";
+const WEB_ORIGIN = "https://schemawise-staging.vercel.app";
 const PASSWORD = "correct password";
 
 function proxyHeaders(method: string, pathAndQuery: string, clientIp = "198.51.100.10") {
@@ -54,6 +55,7 @@ function server(limits = DEFAULT_AUTH_RATE_LIMITS, auth = fakeAuth(), projectRep
     projectRepository,
     authCookie: { secure: false },
     csrfSecret: CSRF_SECRET,
+    corsOrigins: [WEB_ORIGIN],
     clientIpMode: "vercel-proxy",
     stagingProxySecret: SECRET,
     authRateLimits: limits,
@@ -111,6 +113,56 @@ describe("vercel-proxy API policy", () => {
       expect(authenticate).not.toHaveBeenCalled();
       expect(projectRepository.create).not.toHaveBeenCalled();
       expect(projectRepository.list).not.toHaveBeenCalled();
+    } finally { await app.close(); }
+  });
+
+  it("lets register and login reach their use cases with valid proxy provenance and no incoming CSRF token", async () => {
+    const base = fakeAuth();
+    const auth: AuthRuntime = {
+      ...base,
+      login: async (input) => ({
+        user: { id: randomUUID(), email: String(input.email).trim().toLowerCase() },
+        session: { id: randomUUID(), token: "L".repeat(43), expiresAt: new Date(Date.now() + 60_000) },
+      }),
+    };
+    const register = vi.spyOn(auth, "register");
+    const login = vi.spyOn(auth, "login");
+    const app = server(DEFAULT_AUTH_RATE_LIMITS, auth);
+    try {
+      const registerResponse = await app.inject(authPost(
+        "/api/v1/auth/register",
+        "register@example.com",
+        undefined,
+        { origin: WEB_ORIGIN },
+      ));
+      const loginResponse = await app.inject(authPost(
+        "/api/v1/auth/login",
+        "login@example.com",
+        undefined,
+        { origin: WEB_ORIGIN },
+      ));
+
+      expect(registerResponse.statusCode).toBe(201);
+      expect(loginResponse.statusCode).toBe(200);
+      expect(registerResponse.json().csrfToken).toMatch(/^[A-Za-z0-9_-]{43}$/);
+      expect(loginResponse.json().csrfToken).toMatch(/^[A-Za-z0-9_-]{43}$/);
+      expect(register).toHaveBeenCalledOnce();
+      expect(login).toHaveBeenCalledOnce();
+    } finally { await app.close(); }
+  });
+
+  it("rejects disallowed register and login origins before their use cases", async () => {
+    const auth = fakeAuth();
+    const register = vi.spyOn(auth, "register");
+    const login = vi.spyOn(auth, "login");
+    const app = server(DEFAULT_AUTH_RATE_LIMITS, auth);
+    try {
+      for (const path of ["/api/v1/auth/register", "/api/v1/auth/login"] as const) {
+        const response = await app.inject(authPost(path, "person@example.com", undefined, { origin: "https://evil.example" }));
+        expect(response.statusCode).toBe(403);
+      }
+      expect(register).not.toHaveBeenCalled();
+      expect(login).not.toHaveBeenCalled();
     } finally { await app.close(); }
   });
 
