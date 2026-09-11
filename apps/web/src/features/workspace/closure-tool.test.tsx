@@ -14,6 +14,9 @@ async function openExample(user: ReturnType<typeof userEvent.setup>) {
 }
 function result(input: SchemaInputDto, closure: readonly string[]): ClosureResponseDto { return { closure }; }
 function tool() { const heading = screen.getByRole("heading", { name: "Attribute closure" }); const section = heading.closest("section"); if (!section) throw new Error("Closure tool section missing"); return within(section); }
+async function expectClosureFormula(value: string) {
+  await waitFor(() => expect(tool().getByText(value, { selector: ".closure-result [aria-hidden]" })).toBeTruthy());
+}
 
 describe("attribute closure tool", () => {
   it("renders current attributes, supports simple and compound selections, and calculates from draft without analysis", async () => {
@@ -21,27 +24,53 @@ describe("attribute closure tool", () => {
     const api = apiWith(async (input) => result(input, input.relation.attributes.map((attribute) => attribute.id)));
     render(<SchemaWorkspace api={api} />);
     await openExample(user);
+    expect(tool().queryByText("What does this mean?")).toBeNull();
     expect(tool().getByRole("checkbox", { name: "A" })).toBeTruthy();
     expect(tool().getByRole("checkbox", { name: "B" })).toBeTruthy();
     await user.click(tool().getByRole("checkbox", { name: "A" }));
     await user.click(tool().getByRole("button", { name: "Calculate closure" }));
     expect(api.analyzeSchema).not.toHaveBeenCalled();
     expect(api.calculateClosure).toHaveBeenCalledWith(expect.objectContaining({ relation: expect.objectContaining({ name: "R" }), functionalDependencies: expect.any(Array), attributes: [expect.any(String)] }), expect.any(AbortSignal));
-    expect(await screen.findByText("A⁺ = {A, B, C}")).toBeTruthy();
+    await expectClosureFormula("A⁺ = {A, B, C}");
+    expect(tool().getByText("closure of A equals set containing A, B and C", { selector: ".closure-result .visually-hidden" })).toBeTruthy();
+    expect(tool().getByText("Selected set")).toBeTruthy();
+    expect(tool().getByRole("heading", { name: "Does this set determine every attribute in R?" })).toBeTruthy();
+    expect(tool().getByText(/Yes\./).closest("p")?.textContent).toContain("superkey");
+    expect(tool().getByText(/If a set is a superkey/, { selector: ".closure-meaning p" }).textContent).toContain("no proper subset");
+    expect(tool().getByText(/If a set is a superkey/, { selector: ".closure-meaning p" }).textContent).toContain("does not test that minimality condition");
+    expect(tool().getByText("Formal reasoning").closest("details")?.open).toBe(false);
     await user.click(tool().getByRole("checkbox", { name: "B" }));
     expect((tool().getByRole("checkbox", { name: "A" }) as HTMLInputElement).checked).toBe(true);
     expect((tool().getByRole("checkbox", { name: "B" }) as HTMLInputElement).checked).toBe(true);
   });
 
+  it("shows determined and missing attributes for a partial closure", async () => {
+    const user = userEvent.setup();
+    const api = apiWith(async (input) => result(input, input.relation.attributes.slice(0, 2).map((attribute) => attribute.id)));
+    render(<SchemaWorkspace api={api} />);
+    await openExample(user);
+    await user.click(tool().getByRole("checkbox", { name: "A" }));
+    await user.click(tool().getByRole("button", { name: "Calculate closure" }));
+    await expectClosureFormula("A⁺ = {A, B}");
+    expect(tool().getByText(/No\./).closest("p")?.textContent).toContain("not a superkey");
+    const coverage = tool().getByText("Does not determine").closest("div")!;
+    expect(coverage.textContent).toContain("C");
+  });
+
   it("allows the empty set and renders empty and non-empty empty-set closures", async () => {
     const user = userEvent.setup();
-    const api = apiWith(async (input) => result(input, input.functionalDependencies.length ? [input.relation.attributes[0]!.id, input.relation.attributes[1]!.id] : []));
+    let call = 0;
+    const api = apiWith(async (input) => {
+      call += 1;
+      return result(input, call === 1 ? [input.relation.attributes[0]!.id, input.relation.attributes[1]!.id] : []);
+    });
     render(<SchemaWorkspace api={api} />);
     await openExample(user);
     await user.click(tool().getByRole("button", { name: "Calculate closure" }));
-    expect(await screen.findByText("∅⁺ = {A, B}")).toBeTruthy();
+    await expectClosureFormula("∅⁺ = {A, B}");
+    expect(tool().getByText(/The empty determinant can still determine attributes/)).toBeTruthy();
     await user.click(tool().getByRole("button", { name: "Calculate again" }));
-    expect(await screen.findByText("∅⁺ = {A, B}")).toBeTruthy();
+    await expectClosureFormula("∅⁺ = ∅");
   });
 
   it("shows loading, network errors, and never sends an invalid draft", async () => {
@@ -54,7 +83,7 @@ describe("attribute closure tool", () => {
     await user.click(tool().getByRole("button", { name: "Calculate closure" }));
     expect(tool().getByRole("status").textContent).toContain("Calculating");
     resolve({ closure: [] });
-    await waitFor(() => expect(screen.getByText("∅⁺ = ∅")).toBeTruthy());
+    await expectClosureFormula("∅⁺ = ∅");
 
     cleanup();
     const failing = apiWith(async () => { throw new SchemaWiseApiError({ kind: "network", message: "secret" }); });
@@ -78,14 +107,14 @@ describe("attribute closure tool", () => {
     await openExample(user);
     await user.click(tool().getByRole("checkbox", { name: "A" }));
     await user.click(tool().getByRole("button", { name: "Calculate closure" }));
-    expect(await screen.findByText("A⁺ = {A, B, C}")).toBeTruthy();
+    await expectClosureFormula("A⁺ = {A, B, C}");
     await user.clear(screen.getByRole("textbox", { name: "Relation name" }));
     await user.type(screen.getByRole("textbox", { name: "Relation name" }), "Changed");
     expect(screen.getByText("Closure result is out of date")).toBeTruthy();
     await user.click(tool().getByRole("button", { name: "Calculate again" }));
     expect(tool().getByRole("button", { name: "Calculating…" })).toBeTruthy();
     firstResolve({ closure: [] });
-    expect(screen.getByText("A⁺ = {A, B, C}")).toBeTruthy();
+    expect(tool().getByText("A⁺ = {A, B, C}", { selector: ".closure-result [aria-hidden]" })).toBeTruthy();
   });
 
   it("cleans selected attributes when removed and preserves the old snapshot result", async () => {
@@ -95,11 +124,18 @@ describe("attribute closure tool", () => {
     await openExample(user);
     await user.click(tool().getByRole("checkbox", { name: "B" }));
     await user.click(tool().getByRole("button", { name: "Calculate closure" }));
-    expect(await screen.findByText("B⁺ = {A, B, C}")).toBeTruthy();
+    await expectClosureFormula("B⁺ = {A, B, C}");
+    const firstAttribute = screen.getByRole("textbox", { name: "Attribute 1 name" });
+    await user.clear(firstAttribute);
+    await user.type(firstAttribute, "Alpha");
+    expect(tool().getByText("B⁺ = {A, B, C}", { selector: ".closure-result [aria-hidden]" })).toBeTruthy();
     await user.click(screen.getByRole("button", { name: "Remove attribute B" }));
     await user.click(screen.getByRole("button", { name: "Remove attribute" }));
     expect(tool().queryByRole("checkbox", { name: "B" })).toBeNull();
     expect(screen.getByText("Closure result is out of date")).toBeTruthy();
-    expect(screen.getByText("B⁺ = {A, B, C}")).toBeTruthy();
+    expect(tool().getByText("B⁺ = {A, B, C}", { selector: ".closure-result [aria-hidden]" })).toBeTruthy();
+    expect(tool().getByText(/Yes\./).closest("p")?.textContent).toContain("superkey");
+    await user.click(tool().getByRole("button", { name: "Calculate again" }));
+    expect(api.calculateClosure).toHaveBeenLastCalledWith(expect.objectContaining({ attributes: [] }), expect.any(AbortSignal));
   });
 });

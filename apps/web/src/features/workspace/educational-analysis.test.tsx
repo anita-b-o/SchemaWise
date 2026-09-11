@@ -2,7 +2,7 @@ import { render, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { describe, expect, it } from "vitest";
 import type { AnalysisResponseDto, SchemaInputDto } from "../../api/schemawise-contracts";
-import { buildCandidateKeyExplanation, buildMinimalCoverExplanation, buildPrimeAttributeExplanation } from "../explanations/explanation-builders";
+import { buildCandidateKeyExplanation, buildClosureExplanation, buildMinimalCoverExplanation, buildPrimeAttributeExplanation } from "../explanations/explanation-builders";
 import { AnalysisResults } from "./components/AnalysisResults";
 import { MathematicalNotation } from "./components/MathematicalNotation";
 
@@ -64,6 +64,31 @@ describe("educational content foundations", () => {
     ]);
     expect(serialized).not.toContain('"source":"computed"');
     expect(serialized).not.toContain("closure");
+  });
+
+  it("derives closure coverage only from the response and its immutable snapshot", () => {
+    const complete = buildClosureExplanation(["a"], { closure: ["c", "a", "b"] }, snapshot);
+    expect(complete.determined).toEqual(["a", "b", "c"]);
+    expect(complete.missing).toEqual([]);
+    expect(complete.determinesAllAttributes).toBe(true);
+    expect(complete.educational.formal?.evidence.map((fact) => fact.source)).toEqual(["snapshot", "dto", "dto+snapshot"]);
+
+    const partial = buildClosureExplanation(["a"], { closure: ["a", "b"] }, snapshot);
+    expect(partial.determined).toEqual(["a", "b"]);
+    expect(partial.missing).toEqual(["c"]);
+    expect(partial.determinesAllAttributes).toBe(false);
+  });
+
+  it("supports empty-set closures without inferring candidate-key minimality", () => {
+    const emptySnapshot: SchemaInputDto = {
+      relation: { name: "R", attributes: [{ id: "a", name: "A" }, { id: "b", name: "B" }] },
+      functionalDependencies: [{ left: [], right: ["a"] }, { left: ["a"], right: ["b"] }],
+    };
+    const complete = buildClosureExplanation([], { closure: ["a", "b"] }, emptySnapshot);
+    const empty = buildClosureExplanation([], { closure: [] }, emptySnapshot);
+    expect(complete.determinesAllAttributes).toBe(true);
+    expect(empty.determinesAllAttributes).toBe(false);
+    expect(JSON.stringify([complete, empty])).not.toMatch(/empty set is a candidate key/i);
   });
 });
 
@@ -177,12 +202,14 @@ describe("accessible progressive disclosure and notation", () => {
       <MathematicalNotation value={{ kind: "attribute-set", ids: [] }} lookup={lookup} />
       <MathematicalNotation value={{ kind: "attribute-set", ids: ["a", "b"] }} lookup={lookup} />
       <MathematicalNotation value={{ kind: "closure", ids: ["a"] }} lookup={lookup} />
+      <MathematicalNotation value={{ kind: "closure-result", selectedIds: ["a"], closureIds: ["a", "b"] }} lookup={lookup} />
       <MathematicalNotation value={{ kind: "functional-dependency", dependency: { left: ["a"], right: [] } }} lookup={lookup} />
       <MathematicalNotation value={{ kind: "relation", snapshot }} lookup={lookup} />
     </div>);
     expect(container.textContent).toContain("empty set");
     expect(container.textContent).toContain("set containing A and B");
     expect(container.textContent).toContain("closure of A");
+    expect(container.textContent).toContain("closure of A equals set containing A and B");
     expect(container.textContent).toContain("functional dependency: A determines the empty set");
     expect(container.textContent).toContain("relation R with attributes A, B and C");
     expect(container.querySelectorAll("[aria-label]")).toHaveLength(0);
