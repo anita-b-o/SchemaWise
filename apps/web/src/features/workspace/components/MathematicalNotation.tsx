@@ -56,6 +56,13 @@ function notation(value: MathematicalNotationProps["value"], lookup?: ReadonlyMa
       const attributeNames = value.snapshot.relation.attributes.map((item) => item.name);
       return { visual: formatRelation(value.snapshot), spoken: `relation ${value.snapshot.relation.name} with attributes ${readableList(attributeNames)}` };
     }
+    case "relation-attributes": {
+      const attributeNames = names(value.ids, lookup);
+      return {
+        visual: formatAttributeSet(value.ids, lookup),
+        spoken: `relation with attributes ${readableList(attributeNames)}`,
+      };
+    }
   }
 }
 

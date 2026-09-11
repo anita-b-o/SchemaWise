@@ -63,7 +63,8 @@ type ContentToken =
   | { kind: "relation"; snapshot: SchemaInputDto };
 
 type ExplanationFact = {
-  source: "dto" | "snapshot" | "dto+snapshot" | "operation-contract";
+  source: "dto" | "snapshot" | "dto+snapshot" |
+    "operation-contract" | "derived-presentation";
   content: readonly ContentToken[];
 };
 
@@ -104,6 +105,8 @@ layout en el contenido: pertenecen al componente y al estado UI.
   usada por cobertura de Closure;
 - `operation-contract`: garantía documentada del algoritmo público, como
   lossless join de la síntesis/decomposición.
+- `derived-presentation`: numeración, orden visual o labels obtenidos sin
+  inferencia matemática; por ejemplo, `Step 1` por posición en el array DTO.
 
 Provenance se usa para revisión y tests. Sólo se muestra como etiqueta visible
 en resultados de transformaciones, donde distinguir `Guaranteed by algorithm`
@@ -142,9 +145,10 @@ buildSecondNormalFormExplanation(violation, snapshot)
 buildThirdNormalFormExplanation(violation, analysis, snapshot)
 buildBcnfExplanation(violation, analysis, snapshot)
 buildClosureExplanation(selected, response, inputSnapshot)
-buildSynthesisExplanation(response, snapshot)
+buildThirdNormalFormSynthesisExplanation(response, snapshot)
+buildBcnfDecompositionExplanation(response, snapshot)
 buildBcnfStepExplanation(step, snapshot)
-buildPreservationExplanation(response, snapshot)
+buildDependencyPreservationExplanation(response)
 ```
 
 Tranche 2 implementa los tres builders de normal forms y builders contextuales
@@ -221,6 +225,10 @@ una implementación accidental intente analizarlas.
   operation-contract facts.
 - Preservation: status y lost/preserved dependencies son DTO facts del checker,
   visibles como observed/checked.
+- La UI de tranche 4 representa guarantees y used evidence en colecciones
+  distintas. El checker de preservation no aporta guarantees algorítmicas: su
+  estado es evidencia observada. Las proyecciones concretas, el chase y las
+  recomputaciones frontend quedan explícitamente fuera del modelo.
 
 ## Glossary model
 

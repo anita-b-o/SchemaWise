@@ -1,5 +1,5 @@
 import type { AnalysisResponseDto, SchemaInputDto } from "../../../api/schemawise-contracts";
-import type { ContentToken, EducationalExplanation, FormalReasoningContent } from "../../explanations/educational-content";
+import type { ContentToken, EducationalExplanation, FormalReasoningContent, TransformationExplanation } from "../../explanations/educational-content";
 import { buildCandidateKeyExplanation, buildEmptyPrimeAttributesExplanation, buildMinimalCoverExplanation, buildPrimeAttributeExplanation } from "../../explanations/explanation-builders";
 import { MathematicalNotation } from "./MathematicalNotation";
 
@@ -33,6 +33,23 @@ export function EducationalExplanationView({ explanation, lookup, includeFormal 
     <div className="educational-explanation">
       <p><Content tokens={explanation.summary} lookup={lookup} /></p>
       {includeFormal && explanation.formal ? <details className="formal-reasoning"><summary>Formal reasoning</summary><FormalReasoning content={explanation.formal} lookup={lookup} /></details> : null}
+    </div>
+  );
+}
+
+export function TransformationReasoning({ explanation, lookup }: { readonly explanation: TransformationExplanation; readonly lookup: ReadonlyMap<string, string> }) {
+  return (
+    <div className="formal-reasoning__content transformation-reasoning">
+      {explanation.rule ? <p><strong>Rule.</strong> <Content tokens={explanation.rule} lookup={lookup} /></p> : null}
+      {explanation.guaranteedByAlgorithm.length > 0 ? (
+        <>
+          <p className="formal-reasoning__label"><strong>Guaranteed by this algorithm.</strong></p>
+          <ul>{explanation.guaranteedByAlgorithm.map((fact, index) => <li key={index}><Content tokens={fact.content} lookup={lookup} /></li>)}</ul>
+        </>
+      ) : null}
+      <p className="formal-reasoning__label"><strong>Used evidence.</strong></p>
+      <ul>{explanation.usedEvidence.map((fact, index) => <li key={index}><Content tokens={fact.content} lookup={lookup} /></li>)}</ul>
+      {explanation.conclusion ? <p><strong>Conclusion.</strong> <Content tokens={explanation.conclusion} lookup={lookup} /></p> : null}
     </div>
   );
 }

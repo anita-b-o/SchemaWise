@@ -4,7 +4,9 @@ Status: diseño aprobado. Tranche 1 implementada para Candidate Keys, Prime
 Attributes, Minimal Cover y primitivas de notación. Tranche 2 implementada para
 jerarquía y reasoning educativo de 2NF, 3NF y BCNF. Tranche 3 implementada para
 Attribute Closure, cobertura de la relación y relación conceptual con
-superkeys/candidate keys. Las tranches posteriores permanecen pendientes. No se
+superkeys/candidate keys. Tranche 4 implementada para provenance de 3NF
+Synthesis y BCNF Decomposition y reasoning de Dependency Preservation. La
+tranche 5 permanece pendiente. No se
 modifican contratos ni algoritmos.
 
 ## 1. Objetivo educativo
@@ -401,7 +403,7 @@ una secuencia de FDs ni una traza algorítmica. La ecuación completa tiene una
 única lectura accesible, por ejemplo `closure of A equals set containing A, B
 and C`.
 
-## 13. 3NF Synthesis
+## 13. 3NF Synthesis (Tranche 4 implementada)
 
 La presentación separa resultado y garantías:
 
@@ -451,7 +453,7 @@ La frase `Supports local enforcement of A → B` sólo se usa cuando la asociaci
 es directa y no ambigua. Como el DTO agrupa relaciones pero no relaciona cada
 FD con una relación, v1.1 omite esa línea y lista por separado el cover usado.
 
-## 14. BCNF Decomposition
+## 14. BCNF Decomposition (Tranche 4 implementada)
 
 Las relaciones finales son Level 1. Los pasos existentes forman un disclosure
 Level 2; cada paso conserva el orden del API:
@@ -489,7 +491,7 @@ La banda de propiedades dice:
 - antes del checker: `Not checked yet`;
 - después del checker: `Observed / checked result: Preserved` o `Not preserved`.
 
-## 15. Dependency preservation
+## 15. Dependency preservation (Tranche 4 implementada)
 
 Se mantiene como propiedad independiente de BCNF y de lossless join.
 
@@ -892,8 +894,10 @@ que la UI representa evidencia, no que redescubre el resultado.
 3. **Closure education (implementada):** resultado Selected/Closure/Superkey,
    atributos determinados/faltantes, empty set y stale snapshot sin requests
    automáticos.
-4. **Transformation provenance:** síntesis, BCNF steps, garantías y dependency
-   preservation claramente separados.
+4. **Transformation provenance (implementada):** síntesis, BCNF steps,
+   garantías y dependency preservation claramente separados. Usa disclosures
+   hermanos para Why y formal reasoning, conserva el resultado durante retries
+   y resuelve toda notación contra el analyzed snapshot histórico.
 5. **Concept help and hardening:** glossary responsive, accesibilidad, mobile y
    regresión integral A–F.
 
@@ -917,7 +921,6 @@ Normalization Engine ni API v1.
 
 ## 28. Next step
 
-Implementar únicamente la tranche 4, **Transformation provenance**, para 3NF
-Synthesis, BCNF Decomposition y Dependency Preservation. No adelantar el
-glosario global, cambios de producción/deployment ni lógica matemática en el
-frontend.
+Implementar la tranche 5, **Concept help and hardening**: glossary responsive,
+accesibilidad y mobile hardening, seguido de una auditoría integral de v1.1. No
+adelantar cambios de producción/deployment ni lógica matemática en el frontend.

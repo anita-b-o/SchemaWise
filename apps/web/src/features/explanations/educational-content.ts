@@ -1,6 +1,6 @@
 import type { FunctionalDependencyDto, SchemaInputDto } from "../../api/schemawise-contracts";
 
-export type EducationalSource = "dto" | "snapshot" | "dto+snapshot" | "operation-contract";
+export type EducationalSource = "dto" | "snapshot" | "dto+snapshot" | "operation-contract" | "derived-presentation";
 
 export type ContentToken =
   | { readonly kind: "text"; readonly value: string }
@@ -9,7 +9,8 @@ export type ContentToken =
   | { readonly kind: "functional-dependency"; readonly dependency: FunctionalDependencyDto }
   | { readonly kind: "closure"; readonly ids: readonly string[] }
   | { readonly kind: "closure-result"; readonly selectedIds: readonly string[]; readonly closureIds: readonly string[] }
-  | { readonly kind: "relation"; readonly snapshot: SchemaInputDto };
+  | { readonly kind: "relation"; readonly snapshot: SchemaInputDto }
+  | { readonly kind: "relation-attributes"; readonly ids: readonly string[] };
 
 export interface ExplanationFact {
   readonly source: EducationalSource;
@@ -26,6 +27,14 @@ export interface EducationalExplanation {
   readonly summary: readonly ContentToken[];
   readonly formal?: FormalReasoningContent;
   readonly concepts?: readonly ("candidate-key" | "primary-key" | "prime-attribute" | "minimal-cover" | "superkey")[];
+}
+
+export interface TransformationExplanation {
+  readonly summary: readonly ContentToken[];
+  readonly rule?: readonly ContentToken[];
+  readonly guaranteedByAlgorithm: readonly ExplanationFact[];
+  readonly usedEvidence: readonly ExplanationFact[];
+  readonly conclusion?: readonly ContentToken[];
 }
 
 export const text = (value: string): ContentToken => ({ kind: "text", value });

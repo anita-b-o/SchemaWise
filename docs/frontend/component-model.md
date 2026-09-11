@@ -1,6 +1,6 @@
 # Frontend component model
 
-> This is the implemented v1 baseline plus the Educational UX v1.1 Tranches 1–3.
+> This is the implemented v1 baseline plus the Educational UX v1.1 Tranches 1–4.
 > The remaining v1.1 extension is defined by [educational-ux-v1.1.md](./educational-ux-v1.1.md) and
 > [educational-content-model.md](./educational-content-model.md).
 
@@ -84,6 +84,15 @@ still moving initial focus to the close/email control.
 - `SynthesisResult`, `BcnfResult` and preservation result render separate
   asynchronous resources. `BcnfResult` owns the contextual preservation action,
   which consumes its leaf attribute sets plus the immutable analysis snapshot.
+- `SynthesisResult` keeps relation/source output compact, then provides sibling
+  Why and formal disclosures. Its formal view separates algorithm guarantees
+  from minimal-cover, relation-source and added-key response evidence.
+- `BcnfResult` preserves DTO step order and renders each source, violation and
+  result pair with accessible notation. Each step has sibling Why/formal
+  disclosures; the final guarantee block does not imply preservation.
+- `DependencyPreservationResult` labels its status as observed/checked, keeps
+  lost dependencies primary and preserved dependencies secondary, and explains
+  the projection procedure contractually without exposing a fictional trace.
 - `ClosureTool` is independent of analysis but consumes the current draft
   snapshot and API boundary. Its checkbox selection is local visual state; the
   reducer owns request status, selected input, response snapshot and stale

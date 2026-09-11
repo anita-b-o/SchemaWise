@@ -1,6 +1,8 @@
 import type { SchemaInputDto, ThirdNormalFormSynthesisResponseDto } from "../../../api/schemawise-contracts";
-import { formatAttributeSet, formatFunctionalDependency } from "../schema-formatters";
-import { synthesizedRelationSourceLabel, TRANSFORMATION_COPY } from "../transformation-explanations";
+import { buildThirdNormalFormSynthesisExplanation } from "../../explanations/explanation-builders";
+import { synthesizedRelationSourceLabel } from "../transformation-explanations";
+import { Content, TransformationReasoning } from "./EducationalAnalysis";
+import { MathematicalNotation } from "./MathematicalNotation";
 
 interface SynthesisResultProps {
   readonly result: ThirdNormalFormSynthesisResponseDto;
@@ -9,6 +11,7 @@ interface SynthesisResultProps {
 
 export function SynthesisResult({ result, snapshot }: SynthesisResultProps) {
   const lookup = new Map(snapshot.relation.attributes.map((attribute) => [attribute.id, attribute.name]));
+  const explanation = buildThirdNormalFormSynthesisExplanation(result, snapshot);
 
   return (
     <section className="transformation-result" aria-labelledby="synthesis-result-heading">
@@ -17,7 +20,7 @@ export function SynthesisResult({ result, snapshot }: SynthesisResultProps) {
         {result.relations.map((relation, index) => (
           <li key={`${relation.attributes.join(":")}:${index}`}>
             <span className="relation-result-label">Relation {index + 1}</span>
-            <code>{formatAttributeSet(relation.attributes, lookup)}</code>
+            <MathematicalNotation value={{ kind: "attribute-set", ids: relation.attributes }} lookup={lookup} />
             <span className="relation-source">{synthesizedRelationSourceLabel(relation.source)}</span>
           </li>
         ))}
@@ -26,24 +29,39 @@ export function SynthesisResult({ result, snapshot }: SynthesisResultProps) {
       {result.addedCandidateKey !== null ? (
         <div className="candidate-key-addition">
           <strong>Additional candidate-key relation</strong>
-          <code>{formatAttributeSet(result.addedCandidateKey, lookup)}</code>
-          <p>This relation was added because none of the synthesized relations contained a candidate key of the original relation.</p>
+          <MathematicalNotation value={{ kind: "attribute-set", ids: result.addedCandidateKey }} lookup={lookup} />
+          <p>No synthesized relation contained a candidate key, so the synthesis added a relation containing this candidate key.</p>
         </div>
       ) : null}
 
+      <details className="result-disclosure educational-disclosure">
+        <summary>Why were these relations created?</summary>
+        <div className="educational-disclosure__content">
+          <p><Content tokens={explanation.summary} lookup={lookup} /></p>
+          <p>{result.addedCandidateKey === null
+            ? "No additional candidate-key relation was required."
+            : "The response identifies the additional candidate-key relation shown above."}</p>
+        </div>
+      </details>
+
       <details className="result-disclosure">
         <summary>Minimal cover used</summary>
+        <p>This is the minimal cover used as the basis for the synthesis.</p>
         {result.minimalCover.length === 0 ? <code>∅</code> : (
           <div className="notation-list">
-            {result.minimalCover.map((dependency, index) => <code key={`${dependency.left.join(":")}:${dependency.right.join(":")}:${index}`}>{formatFunctionalDependency(dependency, lookup)}</code>)}
+            {result.minimalCover.map((dependency, index) => <MathematicalNotation key={`${dependency.left.join(":")}:${dependency.right.join(":")}:${index}`} value={{ kind: "functional-dependency", dependency }} lookup={lookup} />)}
           </div>
         )}
       </details>
 
       <div className="guarantee-note">
-        <strong>3NF synthesis guarantees</strong>
-        <p>{TRANSFORMATION_COPY.synthesisGuarantee}</p>
+        <strong>Guaranteed by this algorithm</strong>
+        <p>Final relations are in 3NF by construction · Dependency preserving · Lossless join</p>
       </div>
+      <details className="result-disclosure formal-reasoning-disclosure">
+        <summary>Formal reasoning</summary>
+        <TransformationReasoning explanation={explanation} lookup={lookup} />
+      </details>
     </section>
   );
 }

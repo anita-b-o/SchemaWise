@@ -1,6 +1,6 @@
-import type { AttributeSetDto, ClosureResponseDto, FunctionalDependencyDto, SchemaInputDto, SecondNormalFormViolationDto, ThirdNormalFormViolationDto } from "../../api/schemawise-contracts";
+import type { AttributeSetDto, BcnfDecompositionResponseDto, BcnfStepDto, ClosureResponseDto, DependencyPreservationResponseDto, FunctionalDependencyDto, SchemaInputDto, SecondNormalFormViolationDto, ThirdNormalFormSynthesisResponseDto, ThirdNormalFormViolationDto } from "../../api/schemawise-contracts";
 import { formatAttributeSet, formatFunctionalDependency } from "../workspace/schema-formatters";
-import { attribute, attributeSet, relation, text, type EducationalExplanation } from "./educational-content";
+import { attribute, attributeSet, relation, text, type EducationalExplanation, type TransformationExplanation } from "./educational-content";
 export interface Explanation { readonly label?: string; readonly dependency: string; readonly reasons: readonly string[]; readonly educational: EducationalExplanation; }
 function formatDeterminant(ids: readonly string[], lookup?: ReadonlyMap<string, string>): string { return formatAttributeSet(ids, lookup).replace(/^\{|\}$/g, ""); }
 export function buildSecondNormalFormExplanation(v: SecondNormalFormViolationDto, snapshot: SchemaInputDto): EducationalExplanation {
@@ -157,5 +157,103 @@ export function buildMinimalCoverExplanation(minimalCover: readonly FunctionalDe
       conclusion: [text("The operation returns these properties, not an execution trace; this view does not claim which dependency was changed or removed at any algorithm step.")],
     },
     concepts: ["minimal-cover"],
+  };
+}
+
+export function buildThirdNormalFormSynthesisExplanation(
+  response: ThirdNormalFormSynthesisResponseDto,
+  snapshot: SchemaInputDto,
+): TransformationExplanation {
+  const relationEvidence = response.relations.map(({ attributes, source }) => ({
+    source: "dto" as const,
+    content: [
+      attributeSet(attributes),
+      text(source === "minimal-cover" ? " is returned with minimal-cover provenance." : " is returned with candidate-key provenance."),
+    ],
+  }));
+  const addedKeyEvidence = response.addedCandidateKey === null
+    ? [{ source: "dto" as const, content: [text("The response reports that no additional candidate-key relation was required.")] }]
+    : [{ source: "dto" as const, content: [text("The response reports the added candidate key as "), attributeSet(response.addedCandidateKey), text(".")] }];
+
+  return {
+    summary: [text("Relations marked as minimal-cover come from the synthesis basis and support preservation of that cover. A candidate-key relation appears only when the synthesis needed one to complete its lossless construction.")],
+    rule: [text("3NF synthesis uses the returned minimal cover as its basis and adds a candidate-key relation only when no synthesized relation already contains a candidate key.")],
+    guaranteedByAlgorithm: [
+      { source: "operation-contract", content: [text("Every final relation is in third normal form by construction.")] },
+      { source: "operation-contract", content: [text("The decomposition is dependency preserving.")] },
+      { source: "operation-contract", content: [text("The decomposition has a lossless join.")] },
+    ],
+    usedEvidence: [
+      { source: "dto", content: [text(`The response returns ${response.minimalCover.length} ${response.minimalCover.length === 1 ? "dependency" : "dependencies"} in the minimal cover used for synthesis.`)] },
+      ...relationEvidence,
+      ...addedKeyEvidence,
+      { source: "snapshot", content: [text("Attribute names come from the analyzed relation "), relation(snapshot), text(".")] },
+      { source: "derived-presentation", content: [text("Relation numbering follows the response order and is only a presentation label.")] },
+    ],
+    conclusion: [text("These are guarantees of the synthesis operation, not results of independent 3NF, preservation, or lossless-join checkers in the browser.")],
+  };
+}
+
+export function buildBcnfDecompositionExplanation(
+  response: BcnfDecompositionResponseDto,
+  snapshot: SchemaInputDto,
+): TransformationExplanation {
+  return {
+    summary: [text("BCNF decomposition prioritizes the stronger normal form and a lossless decomposition. Dependency preservation is a separate property and is not guaranteed.")],
+    rule: [text("The algorithm repeatedly uses a reported BCNF violation to split its source relation, preserving the response order of those steps.")],
+    guaranteedByAlgorithm: [
+      { source: "operation-contract", content: [text("Every final relation returned by the decomposition satisfies BCNF.")] },
+      { source: "operation-contract", content: [text("Each binary decomposition step is lossless by construction, so the complete decomposition has a lossless join.")] },
+    ],
+    usedEvidence: [
+      { source: "dto", content: [text(`The response returns ${response.relations.length} final ${response.relations.length === 1 ? "relation" : "relations"} and ${response.steps.length} ordered decomposition ${response.steps.length === 1 ? "step" : "steps"}.`)] },
+      { source: "snapshot", content: [text("The source names use the analyzed relation "), relation(snapshot), text(".")] },
+      { source: "derived-presentation", content: [text("Step and relation numbering follows response order and does not create new schema identities.")] },
+    ],
+    conclusion: [text("Dependency preservation is not implied by lossless join and must be checked separately.")],
+  };
+}
+
+export function buildBcnfStepExplanation(step: BcnfStepDto, snapshot: SchemaInputDto): EducationalExplanation {
+  const dependency: FunctionalDependencyDto = { left: step.violation.determinant, right: [step.violation.dependent] };
+  const sourceIds = new Set(step.source);
+  const sourceToken = sourceIds.size === snapshot.relation.attributes.length && snapshot.relation.attributes.every(({ id }) => sourceIds.has(id))
+    ? relation(snapshot)
+    : { kind: "relation-attributes" as const, ids: step.source };
+  return {
+    summary: [
+      { kind: "functional-dependency", dependency },
+      text(" violates BCNF because its determinant is not a superkey. The source relation is therefore decomposed into two smaller relations."),
+    ],
+    formal: {
+      rule: [
+        text("For the reported singleton dependent "), attributeSet([step.violation.dependent]),
+        text(", the contractual binary rule is: relation one = X union Y; relation two = R minus (Y minus X). The displayed results come from the response."),
+      ],
+      evidence: [
+        { source: "dto", content: [text("Source: "), sourceToken, text(".")] },
+        { source: "dto", content: [text("Violation: "), { kind: "functional-dependency", dependency }, text("; its determinant is reported as non-superkey by the BCNF diagnostic.")] },
+        { source: "dto", content: [text("Relation one: "), attributeSet(step.result[0]), text(". Relation two: "), attributeSet(step.result[1]), text(".")] },
+      ],
+      conclusion: [text("This algorithm uses the violation determinant as the overlap condition for a lossless binary step; the browser displays the returned pair and does not run a chase or independently recompute it.")],
+    },
+    concepts: ["superkey"],
+  };
+}
+
+export function buildDependencyPreservationExplanation(
+  response: DependencyPreservationResponseDto,
+): TransformationExplanation {
+  return {
+    summary: [text(response.preserved
+      ? "The dependencies can be enforced using the decomposed relations without reconstructing the original relation."
+      : "At least one dependency cannot be enforced from the projected dependencies of the decomposed relations alone. This does not mean that data was lost.")],
+    rule: [text("Conceptually, dependency preservation is checked by projecting F onto each relation, combining those projected dependencies, and checking whether the original minimal-cover dependencies follow. This describes the operation contract, not a request execution trace.")],
+    guaranteedByAlgorithm: [],
+    usedEvidence: [
+      { source: "dto", content: [text(`The checker returned ${response.preserved ? "Preserved" : "Not preserved"}.`)] },
+      { source: "dto", content: [text(`It returned ${response.lostDependencies.length} lost and ${response.preservedDependencies.length} preserved minimal-cover ${response.lostDependencies.length + response.preservedDependencies.length === 1 ? "dependency" : "dependencies"}.`)] },
+    ],
+    conclusion: [text("The response does not expose the concrete projections, so this explanation does not assign a dependency to a particular final relation.")],
   };
 }

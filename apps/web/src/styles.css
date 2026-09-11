@@ -233,15 +233,22 @@ summary { width: fit-content; min-height: 2.75rem; padding-block: 0.7rem; cursor
 .decomposition-steps dl > div { display: grid; grid-template-columns: 5rem minmax(0, 1fr); gap: var(--space-3); }
 .decomposition-steps dt { color: var(--text-secondary); font-size: 0.78rem; }
 .decomposition-steps dd { display: flex; flex-wrap: wrap; gap: var(--space-2) var(--space-6); min-width: 0; margin: 0; }
+.relation-pair { display: inline-flex; flex-wrap: wrap; gap: var(--space-2); align-items: baseline; min-width: 0; }
+.relation-pair > span:first-child { color: var(--text-secondary); font-size: 0.75rem; }
 .property-explanation p { margin-bottom: var(--space-2); }
 .preservation-action { margin-top: var(--space-4); }
 .preservation-result { margin-top: var(--space-4); padding-left: var(--space-4); border-left: 3px solid var(--border-strong); }
 .preservation-result h5 { margin-top: 0; }
 .preservation-result > p { max-width: 42rem; margin-bottom: var(--space-2); font-size: 0.82rem; }
+.property-provenance { color: var(--text-secondary); }
 .property-status { font-weight: 750; }
 .property-status--positive { color: #17613f; }
 .property-status--negative { color: var(--danger); }
 .dependency-result-group { display: grid; gap: var(--space-2); }
+.dependency-evidence-list { display: grid; gap: var(--space-3); margin: 0; padding-left: 1.15rem; }
+.dependency-evidence-list li { min-width: 0; }
+.dependency-evidence-list p { max-width: 42rem; margin: var(--space-1) 0 0; color: var(--text-secondary); font-size: 0.8rem; overflow-wrap: anywhere; }
+.transformation-reasoning { margin-top: var(--space-2); }
 .visually-hidden { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip: rect(0, 0, 0, 0); white-space: nowrap; border: 0; }
 .project-bar { display: grid; grid-template-columns: minmax(12rem, 22rem) auto minmax(0, 1fr); gap: var(--space-4); align-items: end; margin-bottom: var(--space-6); padding: var(--space-4); background: var(--surface-raised); border-block: 1px solid var(--border-default); }
 .project-title-field { display: grid; gap: var(--space-1); }
