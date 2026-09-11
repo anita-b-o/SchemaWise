@@ -2,9 +2,10 @@
 
 Status: diseño aprobado. Tranche 1 implementada para Candidate Keys, Prime
 Attributes, Minimal Cover y primitivas de notación. Tranche 2 implementada para
-jerarquía y reasoning educativo de 2NF, 3NF y BCNF. Closure education y las
-tranches posteriores permanecen pendientes. No se modifican contratos ni
-algoritmos.
+jerarquía y reasoning educativo de 2NF, 3NF y BCNF. Tranche 3 implementada para
+Attribute Closure, cobertura de la relación y relación conceptual con
+superkeys/candidate keys. Las tranches posteriores permanecen pendientes. No se
+modifican contratos ni algoritmos.
 
 ## 1. Objetivo educativo
 
@@ -347,15 +348,16 @@ NORMAL FORMS                       BCNF implies 3NF implies 2NF
 BCNF  × Violated · 1              [Why?]
 ```
 
-## 12. Attribute Closure
+## 12. Attribute Closure (Tranche 3 implementada)
 
-Antes de calcular, la ayuda define:
+La explicación se muestra sólo después de calcular, para mantener la herramienta
+secundaria compacta. Define:
 
 > `X+` (the closure of X) is the set of attributes functionally determined by
 > X under the current functional dependencies F.
 
-También enumera tres usos: comprobar superkeys, fundamentar candidate keys y
-comprobar si una FD está implicada. Después de una respuesta:
+Explica que Closure permite comprobar la condición de superkey y fundamenta la
+búsqueda de candidate keys, sin afirmar minimalidad. Después de una respuesta:
 
 ```text
 Selected set                    Closure
@@ -391,6 +393,13 @@ Superkey test  Yes — the closure contains every attribute in R.
 
 Para ninguna selección se usa `∅⁺`, con nombre accesible `closure of the empty
 set`. Si el cierre también es vacío, ambos valores se conservan: `∅⁺ = ∅`.
+
+La implementación usa dos disclosures hermanos: `What does this mean?` para
+definición, atributos determinados/faltantes y conclusión Yes/No; y `Formal
+reasoning`, cerrado por defecto, para regla, evidencia y conclusión. No presenta
+una secuencia de FDs ni una traza algorítmica. La ecuación completa tiene una
+única lectura accesible, por ejemplo `closure of A equals set containing A, B
+and C`.
 
 ## 13. 3NF Synthesis
 
@@ -880,8 +889,9 @@ que la UI representa evidencia, no que redescubre el resultado.
    notación accesible, Candidate Keys, Prime Attributes y Minimal Cover.
 2. **Normal-form reasoning:** jerarquía 1NF*/2NF/3NF/BCNF y disclosures Level
    2/3 con casos 2NF→3NF y 3NF→BCNF.
-3. **Closure education:** resultado Selected/Closure/Superkey, empty set y stale
-   snapshot sin requests automáticos.
+3. **Closure education (implementada):** resultado Selected/Closure/Superkey,
+   atributos determinados/faltantes, empty set y stale snapshot sin requests
+   automáticos.
 4. **Transformation provenance:** síntesis, BCNF steps, garantías y dependency
    preservation claramente separados.
 5. **Concept help and hardening:** glossary responsive, accesibilidad, mobile y
@@ -907,9 +917,7 @@ Normalization Engine ni API v1.
 
 ## 28. Next step
 
-Implementar únicamente la tranche 1, **Educational foundations**: consolidar el
-modelo descrito en `educational-content-model.md`, añadir notación accesible y
-extender Candidate Keys, Prime Attributes y Minimal Cover con Level 2/3. Debe
-incluir unit tests de builders y component tests de disclosure, empty key,
-múltiples keys y ausencia de falsas trazas. No debe cambiar DTO, engine, API,
-persistence ni estado del proyecto.
+Implementar únicamente la tranche 4, **Transformation provenance**, para 3NF
+Synthesis, BCNF Decomposition y Dependency Preservation. No adelantar el
+glosario global, cambios de producción/deployment ni lógica matemática en el
+frontend.

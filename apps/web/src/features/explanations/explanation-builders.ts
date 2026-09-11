@@ -1,4 +1,4 @@
-import type { AttributeSetDto, FunctionalDependencyDto, SchemaInputDto, SecondNormalFormViolationDto, ThirdNormalFormViolationDto } from "../../api/schemawise-contracts";
+import type { AttributeSetDto, ClosureResponseDto, FunctionalDependencyDto, SchemaInputDto, SecondNormalFormViolationDto, ThirdNormalFormViolationDto } from "../../api/schemawise-contracts";
 import { formatAttributeSet, formatFunctionalDependency } from "../workspace/schema-formatters";
 import { attribute, attributeSet, relation, text, type EducationalExplanation } from "./educational-content";
 export interface Explanation { readonly label?: string; readonly dependency: string; readonly reasons: readonly string[]; readonly educational: EducationalExplanation; }
@@ -31,6 +31,52 @@ export const SECOND_TO_THIRD_CONTEXT = "This is possible because 2NF only rules 
 export const THIRD_TO_BCNF_CONTEXT = "This relation satisfies 3NF but not BCNF because 3NF allows a non-superkey determinant when the dependent is prime. BCNF does not allow that exception.";
 export function buildNormalFormContext(kind: "second-to-third" | "third-to-bcnf"): EducationalExplanation { return { summary: [text(kind === "second-to-third" ? SECOND_TO_THIRD_CONTEXT : THIRD_TO_BCNF_CONTEXT)] }; }
 export const ONE_NF_NOTICE = "SchemaWise analyzes 2NF, 3NF and BCNF assuming the relation is already in 1NF.";
+
+export interface ClosureExplanation {
+  readonly determined: readonly string[];
+  readonly missing: readonly string[];
+  readonly determinesAllAttributes: boolean;
+  readonly educational: EducationalExplanation;
+}
+
+export function buildClosureExplanation(selected: AttributeSetDto, response: ClosureResponseDto, snapshot: SchemaInputDto): ClosureExplanation {
+  const closureIds = new Set(response.closure);
+  const relationIds = snapshot.relation.attributes.map((item) => item.id);
+  const determined = relationIds.filter((id) => closureIds.has(id));
+  const missing = relationIds.filter((id) => !closureIds.has(id));
+  const determinesAllAttributes = relationIds.every((id) => closureIds.has(id));
+  const coverageConclusion = determinesAllAttributes
+    ? "This closure contains every attribute in the analyzed relation, so the selected set is a superkey."
+    : "This closure does not contain every attribute in the relation, so the selected set is not a superkey.";
+  const coverageEvidence = determinesAllAttributes
+    ? [text("Every relation attribute is present in the returned closure.")]
+    : [text("The returned closure is missing "), attributeSet(missing), text(" from the captured relation.")];
+
+  return {
+    determined,
+    missing,
+    determinesAllAttributes,
+    educational: {
+      summary: [
+        text("The closure of "),
+        attributeSet(selected),
+        text(", written "),
+        { kind: "closure", ids: selected },
+        text(", is the set of attributes functionally determined by it under the current functional dependencies."),
+      ],
+      formal: {
+        rule: [text("A set is a superkey if and only if all attributes of the relation are contained in its closure.")],
+        evidence: [
+          { source: "snapshot", content: [text("The selected set is "), attributeSet(selected), text(" in the captured relation "), relation(snapshot), text(".")] },
+          { source: "dto", content: [text("The closure response is "), { kind: "closure-result", selectedIds: selected, closureIds: response.closure }, text(".")] },
+          { source: "dto+snapshot", content: coverageEvidence },
+        ],
+        conclusion: [text(`${coverageConclusion} If a set is a superkey and no proper subset is also a superkey, then it is a candidate key.`)],
+      },
+      concepts: ["superkey", "candidate-key"],
+    },
+  };
+}
 
 export function buildCandidateKeyExplanation(key: AttributeSetDto, candidateKeyCount: number, snapshot: SchemaInputDto): EducationalExplanation {
   const empty = key.length === 0;

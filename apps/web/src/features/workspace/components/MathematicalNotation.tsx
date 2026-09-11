@@ -13,7 +13,11 @@ function readableList(values: readonly string[]): string {
 }
 
 function names(ids: readonly string[], lookup?: ReadonlyMap<string, string>): readonly string[] {
-  return ids.map((id) => lookup?.get(id) ?? `unknown attribute ${id}`);
+  const order = lookup ? new Map([...lookup.keys()].map((id, index) => [id, index])) : undefined;
+  const orderedIds = order
+    ? [...ids].sort((left, right) => (order.get(left) ?? Number.MAX_SAFE_INTEGER) - (order.get(right) ?? Number.MAX_SAFE_INTEGER))
+    : ids;
+  return orderedIds.map((id) => lookup?.get(id) ?? `unknown attribute ${id}`);
 }
 
 function notation(value: MathematicalNotationProps["value"], lookup?: ReadonlyMap<string, string>): { visual: string; spoken: string } {
@@ -38,6 +42,15 @@ function notation(value: MathematicalNotationProps["value"], lookup?: ReadonlyMa
       const setNames = names(value.ids, lookup);
       const visualBase = value.ids.length === 0 ? "∅" : formatAttributeSet(value.ids, lookup).replace(/^\{|\}$/g, "");
       return { visual: `${visualBase}⁺`, spoken: `closure of ${readableList(setNames)}` };
+    }
+    case "closure-result": {
+      const selectedNames = names(value.selectedIds, lookup);
+      const closureNames = names(value.closureIds, lookup);
+      const visualBase = value.selectedIds.length === 0 ? "∅" : formatAttributeSet(value.selectedIds, lookup).replace(/^\{|\}$/g, "");
+      return {
+        visual: `${visualBase}⁺ = ${formatAttributeSet(value.closureIds, lookup)}`,
+        spoken: `closure of ${readableList(selectedNames)} equals ${value.closureIds.length === 0 ? "the empty set" : `set containing ${readableList(closureNames)}`}`,
+      };
     }
     case "relation": {
       const attributeNames = value.snapshot.relation.attributes.map((item) => item.name);

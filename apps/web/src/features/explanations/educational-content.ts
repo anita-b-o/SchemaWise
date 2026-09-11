@@ -1,6 +1,6 @@
 import type { FunctionalDependencyDto, SchemaInputDto } from "../../api/schemawise-contracts";
 
-export type EducationalSource = "dto" | "snapshot" | "operation-contract";
+export type EducationalSource = "dto" | "snapshot" | "dto+snapshot" | "operation-contract";
 
 export type ContentToken =
   | { readonly kind: "text"; readonly value: string }
@@ -8,6 +8,7 @@ export type ContentToken =
   | { readonly kind: "attribute-set"; readonly ids: readonly string[] }
   | { readonly kind: "functional-dependency"; readonly dependency: FunctionalDependencyDto }
   | { readonly kind: "closure"; readonly ids: readonly string[] }
+  | { readonly kind: "closure-result"; readonly selectedIds: readonly string[]; readonly closureIds: readonly string[] }
   | { readonly kind: "relation"; readonly snapshot: SchemaInputDto };
 
 export interface ExplanationFact {

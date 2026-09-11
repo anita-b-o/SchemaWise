@@ -1,13 +1,55 @@
 import { useEffect, useState } from "react";
-import { formatClosure } from "../schema-formatters";
+import { buildClosureExplanation, type ClosureExplanation as ClosureExplanationModel } from "../../explanations/explanation-builders";
 import type { AttributeDraft, ClosureState } from "../workspace-reducer";
 import type { ValidationIssue } from "../workspace-validation";
+import { Content, FormalReasoning } from "./EducationalAnalysis";
+import { MathematicalNotation } from "./MathematicalNotation";
 
 interface ClosureToolProps {
   readonly attributes: readonly AttributeDraft[];
   readonly issues: readonly ValidationIssue[];
   readonly state: ClosureState;
   readonly onCalculate: (selectedAttributes: readonly string[]) => void;
+}
+
+function ClosureExplanation({ model, selected, closure, lookup }: {
+  readonly model: ClosureExplanationModel;
+  readonly selected: readonly string[];
+  readonly closure: readonly string[];
+  readonly lookup: ReadonlyMap<string, string>;
+}) {
+  return (
+    <>
+      <div className="closure-result" aria-live="polite">
+        <dl className="closure-result__summary">
+          <div><dt>Selected set</dt><dd><MathematicalNotation value={{ kind: "attribute-set", ids: selected }} lookup={lookup} /></dd></div>
+          <div><dt>Closure</dt><dd><MathematicalNotation value={{ kind: "closure-result", selectedIds: selected, closureIds: closure }} lookup={lookup} /></dd></div>
+        </dl>
+      </div>
+      <details className="educational-disclosure closure-meaning">
+        <summary>What does this mean?</summary>
+        <div className="educational-disclosure__content">
+          <p><Content tokens={model.educational.summary} lookup={lookup} /></p>
+          {selected.length === 0 ? <p>The empty determinant can still determine attributes when the functional dependencies imply them.</p> : null}
+          <dl className="closure-coverage">
+            <div><dt>Determines</dt><dd><MathematicalNotation value={{ kind: "attribute-set", ids: model.determined }} lookup={lookup} /></dd></div>
+            <div><dt>Does not determine</dt><dd>{model.missing.length === 0 ? "None" : <MathematicalNotation value={{ kind: "attribute-set", ids: model.missing }} lookup={lookup} />}</dd></div>
+          </dl>
+          <h3>Does this set determine every attribute in R?</h3>
+          <p><strong>{model.determinesAllAttributes ? "Yes" : "No"}.</strong> {model.determinesAllAttributes
+            ? "This closure contains every attribute in the analyzed relation, so the selected set is a superkey."
+            : "This closure does not contain every attribute in the relation, so the selected set is not a superkey."}</p>
+          <p>If a set is a superkey and no proper subset is also a superkey, then it is a candidate key. Closure establishes the superkey condition; this tool does not test that minimality condition.</p>
+        </div>
+      </details>
+      {model.educational.formal ? (
+        <details className="formal-reasoning closure-formal-reasoning">
+          <summary>Formal reasoning</summary>
+          <FormalReasoning content={model.educational.formal} lookup={lookup} />
+        </details>
+      ) : null}
+    </>
+  );
 }
 
 export function ClosureTool({ attributes, issues, state, onCalculate }: ClosureToolProps) {
@@ -31,8 +73,7 @@ export function ClosureTool({ attributes, issues, state, onCalculate }: ClosureT
   const hasResult = state.data !== undefined && state.inputSnapshot !== undefined && state.selectedAttributes !== undefined;
   const selectedSnapshot = state.selectedAttributes ?? [];
   const resultLookup = lookup(state.inputSnapshot);
-  const startingNotation = formatClosure(selectedSnapshot, resultLookup);
-  const resultText = hasResult ? `${startingNotation === "∅" ? "∅" : startingNotation.slice(1, -1)}⁺ = ${formatClosure(state.data!.closure, resultLookup)}` : "";
+  const explanation = hasResult ? buildClosureExplanation(selectedSnapshot, state.data!, state.inputSnapshot!) : undefined;
 
   return (
     <section className="closure-tool" aria-labelledby="closure-tool-heading">
@@ -46,7 +87,7 @@ export function ClosureTool({ attributes, issues, state, onCalculate }: ClosureT
             </div>
             <p>Select a set of attributes to calculate its closure under the current functional dependencies.</p>
           </div>
-          <p className="field-help"><code>X⁺</code> is calculated from the current draft. Select none to calculate the empty-set closure, <code>∅⁺</code>.</p>
+          <p className="field-help">Select none to use the empty set as the starting set.</p>
           <fieldset className="closure-attributes">
             <legend>Starting attributes</legend>
             <div className="attribute-options">
@@ -66,7 +107,7 @@ export function ClosureTool({ attributes, issues, state, onCalculate }: ClosureT
           {isLoading ? <p className="closure-status" role="status">Calculating closure…</p> : null}
           {state.outOfDate ? <div className="stale-notice closure-stale" role="status"><strong>Closure result is out of date</strong><p>The draft has changed since this calculation. Calculate again to update it.</p></div> : null}
           {state.status === "error" ? <div className="analysis-error closure-error" role="alert"><strong>Closure calculation failed</strong><p>{errorMessage}</p></div> : null}
-          {hasResult ? <p className="closure-result" aria-live="polite"><code>{resultText}</code></p> : null}
+          {explanation ? <ClosureExplanation model={explanation} selected={selectedSnapshot} closure={state.data!.closure} lookup={resultLookup} /> : null}
         </div>
       </details>
     </section>

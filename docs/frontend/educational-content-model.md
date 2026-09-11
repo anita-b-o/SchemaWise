@@ -58,10 +58,12 @@ type ContentToken =
   | { kind: "attribute-set"; ids: readonly string[] }
   | { kind: "functional-dependency"; dependency: FunctionalDependencyDto }
   | { kind: "closure"; ids: readonly string[] }
+  | { kind: "closure-result"; selectedIds: readonly string[];
+      closureIds: readonly string[] }
   | { kind: "relation"; snapshot: SchemaInputDto };
 
 type ExplanationFact = {
-  source: "dto" | "snapshot" | "operation-contract";
+  source: "dto" | "snapshot" | "dto+snapshot" | "operation-contract";
   content: readonly ContentToken[];
 };
 
@@ -79,9 +81,10 @@ type EducationalExplanation = {
 };
 ```
 
-`closure` representa únicamente la expresión visual `X⁺`; no contiene ni
-calcula el resultado de un cierre. El union de conceptos se ampliará por
-tranche, cuando exista un consumidor real.
+`closure` representa únicamente la expresión visual `X⁺`; `closure-result`
+representa la ecuación recibida `X⁺ = {...}` con un único nombre accesible.
+Ninguno calcula el cierre. El union de conceptos se amplía por tranche cuando
+existe un consumidor real.
 
 `summary` es el único campo obligatorio. `formal` existe cuando hay una regla
 aplicada a evidencia contextual. `concepts` sólo referencia definiciones
@@ -97,6 +100,8 @@ layout en el contenido: pertenecen al componente y al estado UI.
   dependent non-prime;
 - `snapshot`: lookup, cardinalidad, pertenencia, proper subset o cobertura entre
   sets de IDs asociados a la misma operación;
+- `dto+snapshot`: comparación trivial que necesita el resultado y su snapshot,
+  usada por cobertura de Closure;
 - `operation-contract`: garantía documentada del algoritmo público, como
   lossless join de la síntesis/decomposición.
 
@@ -203,6 +208,10 @@ una implementación accidental intente analizarlas.
 - Input: selected attributes, response y exactamente su input snapshot.
 - Derivación permitida: el closure contiene todos los attribute IDs del snapshot.
 - No compara con draft actual ni aplica FDs.
+- Output implementado: explicación estructurada, IDs determinados y faltantes,
+  y conclusión de cobertura/superkey.
+- La relación con candidate keys es sólo la regla conceptual de minimalidad; el
+  builder no prueba proper subsets ni afirma que la selección sea candidate key.
 
 ### Transformations
 

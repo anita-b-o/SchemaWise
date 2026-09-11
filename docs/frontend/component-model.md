@@ -1,6 +1,6 @@
 # Frontend component model
 
-> This is the implemented v1 baseline plus the Educational UX v1.1 Tranches 1 and 2.
+> This is the implemented v1 baseline plus the Educational UX v1.1 Tranches 1–3.
 > The remaining v1.1 extension is defined by [educational-ux-v1.1.md](./educational-ux-v1.1.md) and
 > [educational-content-model.md](./educational-content-model.md).
 
@@ -35,8 +35,8 @@ App
 
 For Educational UX v1.1, extend these cohesive result components rather than
 adding a parallel tutorial tree. The only new semantic responsibilities are
-`CandidateKeyExplanation`, `PrimeAttributeOrigins`, `FormalReasoning`,
-`ConceptHelp`, accessible math-notation primitives and
+`CandidateKeyExplanation`, `PrimeAttributeOrigins`, Closure coverage,
+`FormalReasoning`, `ConceptHelp`, accessible math-notation primitives and
 `PropertyProvenance`. Generic educational card/container wrappers remain
 explicitly deferred.
 
@@ -87,7 +87,9 @@ still moving initial focus to the close/email control.
 - `ClosureTool` is independent of analysis but consumes the current draft
   snapshot and API boundary. Its checkbox selection is local visual state; the
   reducer owns request status, selected input, response snapshot and stale
-  state.
+  state. After success it renders compact Selected/Closure values plus sibling
+  meaning and formal-reasoning disclosures. Coverage is built only from the
+  response and that captured snapshot; stale results never read the live draft.
 
 ## Feature-oriented source layout
 
