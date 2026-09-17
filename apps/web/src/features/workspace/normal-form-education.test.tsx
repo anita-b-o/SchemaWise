@@ -37,12 +37,13 @@ describe("normal form educational reasoning", () => {
       bcnf: { satisfied: false, violations: [{ determinant: ["b"], dependent: "c" }] },
     } }));
     expect(screen.getByText("This is possible because 2NF only rules out partial dependencies on candidate keys, while 3NF also restricts other non-trivial dependencies.")).toBeTruthy();
-    const group = screen.getByText("3NF violations").closest("details");
-    if (!group) throw new Error("3NF group missing");
-    await user.click(within(group).getByText("Why?"));
-    expect(within(group).getAllByText("B → C").length).toBeGreaterThan(0);
-    await user.click(within(group).getByText("Formal reasoning"));
-    expect(within(group).getByText("Neither 3NF condition is true, so this dependency violates 3NF.")).toBeTruthy();
+    const issue = screen.getByText("B → C", { selector: ".violation-dependency" }).closest("li");
+    if (!issue) throw new Error("Shared issue missing");
+    expect(within(issue).getByText("Violates 3NF and BCNF")).toBeTruthy();
+    await user.click(within(issue).getByText(/Explain issue/));
+    const thirdReason = within(issue).getByRole("heading", { name: "3NF" }).closest("section")!;
+    await user.click(within(thirdReason).getByText("Formal reasoning"));
+    expect(within(issue).getByText("Neither 3NF condition is true, so this dependency violates 3NF.")).toBeTruthy();
     expect(screen.getByText("BCNF implies 3NF implies 2NF", { selector: ".visually-hidden" })).toBeTruthy();
   });
 
@@ -65,9 +66,9 @@ describe("normal form educational reasoning", () => {
       third: { satisfied: true, violations: [] },
       bcnf: { satisfied: true, violations: [] },
     } }));
-    const second = screen.getByText("2NF violations").closest("details");
-    if (!second) throw new Error("2NF group missing");
-    await user.click(within(second).getByText("Why?"));
+    const second = screen.getByText("A → C", { selector: ".violation-dependency" }).closest("li");
+    if (!second) throw new Error("2NF issue missing");
+    await user.click(within(second).getByText(/Explain issue/));
     expect(within(second).getAllByText(/is a proper subset of/).length).toBeGreaterThan(0);
     expect(within(second).getByText("Because the determinant is a proper subset of the candidate key and the dependent is non-prime, this partial dependency violates 2NF.")).toBeTruthy();
     expect(within(second).getByText("Formal reasoning").closest("details")?.open).toBe(false);

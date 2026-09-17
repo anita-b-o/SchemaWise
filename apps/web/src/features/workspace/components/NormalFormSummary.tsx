@@ -1,12 +1,18 @@
-import type { NormalFormDiagnosticsDto } from "../../../api/schemawise-contracts";
+import type { AnalysisResponseDto, SchemaInputDto } from "../../../api/schemawise-contracts";
 import { BCNF_SATISFIED, ONE_NF_NOTICE, SECOND_NF_SATISFIED, SECOND_TO_THIRD_CONTEXT, THIRD_NF_SATISFIED, THIRD_TO_BCNF_CONTEXT } from "../../explanations/explanation-builders";
-import { ConceptHelp } from "./ConceptHelp";
+import { ConceptDefinitionContent } from "./ConceptHelp";
+import { ViolationDetails } from "./ViolationDetails";
 
 interface NormalFormSummaryProps {
-  readonly normalForms: NormalFormDiagnosticsDto;
+  readonly result: AnalysisResponseDto;
+  readonly snapshot: SchemaInputDto;
+  readonly lookup: ReadonlyMap<string, string>;
+  readonly selectedViolationId?: string | undefined;
+  readonly onSelectViolation?: ((id: string) => void) | undefined;
 }
 
-export function NormalFormSummary({ normalForms }: NormalFormSummaryProps) {
+export function NormalFormSummary({ result, snapshot, lookup, selectedViolationId, onSelectViolation }: NormalFormSummaryProps) {
+  const { normalForms } = result;
   const rows = [
     ["2NF", normalForms.second],
     ["3NF", normalForms.third],
@@ -17,12 +23,7 @@ export function NormalFormSummary({ normalForms }: NormalFormSummaryProps) {
   return (
     <section className="analysis-section" aria-labelledby="normal-forms-heading">
       <h3 id="normal-forms-heading">Normal forms</h3>
-      <ConceptHelp concept="bcnf" label="About the hierarchy" />
       <div className="normal-form-summary">
-        <div className="normal-form-row normal-form-row--assumed">
-          <span className="normal-form-name">1NF*</span>
-          <span className="normal-form-status">Assumed, not calculated</span>
-        </div>
         {rows.map(([name, form]) => (
           <div className="normal-form-row" key={name}>
             <span className="normal-form-name">{name}</span>
@@ -31,14 +32,22 @@ export function NormalFormSummary({ normalForms }: NormalFormSummaryProps) {
               {form.satisfied ? "Satisfied" : "Violated"}
             </span>
             <span className="normal-form-count">{form.violations.length > 0 ? `${form.violations.length} ${form.violations.length === 1 ? "violation" : "violations"}` : form.satisfied ? "No violations" : ""}</span>
-            {form.satisfied ? <p className="normal-form-satisfied-copy">{satisfiedCopy[name]}</p> : null}
           </div>
         ))}
       </div>
-      {normalForms.second.satisfied && !normalForms.third.satisfied ? <p className="normal-form-context">{SECOND_TO_THIRD_CONTEXT}</p> : null}
-      {normalForms.third.satisfied && !normalForms.bcnf.satisfied ? <p className="normal-form-context">{THIRD_TO_BCNF_CONTEXT}</p> : null}
-      <p className="normal-form-implication"><span aria-hidden="true">BCNF ⇒ 3NF ⇒ 2NF</span><span className="visually-hidden">BCNF implies 3NF implies 2NF</span></p>
-      <p className="one-nf-notice">{ONE_NF_NOTICE}</p>
+      <ViolationDetails result={result} lookup={lookup} snapshot={snapshot} selectedViolationId={selectedViolationId} onSelectViolation={onSelectViolation} />
+      <details className="educational-disclosure normal-form-explanation">
+        <summary>Explain normal forms</summary>
+        <div className="educational-disclosure__content">
+          <p className="explanation-label"><strong>Why these results</strong></p>
+          {rows.map(([name, form]) => form.satisfied ? <p key={name}><strong>{name}.</strong> {satisfiedCopy[name]}</p> : null)}
+          {normalForms.second.satisfied && !normalForms.third.satisfied ? <p>{SECOND_TO_THIRD_CONTEXT}</p> : null}
+          {normalForms.third.satisfied && !normalForms.bcnf.satisfied ? <p>{THIRD_TO_BCNF_CONTEXT}</p> : null}
+          <p className="normal-form-implication"><span aria-hidden="true">BCNF ⇒ 3NF ⇒ 2NF</span><span className="visually-hidden">BCNF implies 3NF implies 2NF</span></p>
+          <p className="one-nf-notice">{ONE_NF_NOTICE}</p>
+          <div className="related-concept"><span>Related concept</span><ConceptDefinitionContent concept="bcnf" /></div>
+        </div>
+      </details>
     </section>
   );
 }

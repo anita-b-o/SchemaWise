@@ -18,7 +18,6 @@ export function DependencyPreservationResult({ result, snapshot }: DependencyPre
       <p className={result.preserved ? "property-status property-status--positive" : "property-status property-status--negative"}>
         {result.preserved ? "✓ Preserved" : "× Not preserved"}
       </p>
-      <p className="property-provenance"><strong>Observed / checked result</strong></p>
       {!result.preserved ? (
         <div className="dependency-result-group">
           <strong>Lost dependencies</strong>
@@ -32,24 +31,25 @@ export function DependencyPreservationResult({ result, snapshot }: DependencyPre
           </ul>
         </div>
       ) : null}
-      <details className="result-disclosure educational-disclosure">
-        <summary>What does this result mean?</summary>
+      <details className="result-disclosure educational-disclosure result-explanation">
+        <summary>Explain preservation</summary>
         <div className="educational-disclosure__content">
+          <p className="property-provenance"><strong>Observed / checked result</strong></p>
           <p><Content tokens={explanation.summary} lookup={lookup} /></p>
+          {result.preservedDependencies.length > 0 ? (
+            <details className="result-disclosure">
+              <summary>Preserved dependencies</summary>
+              <p>These dependencies remain enforceable through the decomposed relations. A dependency may follow transitively from the combined projections; it does not need to appear directly in one final relation.</p>
+              <div className="notation-list">
+                {result.preservedDependencies.map((dependency, index) => <MathematicalNotation key={`${dependency.left.join(":")}:${dependency.right.join(":")}:${index}`} value={{ kind: "functional-dependency", dependency }} lookup={lookup} />)}
+              </div>
+            </details>
+          ) : null}
+          <details className="result-disclosure formal-reasoning-disclosure">
+            <summary>Formal reasoning</summary>
+            <TransformationReasoning explanation={explanation} lookup={lookup} />
+          </details>
         </div>
-      </details>
-      {result.preservedDependencies.length > 0 ? (
-        <details className="result-disclosure">
-          <summary>Preserved dependencies</summary>
-          <p>These dependencies remain enforceable through the decomposed relations. A dependency may follow transitively from the combined projections; it does not need to appear directly in one final relation.</p>
-          <div className="notation-list">
-            {result.preservedDependencies.map((dependency, index) => <MathematicalNotation key={`${dependency.left.join(":")}:${dependency.right.join(":")}:${index}`} value={{ kind: "functional-dependency", dependency }} lookup={lookup} />)}
-          </div>
-        </details>
-      ) : null}
-      <details className="result-disclosure formal-reasoning-disclosure">
-        <summary>Formal reasoning</summary>
-        <TransformationReasoning explanation={explanation} lookup={lookup} />
       </details>
     </section>
   );

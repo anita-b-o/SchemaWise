@@ -107,16 +107,16 @@ describe("normalization transformations", () => {
 
     const request = vi.mocked(api.synthesizeThirdNormalForm).mock.calls[0]![0];
     expect(request.relation.name).toBe("R");
-    const section = screen.getByRole("heading", { name: "3NF synthesis" }).closest("section")!;
+    const section = await screen.findByRole("region", { name: "Synthesis result" });
     expect(within(section).getAllByText("{A, B}").length).toBeGreaterThan(0);
     expect(within(section).getAllByText("{B, C}").length).toBeGreaterThan(0);
-    expect(within(section).getAllByText("Derived from minimal cover")).toHaveLength(2);
-    expect(within(section).getByText("Added to contain a candidate key")).toBeTruthy();
+    expect(within(section).getAllByText(/Derived from minimal cover/)).toHaveLength(2);
+    expect(within(section).getByText(/Added to contain a candidate key/)).toBeTruthy();
     expect(within(section).getByText("Additional candidate-key relation")).toBeTruthy();
     expect(within(section).getByText(/No synthesized relation contained a candidate key/)).toBeTruthy();
     expect(within(section).getByText(/Final relations are in 3NF by construction/)).toBeTruthy();
     expect(within(section).getByText(/Dependency preserving · Lossless join/)).toBeTruthy();
-    expect(within(section).getByText("Why were these relations created?").closest("details")?.open).toBe(false);
+    expect(within(section).getByText("Explain synthesis").closest("details")?.open).toBe(false);
     expect(within(section).getByText("Formal reasoning").closest("details")?.open).toBe(false);
     expect(within(section).getByText("Minimal cover used").closest("details")?.open).toBe(false);
     expect(section.textContent).not.toContain("independently verified");
@@ -129,9 +129,21 @@ describe("normalization transformations", () => {
     await analyzeExample(user);
     await user.click(screen.getByRole("button", { name: "Generate 3NF synthesis" }));
     expect(screen.queryByText("Additional candidate-key relation")).toBeNull();
-    const why = screen.getByText("Why were these relations created?");
+    const why = screen.getByText("Explain synthesis");
     await user.click(why);
     expect(screen.getByText("No additional candidate-key relation was required.")).toBeTruthy();
+  });
+
+  it("opens the generated transformation diagram directly and moves focus to it", async () => {
+    const user = userEvent.setup();
+    render(<SchemaWorkspace api={apiWith()} />);
+    await analyzeExample(user);
+    await user.click(screen.getByRole("button", { name: "Generate 3NF synthesis" }));
+    const result = await screen.findByRole("region", { name: "Synthesis result" });
+    await user.click(within(result).getByRole("button", { name: "View diagram" }));
+    const diagram = await screen.findByRole("region", { name: "3NF synthesis diagram" });
+    await waitFor(() => expect(document.activeElement).toBe(diagram));
+    expect(screen.getByRole("button", { name: "Transformations" }).getAttribute("aria-pressed")).toBe("true");
   });
 
   it("announces synthesis loading and retains its previous result after failure", async () => {
@@ -142,15 +154,15 @@ describe("normalization transformations", () => {
     render(<SchemaWorkspace api={api} />);
     await analyzeExample(user);
     await user.click(screen.getByRole("button", { name: "Generate 3NF synthesis" }));
-    await screen.findByRole("heading", { name: "3NF synthesis" });
-    await user.click(screen.getByRole("button", { name: "Generate 3NF synthesis again" }));
+    await screen.findByRole("heading", { name: "Synthesis result" });
+    await user.click(screen.getByRole("button", { name: "Run again: 3NF synthesis" }));
     expect(screen.getByText("Updating synthesis…")).toBeTruthy();
-    expect(screen.getByRole("heading", { name: "3NF synthesis" })).toBeTruthy();
+    expect(screen.getByRole("heading", { name: "Synthesis result" })).toBeTruthy();
     retry.reject(new SchemaWiseApiError({ kind: "network", message: "secret stack" }));
     const alert = await screen.findByRole("alert");
     expect(alert.textContent).toContain("Unable to generate 3NF synthesis.");
     expect(alert.textContent).not.toContain("secret stack");
-    expect(screen.getByRole("heading", { name: "3NF synthesis" })).toBeTruthy();
+    expect(screen.getByRole("heading", { name: "Synthesis result" })).toBeTruthy();
   });
 
   it("renders BCNF leaves, formatted steps and distinct guarantees", async () => {
@@ -159,7 +171,7 @@ describe("normalization transformations", () => {
     render(<SchemaWorkspace api={api} />);
     await analyzeExample(user);
     await user.click(screen.getByRole("button", { name: "Generate BCNF decomposition" }));
-    const section = (await screen.findByRole("heading", { name: "BCNF decomposition" })).closest("section")!;
+    const section = await screen.findByRole("region", { name: "Decomposition result" });
     expect(within(section).getByText("Final relations")).toBeTruthy();
     expect(within(section).getAllByText("{B, C}").length).toBeGreaterThan(0);
     expect(within(section).getAllByText("Step 1").length).toBeGreaterThan(0);
@@ -168,7 +180,7 @@ describe("normalization transformations", () => {
     expect(within(section).getByText("Every final relation satisfies BCNF. Each decomposition step is lossless by construction.")).toBeTruthy();
     expect(within(section).getByText("Dependency preservation is not guaranteed by BCNF decomposition.")).toBeTruthy();
     expect(within(section).getByText("Why was this relation split?", { exact: false }).closest("details")?.open).toBe(false);
-    expect(within(section).getByText("Lossless join vs dependency preservation").closest("details")?.open).toBe(false);
+    expect(within(section).getByText("Explain decomposition").closest("details")?.open).toBe(false);
     expect(screen.getByText("BCNF decomposition complete.", { selector: ".transformation-live-status" })).toBeTruthy();
   });
 
@@ -177,10 +189,12 @@ describe("normalization transformations", () => {
     render(<SchemaWorkspace api={apiWith()} />);
     await analyzeExample(user);
     await user.click(screen.getByRole("button", { name: "Generate BCNF decomposition" }));
-    const section = (await screen.findByRole("heading", { name: "BCNF decomposition" })).closest("section")!;
+    const section = await screen.findByRole("region", { name: "Decomposition result" });
+    await user.click(within(section).getByText(/View decomposition steps/));
     await user.click(within(section).getByText("Why was this relation split?", { exact: false }));
     expect(within(section).getByText(/violates BCNF because its determinant is not a superkey/)).toBeTruthy();
-    await user.click(within(section).getByText("Formal reasoning", { selector: "summary" }));
+    const step = section.querySelector<HTMLElement>(".decomposition-steps > ol > li")!;
+    await user.click(within(step).getByText("Formal reasoning"));
     expect(within(section).getByText(/relation one = X union Y; relation two = R minus/)).toBeTruthy();
     expect(within(section).getByText(/uses the violation determinant as the overlap condition/)).toBeTruthy();
     expect(section.textContent).not.toContain("guarantees dependency preservation");
@@ -193,7 +207,7 @@ describe("normalization transformations", () => {
     render(<SchemaWorkspace api={api} />);
     await analyzeExample(user);
     await user.click(screen.getByRole("button", { name: "Generate BCNF decomposition" }));
-    const section = (await screen.findByRole("heading", { name: "BCNF decomposition" })).closest("section")!;
+    const section = await screen.findByRole("region", { name: "Decomposition result" });
     const steps = [...section.querySelectorAll<HTMLElement>(".decomposition-steps > ol > li")];
     expect(steps).toHaveLength(2);
     expect(steps[0]?.textContent).toContain("B → C");
@@ -212,7 +226,7 @@ describe("normalization transformations", () => {
     expect(request.decomposition).toEqual([[request.relation.attributes[1]!.id, request.relation.attributes[2]!.id], [request.relation.attributes[0]!.id, request.relation.attributes[1]!.id]]);
     expect(await screen.findByText("✓ Preserved")).toBeTruthy();
     expect(screen.getByText("Observed / checked result")).toBeTruthy();
-    await user.click(screen.getByText("What does this result mean?"));
+    await user.click(screen.getByText("Explain preservation"));
     expect(screen.getByText(/can be enforced using the decomposed relations without reconstructing/)).toBeTruthy();
     expect(screen.getByText("Dependency preservation check complete.", { selector: ".transformation-live-status" })).toBeTruthy();
   });
@@ -234,7 +248,7 @@ describe("normalization transformations", () => {
     expect(within(section).getByText("A, B → C")).toBeTruthy();
     expect(within(section).getByText(/not implied by the union of the projected dependencies/)).toBeTruthy();
     expect(within(section).getByText("Preserved dependencies").compareDocumentPosition(within(section).getByText("Lost dependencies")) & Node.DOCUMENT_POSITION_PRECEDING).toBeTruthy();
-    await user.click(within(section).getByText("What does this result mean?"));
+    await user.click(within(section).getByText("Explain preservation"));
     expect(within(section).getByText(/does not mean that data was lost/)).toBeTruthy();
     await user.click(within(section).getByText("Preserved dependencies"));
     expect(within(section).getByText(/may follow transitively from the combined projections/)).toBeTruthy();
@@ -257,13 +271,13 @@ describe("normalization transformations", () => {
     await user.type(screen.getByRole("textbox", { name: "Attribute 1 name" }), "Changed");
 
     expect(screen.getByText("Analyze the updated schema before generating a transformation.")).toBeTruthy();
-    for (const name of [/Generate 3NF synthesis again/, /Generate BCNF decomposition again/, /Check dependency preservation again/]) {
+    for (const name of [/Run again: 3NF synthesis/, /Run again: BCNF decomposition/, /Check again: dependency preservation/]) {
       expect((screen.getByRole("button", { name }) as HTMLButtonElement).disabled).toBe(true);
     }
-    expect(screen.getByRole("heading", { name: "3NF synthesis" })).toBeTruthy();
-    expect(screen.getByRole("heading", { name: "BCNF decomposition" })).toBeTruthy();
+    expect(screen.getByRole("heading", { name: "Synthesis result" })).toBeTruthy();
+    expect(screen.getByRole("heading", { name: "Decomposition result" })).toBeTruthy();
     expect(screen.getByText("✓ Preserved")).toBeTruthy();
-    const bcnfSection = screen.getByRole("heading", { name: "BCNF decomposition" }).closest("section")!;
+    const bcnfSection = screen.getByRole("heading", { name: "Decomposition result" }).closest("section")!;
     expect(within(bcnfSection).getAllByText("R(A, B, C)").length).toBeGreaterThan(0);
     expect(bcnfSection.textContent).not.toContain("Changed");
   });
@@ -282,8 +296,8 @@ describe("normalization transformations", () => {
     await user.type(name, "Updated");
     await user.click(screen.getByRole("button", { name: "Analyze again" }));
     await screen.findByRole("heading", { name: "Updated(A, B, C)" });
-    expect(screen.queryByRole("heading", { name: "3NF synthesis" })).toBeNull();
-    expect(screen.queryByRole("heading", { name: "BCNF decomposition" })).toBeNull();
+    expect(screen.queryByRole("heading", { name: "Synthesis result" })).toBeNull();
+    expect(screen.queryByRole("heading", { name: "Decomposition result" })).toBeNull();
     expect(screen.queryByRole("heading", { name: "Dependency preservation" })).toBeNull();
     expect(screen.getByRole("button", { name: "Generate 3NF synthesis" })).toBeTruthy();
   });
@@ -300,13 +314,13 @@ describe("normalization transformations", () => {
     render(<SchemaWorkspace api={api} />);
     await analyzeExample(user);
     await user.click(screen.getByRole("button", { name: "Generate BCNF decomposition" }));
-    await screen.findByRole("heading", { name: "BCNF decomposition" });
-    await user.click(screen.getByRole("button", { name: "Generate BCNF decomposition again" }));
+    await screen.findByRole("heading", { name: "Decomposition result" });
+    await user.click(screen.getByRole("button", { name: "Run again: BCNF decomposition" }));
     expect(screen.getByText("Updating decomposition…")).toBeTruthy();
-    expect(screen.getByRole("heading", { name: "BCNF decomposition" })).toBeTruthy();
+    expect(screen.getByRole("heading", { name: "Decomposition result" })).toBeTruthy();
     bcnfRetry.reject(new SchemaWiseApiError({ kind: "unexpected", message: "stack" }));
     expect((await screen.findByRole("alert")).textContent).toContain("Unable to generate BCNF decomposition.");
-    expect(screen.getByRole("heading", { name: "BCNF decomposition" })).toBeTruthy();
+    expect(screen.getByRole("heading", { name: "Decomposition result" })).toBeTruthy();
     await user.click(screen.getByRole("button", { name: "Check dependency preservation" }));
     expect(screen.getByText("Checking dependency preservation…", { selector: ".transformation-live-status" })).toBeTruthy();
     preservationPending.reject(new SchemaWiseApiError({ kind: "api", code: "INCOMPLETE_DECOMPOSITION", message: "unsafe detail" }));
@@ -330,7 +344,7 @@ describe("normalization transformations", () => {
     await user.click(screen.getByRole("button", { name: "Generating 3NF synthesis…" }));
     expect(firstSignal?.aborted).toBe(true);
     expect(api.synthesizeThirdNormalForm).toHaveBeenCalledTimes(2);
-    expect(await screen.findByRole("heading", { name: "3NF synthesis" })).toBeTruthy();
+    expect(await screen.findByRole("heading", { name: "Synthesis result" })).toBeTruthy();
     expect(screen.queryByText("Unable to generate 3NF synthesis.")).toBeNull();
   });
 });

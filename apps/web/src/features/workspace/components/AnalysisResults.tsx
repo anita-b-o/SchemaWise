@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useRef, useState } from "react";
 import type { AnalysisResponseDto, BcnfDecompositionResponseDto, DependencyPreservationResponseDto, SchemaInputDto, ThirdNormalFormSynthesisResponseDto } from "../../../api/schemawise-contracts";
 import { formatRelation } from "../schema-formatters";
 import { TRANSFORMATION_COPY } from "../transformation-explanations";
@@ -7,7 +7,6 @@ import { BcnfResult } from "./BcnfResult";
 import { CandidateKeysResult, MinimalCoverResult, PrimeAttributesResult } from "./EducationalAnalysis";
 import { NormalFormSummary } from "./NormalFormSummary";
 import { SynthesisResult } from "./SynthesisResult";
-import { ViolationDetails } from "./ViolationDetails";
 import { ConceptGlossary } from "./ConceptHelp";
 import { SchemaVisualization, type VisualizationMode } from "./SchemaVisualization";
 
@@ -32,15 +31,27 @@ export function AnalysisResults({ result, draftSnapshot, analyzedSnapshot, outOf
   const [visualizationOpen, setVisualizationOpen] = useState(false);
   const [visualizationMode, setVisualizationMode] = useState<VisualizationMode>("schema");
   const [selectedViolationId, setSelectedViolationId] = useState<string>();
+  const resultsRef = useRef<HTMLElement>(null);
+
+  function focusVisualization() {
+    setTimeout(() => resultsRef.current?.querySelector<HTMLElement>(".schema-visualization__content")?.focus());
+  }
 
   function selectViolation(id: string) {
     setSelectedViolationId(id);
     setVisualizationMode("analysis");
     setVisualizationOpen(true);
+    focusVisualization();
+  }
+
+  function showTransformationsDiagram(target: "3NF synthesis diagram" | "BCNF decomposition diagram") {
+    setVisualizationMode("transformations");
+    setVisualizationOpen(true);
+    setTimeout(() => resultsRef.current?.querySelector<HTMLElement>(`[aria-label="${target}"]`)?.focus());
   }
 
   return (
-    <article className="analysis-results" aria-labelledby="analysis-heading">
+    <article ref={resultsRef} className="analysis-results" aria-labelledby="analysis-heading">
       <header className="analysis-header">
         <div>
           <p className="eyebrow">Analysis</p>
@@ -56,16 +67,14 @@ export function AnalysisResults({ result, draftSnapshot, analyzedSnapshot, outOf
         </div>
       ) : null}
 
-      <section className="analysis-section key-facts" aria-label="Key facts">
-        <CandidateKeysResult result={result} snapshot={analyzedSnapshot} lookup={lookup} />
-        <PrimeAttributesResult result={result} snapshot={analyzedSnapshot} lookup={lookup} />
+      <section className="analysis-summary" aria-label="Analysis summary">
+        <section className="analysis-section key-facts" aria-label="Key facts">
+          <CandidateKeysResult result={result} snapshot={analyzedSnapshot} lookup={lookup} />
+          <PrimeAttributesResult result={result} snapshot={analyzedSnapshot} lookup={lookup} />
+        </section>
+        <NormalFormSummary result={result} snapshot={analyzedSnapshot} lookup={lookup} selectedViolationId={selectedViolationId} onSelectViolation={selectViolation} />
+        <MinimalCoverResult result={result} snapshot={analyzedSnapshot} lookup={lookup} />
       </section>
-
-      <NormalFormSummary normalForms={result.normalForms} />
-
-      <MinimalCoverResult result={result} snapshot={analyzedSnapshot} lookup={lookup} />
-
-      <ViolationDetails result={result} lookup={lookup} snapshot={analyzedSnapshot} selectedViolationId={selectedViolationId} onSelectViolation={selectViolation} />
 
       <SchemaVisualization
         result={result}
@@ -91,28 +100,28 @@ export function AnalysisResults({ result, draftSnapshot, analyzedSnapshot, outOf
           {!result.normalForms.third.satisfied ? (
             <div className="transformation-flow" aria-busy={synthesis.status === "loading"}>
               <div className="transformation-action-row">
-                <div><h4>Third normal form</h4><p>Create a dependency-preserving, lossless decomposition.</p></div>
-                <button className="button button--primary" type="button" onClick={onGenerateSynthesis} disabled={outOfDate} aria-describedby={outOfDate ? "stale-transformation-help" : undefined}>
-                  {synthesis.status === "loading" ? "Generating 3NF synthesis…" : synthesis.data ? "Generate 3NF synthesis again" : "Generate 3NF synthesis"}
+                <div><h4>3NF synthesis</h4><p>Create a dependency-preserving, lossless decomposition.</p></div>
+                <button className={`button ${synthesis.data ? "button--quiet" : "button--primary"}`} type="button" onClick={onGenerateSynthesis} disabled={outOfDate} aria-describedby={outOfDate ? "stale-transformation-help" : undefined}>
+                  {synthesis.status === "loading" ? "Generating 3NF synthesis…" : synthesis.data ? <>Run again<span className="visually-hidden">: 3NF synthesis</span></> : "Generate 3NF synthesis"}
                 </button>
               </div>
               <div className="transformation-live-status" role="status" aria-live="polite">{synthesis.status === "loading" ? (synthesis.data ? "Updating synthesis…" : "Generating 3NF synthesis…") : synthesis.status === "success" ? "3NF synthesis complete." : ""}</div>
               {synthesisError ? <div className="transformation-error" role="alert"><strong>Unable to generate 3NF synthesis.</strong><p>{synthesisError}</p></div> : null}
-              {synthesis.data ? <SynthesisResult result={synthesis.data} snapshot={analyzedSnapshot} /> : null}
+              {synthesis.data ? <SynthesisResult result={synthesis.data} snapshot={analyzedSnapshot} onViewDiagram={() => showTransformationsDiagram("3NF synthesis diagram")} /> : null}
             </div>
           ) : null}
 
           {!result.normalForms.bcnf.satisfied ? (
             <div className="transformation-flow" aria-busy={bcnf.status === "loading"}>
               <div className="transformation-action-row">
-                <div><h4>Boyce–Codd normal form</h4><p>Decompose the relation into BCNF relations.</p></div>
-                <button className="button button--primary" type="button" onClick={onGenerateBcnf} disabled={outOfDate} aria-describedby={outOfDate ? "stale-transformation-help" : undefined}>
-                  {bcnf.status === "loading" ? "Generating BCNF decomposition…" : bcnf.data ? "Generate BCNF decomposition again" : "Generate BCNF decomposition"}
+                <div><h4>BCNF decomposition</h4><p>Decompose the relation into BCNF relations.</p></div>
+                <button className={`button ${bcnf.data ? "button--quiet" : "button--primary"}`} type="button" onClick={onGenerateBcnf} disabled={outOfDate} aria-describedby={outOfDate ? "stale-transformation-help" : undefined}>
+                  {bcnf.status === "loading" ? "Generating BCNF decomposition…" : bcnf.data ? <>Run again<span className="visually-hidden">: BCNF decomposition</span></> : "Generate BCNF decomposition"}
                 </button>
               </div>
               <div className="transformation-live-status" role="status" aria-live="polite">{bcnf.status === "loading" ? (bcnf.data ? "Updating decomposition…" : "Generating BCNF decomposition…") : bcnf.status === "success" ? "BCNF decomposition complete." : ""}</div>
               {bcnfError ? <div className="transformation-error" role="alert"><strong>Unable to generate BCNF decomposition.</strong><p>{bcnfError}</p></div> : null}
-              {bcnf.data ? <BcnfResult result={bcnf.data} snapshot={analyzedSnapshot} outOfDate={outOfDate} preservation={preservation} preservationError={preservationError} onCheckPreservation={onCheckPreservation} /> : null}
+              {bcnf.data ? <BcnfResult result={bcnf.data} snapshot={analyzedSnapshot} outOfDate={outOfDate} preservation={preservation} preservationError={preservationError} onCheckPreservation={onCheckPreservation} onViewDiagram={() => showTransformationsDiagram("BCNF decomposition diagram")} /> : null}
             </div>
           ) : null}
         </section>

@@ -6,7 +6,7 @@ interface ConceptHelpProps {
   readonly label?: string;
 }
 
-function ConceptDefinitionContent({ concept }: { readonly concept: ConceptId }) {
+export function ConceptDefinitionContent({ concept }: { readonly concept: ConceptId }) {
   const entry = CONCEPT_DEFINITIONS_BY_ID[concept];
   return (
     <>

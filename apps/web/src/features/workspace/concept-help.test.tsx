@@ -89,15 +89,14 @@ describe("contextual concept help", () => {
     render(<AnalysisResults result={result} analyzedSnapshot={snapshot} outOfDate={true}
       synthesis={{ status: "idle" }} bcnf={{ status: "idle" }} preservation={{ status: "idle" }}
       onGenerateSynthesis={onSynthesis} onGenerateBcnf={onBcnf} onCheckPreservation={onPreservation} />);
-    await user.click(screen.getByRole("button", { name: "What is a candidate key?" }));
+    await user.click(screen.getByText("Explain candidate keys"));
     await user.click(screen.getByText("Concept reference"));
-    await user.click(screen.getByText("3NF violations"));
-    await user.click(screen.getAllByText("Why?", { exact: false })[0]!);
+    await user.click(screen.getByText(/Explain issue/));
     expect(fetchSpy).not.toHaveBeenCalled();
     expect(onSynthesis).not.toHaveBeenCalled();
     expect(onBcnf).not.toHaveBeenCalled();
     expect(onPreservation).not.toHaveBeenCalled();
-    expect(screen.getByRole("region", { name: "Candidate key definition" }).textContent).toContain("SchemaWise discovers candidate keys");
+    expect(screen.getByRole("heading", { name: "Candidate keys" }).parentElement?.textContent).toContain("SchemaWise discovers candidate keys");
     fetchSpy.mockRestore();
   });
 
@@ -139,7 +138,7 @@ describe("dense and long educational content", () => {
       onGenerateSynthesis={() => undefined} onGenerateBcnf={() => undefined} onCheckPreservation={() => undefined} />);
     expect(screen.getByRole("heading", { name: new RegExp("^RelationR") }).textContent).toContain(longName);
     expect(container.querySelectorAll(".key-fact .notation-list code")).toHaveLength(2);
-    expect(container.querySelectorAll(".violation-list > li")).toHaveLength(12);
+    expect(container.querySelectorAll(".issue-list > li")).toHaveLength(4);
     expect(container.querySelectorAll(".decomposition-steps > ol > li")).toHaveLength(2);
     expect(container.querySelectorAll(".dependency-evidence-list > li")).toHaveLength(1);
     expect(container.querySelectorAll(".analysis-results")).toHaveLength(1);

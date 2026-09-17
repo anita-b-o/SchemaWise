@@ -102,7 +102,7 @@ describe("candidate key education", () => {
     renderResult(result({ candidateKeys: keys }));
     const section = sectionFor("Candidate keys");
     expect(section.querySelector(".notation-list")?.textContent).toContain(expected);
-    await user.click(within(section).getByText(/^Why /));
+    await user.click(within(section).getByText("Explain candidate keys"));
     expect(within(section).getAllByText(/A candidate key is a minimal set of attributes/).length).toBeGreaterThan(0);
     if (name === "composite") expect(section.textContent).toContain("composite candidate key");
     if (name === "multiple") expect(section.textContent).toContain("A relation can have multiple candidate keys");
@@ -186,15 +186,13 @@ describe("accessible progressive disclosure and notation", () => {
   it("uses a keyboard-focusable native summary and leaves nested formal reasoning closed", async () => {
     const user = userEvent.setup();
     renderResult();
-    const why = screen.getByText("Why is this a candidate key?");
-    expect(why.tagName).toBe("SUMMARY");
-    expect(why.tabIndex).toBe(0);
+    const explain = screen.getByText("Explain candidate keys");
+    expect(explain.tagName).toBe("SUMMARY");
+    expect(explain.tabIndex).toBe(0);
     await user.tab();
-    expect(document.activeElement).toBe(screen.getByRole("button", { name: "What is a candidate key?" }));
-    await user.tab();
-    expect(document.activeElement).toBe(why);
-    await user.click(why);
-    expect(why.closest("details")?.open).toBe(true);
+    expect(document.activeElement).toBe(explain);
+    await user.click(explain);
+    expect(explain.closest("details")?.open).toBe(true);
     expect(within(sectionFor("Candidate keys")).getByText("Formal reasoning").closest("details")?.open).toBe(false);
   });
 

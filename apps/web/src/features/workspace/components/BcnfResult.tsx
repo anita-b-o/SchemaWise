@@ -13,9 +13,10 @@ interface BcnfResultProps {
   readonly preservation: TransformationState<DependencyPreservationResponseDto>;
   readonly preservationError?: string | undefined;
   readonly onCheckPreservation: () => void;
+  readonly onViewDiagram: () => void;
 }
 
-export function BcnfResult({ result, snapshot, outOfDate, preservation, preservationError, onCheckPreservation }: BcnfResultProps) {
+export function BcnfResult({ result, snapshot, outOfDate, preservation, preservationError, onCheckPreservation, onViewDiagram }: BcnfResultProps) {
   const lookup = new Map(snapshot.relation.attributes.map((attribute) => [attribute.id, attribute.name]));
   const isLoading = preservation.status === "loading";
   const explanation = buildBcnfDecompositionExplanation(result, snapshot);
@@ -23,14 +24,18 @@ export function BcnfResult({ result, snapshot, outOfDate, preservation, preserva
 
   return (
     <section className="transformation-result" aria-labelledby="bcnf-result-heading">
-      <h5 id="bcnf-result-heading">BCNF decomposition</h5>
+      <h5 id="bcnf-result-heading">Decomposition result</h5>
       <h6>Final relations</h6>
       <div className="final-relations">
         {result.relations.map((relation, index) => <MathematicalNotation key={`${relation.attributes.join(":")}:${index}`} value={{ kind: "attribute-set", ids: relation.attributes }} lookup={lookup} />)}
       </div>
+      <p className="transformation-properties">{result.steps.length} decomposition {result.steps.length === 1 ? "step" : "steps"} <span aria-hidden="true">·</span> <strong>Lossless join</strong></p>
+      <div className="result-actions">
+        <button className="button button--quiet" type="button" onClick={onViewDiagram}>View diagram</button>
+      </div>
 
-      <div className="decomposition-steps">
-        <h6>Decomposition steps</h6>
+      <details className="result-disclosure decomposition-steps">
+        <summary>View decomposition steps <span className="violation-count">{result.steps.length}</span></summary>
         <ol>
           {result.steps.map((step, index) => {
             const sourceIds = new Set(step.source);
@@ -55,28 +60,31 @@ export function BcnfResult({ result, snapshot, outOfDate, preservation, preserva
             </li>;
           })}
         </ol>
-      </div>
-
-      <div className="guarantee-note">
-        <p><strong>Guaranteed by this algorithm</strong></p>
-        <p>{TRANSFORMATION_COPY.bcnfGuarantee}</p>
-        <p>{TRANSFORMATION_COPY.bcnfPreservationCaveat}</p>
-      </div>
-      <details className="result-disclosure property-explanation">
-        <summary>Lossless join vs dependency preservation</summary>
-        <p><Content tokens={explanation.summary} lookup={lookup} /></p>
-        <p><strong>Lossless join:</strong> {TRANSFORMATION_COPY.lossless}</p>
-        <p><strong>Dependency preservation:</strong> {TRANSFORMATION_COPY.preservation}</p>
-        <p><strong>They are different properties:</strong> a BCNF decomposition can be lossless and still not preserve every dependency.</p>
       </details>
-      <details className="result-disclosure formal-reasoning-disclosure">
-        <summary>Decomposition guarantees and evidence</summary>
-        <TransformationReasoning explanation={explanation} lookup={lookup} />
+
+      <details className="result-disclosure educational-disclosure result-explanation property-explanation">
+        <summary>Explain decomposition</summary>
+        <div className="educational-disclosure__content">
+          <p className="explanation-label"><strong>Why this result</strong></p>
+          <p><Content tokens={explanation.summary} lookup={lookup} /></p>
+          <div className="guarantee-note">
+            <p><strong>Guaranteed by this algorithm</strong></p>
+            <p>{TRANSFORMATION_COPY.bcnfGuarantee}</p>
+            <p>{TRANSFORMATION_COPY.bcnfPreservationCaveat}</p>
+          </div>
+          <p><strong>Lossless join:</strong> {TRANSFORMATION_COPY.lossless}</p>
+          <p><strong>Dependency preservation:</strong> {TRANSFORMATION_COPY.preservation}</p>
+          <p><strong>They are different properties:</strong> a BCNF decomposition can be lossless and still not preserve every dependency.</p>
+          <details className="result-disclosure formal-reasoning-disclosure">
+            <summary>Formal reasoning</summary>
+            <TransformationReasoning explanation={explanation} lookup={lookup} />
+          </details>
+        </div>
       </details>
 
       <div className="preservation-action" aria-busy={isLoading}>
         <button className="button button--secondary" type="button" onClick={onCheckPreservation} disabled={outOfDate} aria-describedby={outOfDate ? "stale-transformation-help" : undefined}>
-          {isLoading ? "Checking dependency preservation…" : preservation.data ? "Check dependency preservation again" : "Check dependency preservation"}
+          {isLoading ? "Checking dependency preservation…" : preservation.data ? <>Check again<span className="visually-hidden">: dependency preservation</span></> : "Check dependency preservation"}
         </button>
         <div className="transformation-live-status" role="status" aria-live="polite">{isLoading ? (preservation.data ? "Updating dependency preservation…" : "Checking dependency preservation…") : preservation.status === "success" ? "Dependency preservation check complete." : ""}</div>
         {preservationError ? <div className="transformation-error" role="alert"><strong>Unable to check dependency preservation.</strong><p>{preservationError}</p></div> : null}

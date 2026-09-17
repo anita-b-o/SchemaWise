@@ -269,7 +269,7 @@ function SynthesisDiagram({ snapshot, result }: { readonly snapshot: SchemaInput
   const model = buildSynthesisDiagramModel(snapshot, result);
   const lookup = lookupFor(model.original);
   return (
-    <section className="transformation-diagram" aria-label="3NF synthesis diagram">
+    <section className="transformation-diagram" aria-label="3NF synthesis diagram" tabIndex={-1}>
       <h4>3NF synthesis</h4>
       <p className="diagram-description">One synthesis operation produces a set of relations; this is not a decomposition tree.</p>
       <RelationSetNode label="Original relation" ids={model.original.attributes.map((attribute) => attribute.id)} lookup={lookup} />
@@ -320,7 +320,7 @@ function BcnfDiagram({ snapshot, result }: { readonly snapshot: SchemaInputDto; 
   const lookup = lookupFor(model.original);
   const [selectedStepId, setSelectedStepId] = useState(model.steps[0]?.id);
   return (
-    <section className="transformation-diagram" aria-label="BCNF decomposition diagram">
+    <section className="transformation-diagram" aria-label="BCNF decomposition diagram" tabIndex={-1}>
       <h4>BCNF decomposition</h4>
       <p className="diagram-description">Ordered split sequence from the response. Select one step to emphasize its source, violating dependency and two results.</p>
       {model.steps.length === 0 ? <p className="diagram-empty">No decomposition steps were returned.</p> : (
@@ -383,11 +383,11 @@ export function SchemaVisualization({ result, draftSnapshot, analyzedSnapshot, o
   return (
     <section className="schema-visualization" aria-labelledby={`${panelId}-heading`}>
       <button className="schema-visualization__toggle" type="button" aria-expanded={open} aria-controls={panelId} onClick={onToggle}>
-        <span><span className="eyebrow">Diagram</span><strong id={`${panelId}-heading`}>Visualize schema</strong></span>
+        <span><span className="eyebrow">View</span><strong id={`${panelId}-heading`}>Diagram</strong></span>
         <span aria-hidden="true">{open ? "−" : "+"}</span>
       </button>
       {open ? (
-        <div id={panelId} className="schema-visualization__content">
+        <div id={panelId} className="schema-visualization__content" tabIndex={-1}>
           <p className="schema-visualization__intro">A presentation of existing schema and analysis evidence. The diagram does not calculate normalization results.</p>
           <div className="diagram-mode-switch" role="group" aria-label="Diagram mode">
             {modes.map((item) => <button key={item.id} type="button" aria-pressed={mode === item.id} onClick={() => onModeChange(item.id)}>{item.label}</button>)}

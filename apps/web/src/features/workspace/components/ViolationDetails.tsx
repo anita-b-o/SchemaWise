@@ -11,53 +11,79 @@ interface ViolationDetailsProps {
   readonly onSelectViolation?: ((id: string) => void) | undefined;
 }
 
-function ViolationGroup({ title, normalForm, explanations, lookup, selectedViolationId, onSelectViolation }: { readonly title: string; readonly normalForm: NormalFormKind; readonly explanations: readonly Explanation[]; readonly lookup: ReadonlyMap<string, string>; readonly selectedViolationId?: string | undefined; readonly onSelectViolation?: ((id: string) => void) | undefined }) {
-  if (explanations.length === 0) return null;
+interface IssueExplanation {
+  readonly groupKey: string;
+  readonly normalForm: NormalFormKind;
+  readonly selectionId: string;
+  readonly explanation: Explanation;
+}
+
+interface Issue {
+  readonly dependency: string;
+  readonly explanations: readonly IssueExplanation[];
+}
+
+function issuesFor(result: AnalysisResponseDto, lookup: ReadonlyMap<string, string>, snapshot: SchemaInputDto): readonly Issue[] {
+  const entries: IssueExplanation[] = [
+    ...result.normalForms.second.violations.map((violation, index) => ({ groupKey: JSON.stringify([violation.determinant, violation.dependent]), normalForm: "2NF" as const, selectionId: violationSelectionId("2NF", index), explanation: explainSecondNormalForm(violation, lookup, snapshot) })),
+    ...result.normalForms.third.violations.map((violation, index) => ({ groupKey: JSON.stringify([violation.determinant, violation.dependent]), normalForm: "3NF" as const, selectionId: violationSelectionId("3NF", index), explanation: explainThirdNormalForm(violation, result.primeAttributes, lookup, snapshot) })),
+    ...result.normalForms.bcnf.violations.map((violation, index) => ({ groupKey: JSON.stringify([violation.determinant, violation.dependent]), normalForm: "BCNF" as const, selectionId: violationSelectionId("BCNF", index), explanation: explainBcnf(violation, lookup, snapshot) })),
+  ];
+  const grouped = new Map<string, IssueExplanation[]>();
+  for (const entry of entries) grouped.set(entry.groupKey, [...(grouped.get(entry.groupKey) ?? []), entry]);
+  return [...grouped.values()].map((explanations) => ({ dependency: explanations[0]!.explanation.dependency, explanations }));
+}
+
+export function ViolationDetails({ result, lookup, snapshot, selectedViolationId, onSelectViolation }: ViolationDetailsProps) {
+  const issues = issuesFor(result, lookup, snapshot);
+  if (issues.length === 0) return null;
+
   return (
-    <details className="violation-group">
-      <summary>{title} <span className="violation-count">{explanations.length} {explanations.length === 1 ? "violation" : "violations"}</span></summary>
-      <ol className="violation-list">
-        {explanations.map((explanation, index) => {
-          const selectionId = violationSelectionId(normalForm, index);
-          const selected = selectionId === selectedViolationId;
+    <div className="normal-form-issues">
+      <div className="issues-heading-row">
+        <h4>Issues</h4>
+        <span>{issues.length} {issues.length === 1 ? "dependency" : "dependencies"}</span>
+      </div>
+      <ol className="issue-list">
+        {issues.map((issue) => {
+          const selected = issue.explanations.some(({ selectionId }) => selectionId === selectedViolationId);
+          const forms = issue.explanations.map(({ normalForm }) => normalForm);
           return (
-            <li key={`${explanation.dependency}:${index}`} className={selected ? "violation-list__item--selected" : undefined}>
-              {explanation.label ? <strong className="violation-label">{explanation.label}</strong> : null}
-              <code className="violation-dependency">{explanation.dependency}</code>
-              <ul className="violation-evidence">
-                {explanation.reasons.map((reason) => <li key={reason}>{reason}</li>)}
-              </ul>
-              <details className="formal-reasoning-disclosure">
-                <summary>Why? <span className="visually-hidden">for {explanation.dependency}</span></summary>
-                <EducationalExplanationView explanation={explanation.educational} lookup={lookup} includeFormal={false} />
-              </details>
-              {explanation.educational.formal ? <details className="formal-reasoning-disclosure">
-                <summary>Formal reasoning <span className="visually-hidden">for {explanation.dependency}</span></summary>
-                <FormalReasoning content={explanation.educational.formal} lookup={lookup} />
-              </details> : null}
-              {onSelectViolation ? <button className="button button--quiet violation-diagram-action" type="button" aria-pressed={selected} onClick={() => onSelectViolation(selectionId)}>{selected ? "Selected in diagram" : "Show in diagram"}<span className="visually-hidden">: {explanation.dependency}</span></button> : null}
+            <li key={issue.dependency} className={selected ? "issue-list__item--selected" : undefined}>
+              <div className="issue-summary">
+                <code className="violation-dependency">{issue.dependency}</code>
+                <span>Violates {forms.join(" and ")}</span>
+              </div>
+              <div className="issue-actions">
+                <details className="educational-disclosure issue-explanation">
+                  <summary>Explain issue <span className="visually-hidden">{issue.dependency}</span></summary>
+                  <div className="educational-disclosure__content">
+                    {issue.explanations.map(({ normalForm, selectionId, explanation }) => (
+                      <section className="issue-reason" aria-labelledby={`${selectionId}-reason`} key={selectionId}>
+                        <h5 id={`${selectionId}-reason`}>{normalForm}</h5>
+                        {explanation.label ? <strong className="violation-label">{explanation.label}</strong> : null}
+                        <ul className="violation-evidence">{explanation.reasons.map((reason) => <li key={reason}>{reason}</li>)}</ul>
+                        <EducationalExplanationView explanation={explanation.educational} lookup={lookup} includeFormal={false} />
+                        {explanation.educational.formal ? (
+                          <details className="formal-reasoning-disclosure">
+                            <summary>Formal reasoning <span className="visually-hidden">for {normalForm} issue {issue.dependency}</span></summary>
+                            <FormalReasoning content={explanation.educational.formal} lookup={lookup} />
+                          </details>
+                        ) : null}
+                      </section>
+                    ))}
+                  </div>
+                </details>
+                {onSelectViolation ? (
+                  <button className="button button--quiet violation-diagram-action" type="button" aria-pressed={selected} onClick={() => onSelectViolation(issue.explanations[0]!.selectionId)}>
+                    {selected ? "Selected in diagram" : "Show in diagram"}<span className="visually-hidden">: {issue.dependency}</span>
+                  </button>
+                ) : null}
+              </div>
             </li>
           );
         })}
       </ol>
-    </details>
-  );
-}
-
-export function ViolationDetails({ result, lookup, snapshot, selectedViolationId, onSelectViolation }: ViolationDetailsProps) {
-  const { normalForms, primeAttributes } = result;
-  const second = normalForms.second.violations.map((violation) => explainSecondNormalForm(violation, lookup, snapshot));
-  const third = normalForms.third.violations.map((violation) => explainThirdNormalForm(violation, primeAttributes, lookup, snapshot));
-  const bcnf = normalForms.bcnf.violations.map((violation) => explainBcnf(violation, lookup, snapshot));
-  if (second.length + third.length + bcnf.length === 0) return null;
-
-  return (
-    <section className="analysis-section violation-details" aria-labelledby="violation-details-heading">
-      <h3 id="violation-details-heading">Violation details</h3>
-      <p className="section-help">Open a normal form to inspect the evidence identified by the analysis.</p>
-      <ViolationGroup title="2NF violations" normalForm="2NF" explanations={second} lookup={lookup} selectedViolationId={selectedViolationId} onSelectViolation={onSelectViolation} />
-      <ViolationGroup title="3NF violations" normalForm="3NF" explanations={third} lookup={lookup} selectedViolationId={selectedViolationId} onSelectViolation={onSelectViolation} />
-      <ViolationGroup title="BCNF violations" normalForm="BCNF" explanations={bcnf} lookup={lookup} selectedViolationId={selectedViolationId} onSelectViolation={onSelectViolation} />
-    </section>
+    </div>
   );
 }

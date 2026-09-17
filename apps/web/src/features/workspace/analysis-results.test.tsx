@@ -43,6 +43,21 @@ function deferred<T>() {
 }
 
 describe("schema analysis interactions", () => {
+  it("keeps the essential analysis visible while every depth control stays closed", async () => {
+    const user = userEvent.setup();
+    render(<SchemaWorkspace api={apiWith(async (input) => analysisFor(input))} />);
+    await loadExample(user);
+    await user.click(screen.getByRole("button", { name: "Analyze schema" }));
+    const article = (await screen.findByRole("heading", { name: "R(A, B, C)" })).closest("article")!;
+    for (const heading of ["Candidate keys", "Prime attributes", "Normal forms", "Issues", "Minimal cover"]) {
+      const element = within(article).getByRole("heading", { name: heading });
+      expect(element.closest("details")).toBeNull();
+    }
+    expect(article.querySelectorAll("details[open]")).toHaveLength(0);
+    expect(article.querySelectorAll(".issue-list > li")).toHaveLength(2);
+    expect(within(article).getByText("Concept reference").closest("details")?.open).toBe(false);
+  });
+
   it("submits a valid snapshot once and renders the ordered analysis content", async () => {
     const user = userEvent.setup();
     const api = apiWith(async (input) => analysisFor(input));
@@ -67,7 +82,7 @@ describe("schema analysis interactions", () => {
     expect(screen.getByText("SchemaWise analyzes 2NF, 3NF and BCNF assuming the relation is already in 1NF.")).toBeTruthy();
     expect(screen.queryByText("1NF ✓")).toBeNull();
 
-    const order = ["Candidate keys", "Prime attributes", "Normal forms", "Minimal cover", "Violation details"].map((name) => screen.getByRole("heading", { name }));
+    const order = ["Candidate keys", "Prime attributes", "Normal forms", "Issues", "Minimal cover"].map((name) => screen.getByRole("heading", { name }));
     for (let index = 1; index < order.length; index += 1) expect(order[index - 1]!.compareDocumentPosition(order[index]!) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
   });
 
@@ -128,7 +143,7 @@ describe("schema analysis interactions", () => {
     expect(within(results).queryByText("{Client}")).toBeNull();
     const candidateSection = within(results).getByRole("heading", { name: "Candidate keys" }).parentElement;
     if (!candidateSection) throw new Error("Candidate key section was not found");
-    await user.click(within(candidateSection).getByText(/^Why /));
+    await user.click(within(candidateSection).getByText("Explain candidate keys"));
     expect([...candidateSection.querySelectorAll(".educational-disclosure [aria-hidden]")].map((node) => node.textContent)).toContain("{Customer}");
     expect(candidateSection.textContent).not.toContain("Client");
     expect(screen.getByRole("button", { name: "Analyze again" })).toBeTruthy();
@@ -194,7 +209,9 @@ describe("schema analysis interactions", () => {
     render(<SchemaWorkspace api={api} />);
     await loadExample(user);
     await user.click(screen.getByRole("button", { name: "Analyze schema" }));
-    await screen.findByRole("heading", { name: "Violation details" });
+    await screen.findByRole("heading", { name: "Issues" });
+    const explanations = screen.getAllByText(/Explain issue/);
+    for (const explanation of explanations) await user.click(explanation);
     expect(screen.getByText("Candidate key: {A, B}")).toBeTruthy();
     expect(screen.getByText("Partial determinant: {A}")).toBeTruthy();
     expect(screen.getByText("Dependent non-prime attribute: C")).toBeTruthy();
@@ -202,7 +219,8 @@ describe("schema analysis interactions", () => {
     expect(screen.getByText("C is not a prime attribute.")).toBeTruthy();
     expect(screen.getByText("Therefore this dependency violates 3NF.")).toBeTruthy();
     expect(screen.getByText("Therefore this dependency violates BCNF.")).toBeTruthy();
-    for (const name of ["2NF violations", "3NF violations", "BCNF violations"]) expect(screen.getByText(name).closest("details")).toBeTruthy();
+    for (const name of ["2NF", "3NF", "BCNF"]) expect(screen.getByRole("heading", { name })).toBeTruthy();
+    expect(document.querySelectorAll(".issue-list > li")).toHaveLength(2);
   });
 
   it("aborts an active request on unmount without exposing an error", async () => {

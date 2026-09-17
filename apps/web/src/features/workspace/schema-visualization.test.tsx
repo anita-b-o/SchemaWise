@@ -61,7 +61,7 @@ function view(options: { draftSnapshot?: SchemaInputDto; analyzed?: SchemaInputD
 }
 
 async function openVisualization(user: ReturnType<typeof userEvent.setup>) {
-  await user.click(screen.getByRole("button", { name: /Visualize schema/ }));
+  await user.click(screen.getByRole("button", { name: /Diagram/ }));
   return document.querySelector<HTMLElement>(".schema-visualization__content")!;
 }
 
@@ -95,7 +95,6 @@ describe("schema visualization", () => {
   it("synchronizes a textual 2NF selection with exact diagram evidence", async () => {
     const user = userEvent.setup();
     view();
-    await user.click(screen.getByText("2NF violations"));
     await user.click(screen.getByRole("button", { name: /Show in diagram: A → C/ }));
     const panel = document.querySelector<HTMLElement>(".schema-visualization__content")!;
     expect(within(panel).getByRole("button", { name: "Analysis" }).getAttribute("aria-pressed")).toBe("true");
