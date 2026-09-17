@@ -105,6 +105,9 @@ did not dominate Results at desktop or phone widths.
 - Case A 3NF synthesis displayed the original relation and a fan-out to
   `{A,B}` and `{B,C}`, both labeled from the minimal-cover source. It did not
   imply that one FD causally created a relation or resemble a BCNF split tree.
+- The real partial-dependency case `A -> C` produced `{A,C}` as
+  `Minimal-cover source` and the added `{A,B}` relation as
+  `Candidate-key source`.
 - BCNF rendered ordered response steps with source, violating FD and two
   results. The four-attribute chain `A -> B`, `B -> C`, `C -> D` produced two
   real steps. Selecting step 2 left only step 2 pressed/emphasized, by keyboard
