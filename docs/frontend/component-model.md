@@ -140,6 +140,26 @@ explicit labelled native group.
   meaning and formal-reasoning disclosures. Coverage is built only from the
   response and that captured snapshot; stale results never read the live draft.
 
+Schema Visualization v1.3 adds one secondary branch owned by `AnalysisResults`:
+
+```text
+AnalysisResults
+└─ SchemaVisualization                 local open/mode/violation selection
+   ├─ RelationDiagram                  semantic relation + exact FD rails
+   ├─ AnalysisMode                     returned keys/prime/violations
+   └─ TransformationsMode
+      ├─ SynthesisDiagram              fan-out, never a split tree
+      ├─ BcnfDiagram                   ordered selectable DTO split steps
+      └─ PreservationDiagram           checked status + returned lost FDs
+```
+
+Pure builders in `schema-visualization-model.ts` translate DTOs and snapshots
+to presentation-only records. The Schema mode receives the current draft;
+Analysis and Transformations receive the immutable analyzed snapshot. Diagram
+state is neither persisted nor added to the workspace reducer. See
+[`schema-visualization-model.md`](./schema-visualization-model.md) and
+[ADR 018](../adr/018-schema-visualization.md).
+
 ## Feature-oriented source layout
 
 ```text

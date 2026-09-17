@@ -113,6 +113,15 @@ Static concept definitions form a separate presentation-only boundary.
 state local, and make no API calls. They are not persisted and cannot affect
 draft or project revisions.
 
+Schema Visualization v1.3 follows the same boundary. Pure builders map DTOs
+and the appropriate snapshot to short-lived diagram models; semantic HTML/CSS
+renders those models without graph or layout libraries. Schema mode may read
+the current draft and is labeled accordingly. Analysis, 3NF, BCNF and
+preservation diagrams read only the immutable analyzed snapshot and returned
+DTO evidence. Composite determinants remain one set-valued endpoint. Diagram
+selection is local presentation state and cannot mutate a schema, revision or
+calculation resource. See [ADR 018](../adr/018-schema-visualization.md).
+
 ### No client draft persistence
 
 State lives in memory and resets on reload. `localStorage` recovery and URL
