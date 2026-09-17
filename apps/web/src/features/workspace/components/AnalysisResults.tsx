@@ -1,3 +1,4 @@
+import { useState } from "react";
 import type { AnalysisResponseDto, BcnfDecompositionResponseDto, DependencyPreservationResponseDto, SchemaInputDto, ThirdNormalFormSynthesisResponseDto } from "../../../api/schemawise-contracts";
 import { formatRelation } from "../schema-formatters";
 import { TRANSFORMATION_COPY } from "../transformation-explanations";
@@ -8,9 +9,11 @@ import { NormalFormSummary } from "./NormalFormSummary";
 import { SynthesisResult } from "./SynthesisResult";
 import { ViolationDetails } from "./ViolationDetails";
 import { ConceptGlossary } from "./ConceptHelp";
+import { SchemaVisualization, type VisualizationMode } from "./SchemaVisualization";
 
 interface AnalysisResultsProps {
   readonly result: AnalysisResponseDto;
+  readonly draftSnapshot?: SchemaInputDto | undefined;
   readonly analyzedSnapshot: SchemaInputDto;
   readonly outOfDate: boolean;
   readonly synthesis: TransformationState<ThirdNormalFormSynthesisResponseDto>;
@@ -24,8 +27,17 @@ interface AnalysisResultsProps {
   readonly onCheckPreservation: () => void;
 }
 
-export function AnalysisResults({ result, analyzedSnapshot, outOfDate, synthesis, bcnf, preservation, synthesisError, bcnfError, preservationError, onGenerateSynthesis, onGenerateBcnf, onCheckPreservation }: AnalysisResultsProps) {
+export function AnalysisResults({ result, draftSnapshot, analyzedSnapshot, outOfDate, synthesis, bcnf, preservation, synthesisError, bcnfError, preservationError, onGenerateSynthesis, onGenerateBcnf, onCheckPreservation }: AnalysisResultsProps) {
   const lookup = new Map(analyzedSnapshot.relation.attributes.map((attribute) => [attribute.id, attribute.name]));
+  const [visualizationOpen, setVisualizationOpen] = useState(false);
+  const [visualizationMode, setVisualizationMode] = useState<VisualizationMode>("schema");
+  const [selectedViolationId, setSelectedViolationId] = useState<string>();
+
+  function selectViolation(id: string) {
+    setSelectedViolationId(id);
+    setVisualizationMode("analysis");
+    setVisualizationOpen(true);
+  }
 
   return (
     <article className="analysis-results" aria-labelledby="analysis-heading">
@@ -53,7 +65,23 @@ export function AnalysisResults({ result, analyzedSnapshot, outOfDate, synthesis
 
       <MinimalCoverResult result={result} snapshot={analyzedSnapshot} lookup={lookup} />
 
-      <ViolationDetails result={result} lookup={lookup} snapshot={analyzedSnapshot} />
+      <ViolationDetails result={result} lookup={lookup} snapshot={analyzedSnapshot} selectedViolationId={selectedViolationId} onSelectViolation={selectViolation} />
+
+      <SchemaVisualization
+        result={result}
+        draftSnapshot={draftSnapshot ?? analyzedSnapshot}
+        analyzedSnapshot={analyzedSnapshot}
+        outOfDate={outOfDate}
+        synthesis={synthesis}
+        bcnf={bcnf}
+        preservation={preservation}
+        open={visualizationOpen}
+        mode={visualizationMode}
+        selectedViolationId={selectedViolationId}
+        onToggle={() => setVisualizationOpen((current) => !current)}
+        onModeChange={setVisualizationMode}
+        onSelectViolation={selectViolation}
+      />
 
       {!result.normalForms.third.satisfied || !result.normalForms.bcnf.satisfied ? (
         <section className="analysis-section transformations" aria-labelledby="transformations-heading">

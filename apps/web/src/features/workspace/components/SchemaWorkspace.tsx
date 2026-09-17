@@ -467,6 +467,7 @@ export function SchemaWorkspace({ api = schemawiseApi, projectsApi = defaultProj
         </div>
         {hasResult ? <AnalysisResults
           result={state.analysis.data!}
+          draftSnapshot={draftToSchemaRequest(state.draft)}
           analyzedSnapshot={state.analysis.inputSnapshot!}
           outOfDate={state.analysis.outOfDate}
           synthesis={state.synthesis}
