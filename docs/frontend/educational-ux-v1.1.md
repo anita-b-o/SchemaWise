@@ -10,6 +10,13 @@ Synthesis y BCNF Decomposition y reasoning de Dependency Preservation. Tranche
 hardening. No se
 modifican contratos ni algoritmos.
 
+SchemaWise UX Simplification v1.4 reorganiza la presentación de este contenido
+sin cambiar su contrato educativo. `Why?`, Concept Help y referencias formales
+se componen ahora bajo un único `Explain` contextual por resultado; Formal
+reasoning continúa siendo Level 3 y Concept Reference continúa disponible,
+cerrado por defecto. La especificación de jerarquía implementada está en
+[`ux-simplification-v1.4.md`](./ux-simplification-v1.4.md).
+
 ## 1. Objetivo educativo
 
 SchemaWise v1.1 conserva la rapidez de una calculadora de normalización y añade
@@ -53,11 +60,12 @@ El orden del resultado será:
 1. encabezado del análisis y vigencia del snapshot;
 2. candidate keys y prime attributes;
 3. jerarquía compacta de formas normales;
-4. Minimal Cover;
-5. explicaciones de violaciones, asociadas desde cada forma normal;
-6. transformaciones solicitadas por el usuario;
-7. comprobación separada de dependency preservation;
-8. ayuda conceptual contextual.
+4. issues deduplicados inmediatamente asociados a las formas normales;
+5. Minimal Cover;
+6. diagrama opcional integrado;
+7. transformaciones solicitadas por el usuario;
+8. comprobación separada de dependency preservation;
+9. Concept Reference cerrado.
 
 Los términos se explican donde se usan. Un índice de conceptos secundario
 permite volver a consultarlos, pero no se antepone a los resultados.
@@ -70,26 +78,24 @@ R(A, B, C)                                      Current
 
 Candidate keys                Prime attributes
 {A}                           {A}
-[Why is this a key?]          [Why prime?]
+[Explain]                     [Explain]
 
 NORMAL FORMS
-1NF*  Assumed, not calculated
-  ↓
 2NF   Satisfied
-  ↓
 3NF   Violated · 1 violation                 [Why?]
-  ↓
 BCNF  Violated · 1 violation                 [Why?]
 
-* SchemaWise cannot determine 1NF from functional dependencies.
+Issues · 1 dependency
+B → C   Violates 3NF and BCNF       [Explain] [Show in diagram]
 
 MINIMAL COVER
 A → B
-B → C                                        [What is this?]
+B → C                                        [Explain]
 ```
 
-`Why?` nombra una acción y no un icono huérfano. En desktop puede aparecer en
-la fila; en mobile ocupa la siguiente línea.
+`Explain` integra el porqué contextual, el concepto relacionado y el acceso a
+Formal reasoning. En desktop puede aparecer en la fila; en mobile ocupa la
+siguiente línea.
 
 ## 4. Progressive disclosure
 
@@ -105,7 +111,7 @@ matemática mínima:
 Las candidate keys, prime attributes, cover y relaciones resultantes también
 son Level 1 porque son resultados, no material de ayuda.
 
-### Level 2 — Why?
+### Level 2 — Explain / Why
 
 Se abre explícitamente junto al resultado. Contiene una explicación contextual
 de una o dos frases y la FD o key relevante:
@@ -114,8 +120,8 @@ de una o dos frases y la FD o key relevante:
 B → C violates 3NF because {B} is not a superkey and C is not prime.
 ```
 
-Para varias violaciones, el disclosure abre una lista; cada ítem tiene un
-resumen corto propio. Level 2 no abre otros disclosures automáticamente.
+Para una FD que viola varias formas, un solo disclosure abre explicaciones
+separadas por regla. Level 2 no abre otros disclosures automáticamente.
 
 ### Level 3 — Learn / formal reasoning
 
@@ -320,35 +326,34 @@ analysis is a superkey.`
 
 ## 11. Jerarquía de formas normales
 
-No se usa un stepper: no hay pasos por completar ni navegación de wizard. Es
-una cadena semántica compacta con filas de estado:
+No se usa un stepper: no hay pasos por completar ni navegación de wizard. En
+v1.4, Level 1 es una tabla editorial compacta de resultados calculados; la
+precondición 1NF y la implicación viven en `Explain normal forms`:
 
 ```text
-1NF*  Assumed, not calculated
-  → increasingly strict
 2NF   Satisfied
-  → increasingly strict
 3NF   Satisfied
-  → increasingly strict
 BCNF  Violated · 1 violation
 
-* 1NF is an external precondition. SchemaWise does not calculate it.
-Logical implication runs in the reverse direction: BCNF ⇒ 3NF ⇒ 2NF.
+[Explain normal forms]
+  1NF is an external precondition; SchemaWise does not calculate it.
+  BCNF ⇒ 3NF ⇒ 2NF.
 ```
 
-El orden visual ascendente permite leer `BCNF ⇒ 3NF ⇒ 2NF`; una frase accesible
-lo hace explícito: `BCNF implies 3NF, and 3NF implies 2NF.` Nunca se dibuja un
-check para 1NF. El asterisco, el texto `Assumed, not calculated` y la nota son
-redundantes a propósito.
+El orden visual ascendente permite leer la progresión; una frase accesible bajo
+Explain hace explícito `BCNF implies 3NF, and 3NF implies 2NF.` Nunca se dibuja
+un check para 1NF.
 
 ### Wireframe: normal form hierarchy
 
 ```text
-NORMAL FORMS                       BCNF implies 3NF implies 2NF
-1NF*  Assumed, not calculated
+NORMAL FORMS
 2NF   ✓ Satisfied
 3NF   ✓ Satisfied
-BCNF  × Violated · 1              [Why?]
+BCNF  × Violated · 1
+
+C → B  Violates BCNF              [Explain] [Show in diagram]
+[Explain normal forms]
 ```
 
 ## 12. Attribute Closure (Tranche 3 implementada)
@@ -668,10 +673,10 @@ educativo consulta el draft mutable.
 
 Se extienden responsabilidades existentes:
 
-- `AnalysisResults`: orden, snapshot y sección `Concept help`.
-- `NormalFormSummary`: jerarquía 1NF*/2NF/3NF/BCNF, Level 1 y entrada a Why.
-- `ViolationDetails`: Level 2 por forma y Level 3 por evidencia; deja de renderizar
-  frases genéricas sin regla estructurada.
+- `AnalysisResults`: orden, snapshot, Diagram y `Concept Reference`.
+- `NormalFormSummary`: filas 2NF/3NF/BCNF, issues asociados y Explain contextual.
+- `ViolationDetails`: deduplica la FD en Level 1 y conserva Level 2/3 separado
+  por cada regla de forma normal.
 - `SynthesisResult`: separa created relations, observed source y algorithm
   guarantees.
 - `BcnfResult`: convierte steps en explicaciones Source/Violation/Reason/Split y
@@ -688,7 +693,7 @@ Componentes nuevos justificados semánticamente:
 - `CandidateKeyExplanation`: una key, minimalidad y contraste terminológico;
 - `PrimeAttributeOrigins`: mapea pertenencia de attributes a candidate keys;
 - `FormalReasoning`: regla, evidencia y conclusión dentro de un disclosure;
-- `ConceptHelp`: índice y superficie responsive del glosario;
+- `ConceptHelp`: ayuda inline donde conserva un trigger independiente;
 - `MathNotation`: primitivas `AttributeSetNotation`, `FunctionalDependencyNotation`,
   `ClosureNotation` y `RelationNotation` con accessible names;
 - `PropertyProvenance`: etiqueta consistente `Guaranteed by algorithm`,

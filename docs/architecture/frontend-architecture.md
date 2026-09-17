@@ -1,7 +1,9 @@
 # Frontend architecture
 
 Status: implemented MVP plus manual project persistence; Educational UX v1.1
-and locally audited Project Recovery + Deep Links v1.2 are frozen.
+and locally audited Project Recovery + Deep Links v1.2 are frozen. UX
+Simplification v1.4 reorganizes the existing frontend surfaces without changing
+those state or service boundaries.
 
 ## Context and boundaries
 
@@ -113,6 +115,12 @@ Static concept definitions form a separate presentation-only boundary.
 state local, and make no API calls. They are not persisted and cannot affect
 draft or project revisions.
 
+V1.4 composes contextual definitions into the result's single native Explain
+disclosure. Identical displayed violation dependencies are grouped for Level 1
+presentation only; their typed 2NF/3NF/BCNF evidence and formal rules remain
+separate. This grouping is a display transformation, not a new mathematical
+inference.
+
 Schema Visualization v1.3 follows the same boundary. Pure builders map DTOs
 and the appropriate snapshot to short-lived diagram models; semantic HTML/CSS
 renders those models without graph or layout libraries. Schema mode may read
@@ -141,6 +149,12 @@ uses a single column at small/medium widths and a two-region grid only when both
 regions can meet readable minimum widths. Large screens cap line length and
 total width. No component branches into a different mobile application; layout
 and a few disclosure defaults adapt responsively.
+
+At desktop widths above 1024px, the small analyzed-relation header is sticky so
+the immutable result snapshot and its `Current` / `Out of date` state remain in
+context. The tall editor is deliberately not made sticky and no region gains
+nested scrolling. At and below 1024px the header is static and the existing
+linear DOM order is preserved.
 
 ## Styling architecture
 

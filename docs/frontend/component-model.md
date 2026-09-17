@@ -8,6 +8,8 @@
 > and production-build browser validation. It is defined by
 > [project-routing-v1.2.md](./project-routing-v1.2.md) and
 > [project-recovery-v1.2.md](./project-recovery-v1.2.md).
+> UX Simplification v1.4 composes the same capabilities into a compact default;
+> see [ux-simplification-v1.4.md](./ux-simplification-v1.4.md).
 
 ## Component hierarchy
 
@@ -31,11 +33,13 @@ App
       │  ├─ CandidateKeysResult
       │  └─ PrimeAttributesResult
       ├─ NormalFormSummary
-      ├─ ViolationDetails
+      │  └─ ViolationDetails           deduplicated issue evidence
       ├─ MinimalCoverResult
-      ├─ SynthesisResult
-      ├─ BcnfResult
-      │  └─ DependencyPreservationResult
+      ├─ SchemaVisualization           integrated, closed by default
+      ├─ Transformations
+      │  ├─ SynthesisResult            compact result -> Explain/Diagram
+      │  └─ BcnfResult                 compact result -> Steps/Explain/Diagram
+      │     └─ DependencyPreservationResult
       └─ ConceptGlossary
 ```
 
@@ -52,11 +56,13 @@ while the product limit remains six attributes. Generic
 `Card`, `Stack`, `Badge` abstractions are deferred until repetition proves a
 stable API; initial styles can use semantic classes and tokens.
 
-`ConceptHelp` owns one text button, its `aria-expanded`/`aria-controls`
-relationship and one concise inline definition. `ConceptGlossary` renders the
-same 16-entry TypeScript source as a closed native disclosure and semantic
-definition list. Neither component reads workspace state, persists open state
-or performs network work.
+`ConceptHelp` still owns one text button, its `aria-expanded`/`aria-controls`
+relationship and one concise inline definition where an independent trigger is
+useful (for example Closure). Analysis results reuse `ConceptDefinitionContent`
+inside their single Explain disclosure instead of adding another competing
+trigger. `ConceptGlossary` renders the same 16-entry TypeScript source as a
+closed native disclosure and semantic definition list. None reads workspace
+state, persists open state or performs network work.
 
 The persistence extension keeps three ownership boundaries:
 
@@ -120,16 +126,18 @@ explicit labelled native group.
   validation rules.
 - `ResultsWorkspace` receives an immutable result view model and never reads
   mutable input directly.
-- `ViolationDetails` maps typed evidence to fixed explanation templates.
+- `ViolationDetails` maps typed evidence to fixed explanation templates and
+  groups identical displayed dependencies into one Level 1 issue while keeping
+  each normal-form rule and formal proof distinct.
 - `SynthesisResult`, `BcnfResult` and preservation result render separate
   asynchronous resources. `BcnfResult` owns the contextual preservation action,
   which consumes its leaf attribute sets plus the immutable analysis snapshot.
-- `SynthesisResult` keeps relation/source output compact, then provides sibling
-  Why and formal disclosures. Its formal view separates algorithm guarantees
-  from minimal-cover, relation-source and added-key response evidence.
-- `BcnfResult` preserves DTO step order and renders each source, violation and
-  result pair with accessible notation. Each step has sibling Why/formal
-  disclosures; the final guarantee block does not imply preservation.
+- `SynthesisResult` keeps final relations and guarantees visible, then provides
+  one Explain disclosure for source provenance, minimal cover and nested formal
+  reasoning plus a direct diagram action.
+- `BcnfResult` keeps final relations, step count and lossless status visible.
+  Ordered DTO steps and step reasoning are closed by default; decomposition
+  guarantees live under Explain and the direct diagram action focuses BCNF.
 - `DependencyPreservationResult` labels its status as observed/checked, keeps
   lost dependencies primary and preserved dependencies secondary, and explains
   the projection procedure contractually without exposing a fictional trace.
@@ -159,6 +167,11 @@ Analysis and Transformations receive the immutable analyzed snapshot. Diagram
 state is neither persisted nor added to the workspace reducer. See
 [`schema-visualization-model.md`](./schema-visualization-model.md) and
 [ADR 018](../adr/018-schema-visualization.md).
+
+V1.4 keeps this branch between the compact summary and Transformations. Textual
+issue and transformation actions control the existing local open/mode/selection
+state and move focus to the requested diagram; no duplicate render tree or
+additional calculation is introduced.
 
 ## Feature-oriented source layout
 
@@ -307,8 +320,9 @@ icon and word, never color alone.
 - Loading uses `aria-busy`; completion/error announcements use a polite live
   region. Focus moves only for validation errors or an explicitly opened panel,
   not automatically to results.
-- Violation disclosures are buttons with `aria-expanded` and an associated
-  region. The BCNF tree retains an ordered textual representation.
+- Violation explanations use native `details`/`summary`; the explicit diagram
+  action is a button whose selected state is exposed with `aria-pressed`. The
+  BCNF tree retains an ordered textual representation.
 - Heading levels, landmarks (`header`, `main`, labeled sections) and DOM order
   match the mobile reading order; CSS columns do not scramble it.
 - Contrast targets WCAG 2.2 AA. Reduced motion is naturally respected because
