@@ -116,7 +116,7 @@ function RelationDiagram({ model, label, description, selectedAttributes = [], m
         <code>{model.relationName || "Unnamed relation"}</code>
       </div>
       <p id={descriptionId} className="diagram-description">{description}</p>
-      <div className="relation-node" aria-label={`Relation ${model.relationName || "unnamed"}`}>
+      <div className="relation-node" role="group" aria-label={`Relation ${model.relationName || "unnamed"}`}>
         <span className="relation-node__label">Relation</span>
         {model.attributes.length === 0 ? <p className="diagram-empty">No attributes in this relation.</p> : (
           <ul className="diagram-attributes" aria-label="Relation attributes">
@@ -141,7 +141,7 @@ function RelationDiagram({ model, label, description, selectedAttributes = [], m
           </ul>
         )}
       </div>
-      <div className="dependency-diagram" aria-label="Functional dependencies">
+      <div className="dependency-diagram" role="group" aria-label="Functional dependencies">
         <h5>Functional dependencies</h5>
         {dependencies.length === 0 ? <p className="diagram-empty">No functional dependencies to display.</p> : (
           <ol className="dependency-rails">
@@ -205,7 +205,7 @@ function AnalysisMode({ snapshot, result, selectedViolationId, onSelectViolation
 
   return (
     <div className="analysis-diagram-view">
-      <div className="diagram-control-group" aria-label="Candidate keys">
+      <div className="diagram-control-group" role="group" aria-label="Candidate keys">
         <span className="diagram-control-label">Candidate keys</span>
         {model.candidateKeys.length === 0 ? <span className="diagram-control-empty">None returned</span> : model.candidateKeys.map((key) => (
           <button key={key.id} type="button" className="diagram-choice" aria-pressed={selectedKeyId === key.id} onClick={() => chooseKey(key.id)}>
@@ -213,7 +213,7 @@ function AnalysisMode({ snapshot, result, selectedViolationId, onSelectViolation
           </button>
         ))}
       </div>
-      <div className="diagram-control-group" aria-label="Normal form violations">
+      <div className="diagram-control-group" role="group" aria-label="Normal form violations">
         <span className="diagram-control-label">Violation evidence</span>
         {model.violations.length === 0 ? <span className="diagram-control-empty">No violations returned</span> : model.violations.map((violation) => (
           <button key={violation.id} type="button" className="diagram-choice" aria-pressed={selectedViolationId === violation.id} onClick={() => selectViolation(violation)}>
@@ -233,7 +233,7 @@ function AnalysisMode({ snapshot, result, selectedViolationId, onSelectViolation
         selectedDependencyId={selectedViolation?.dependency.id}
         onSelectDependency={selectedViolation ? () => onSelectViolation(selectedViolation.id) : undefined}
       />
-      <div className="diagram-legend" aria-label="Diagram legend">
+      <div className="diagram-legend" role="group" aria-label="Diagram legend">
         <span><i className="legend-swatch legend-swatch--key" aria-hidden="true" /> Key selection</span>
         <span><i className="legend-swatch legend-swatch--prime" aria-hidden="true" /> Prime attribute (also labeled on the node)</span>
         <span><i className="legend-swatch legend-swatch--violation" aria-hidden="true" /> Selected violation evidence</span>
