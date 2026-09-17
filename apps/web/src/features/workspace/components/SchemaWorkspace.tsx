@@ -390,9 +390,9 @@ export function SchemaWorkspace({ api = schemawiseApi, projectsApi = defaultProj
       <div className="project-title-field"><label htmlFor="project-name">Project name</label><input ref={projectNameRef} id="project-name" type="text" maxLength={120} value={project.name} onChange={(event) => setProject((current) => ({ ...current, name: event.target.value }))} /></div>
       <span className={`save-state ${dirty ? "save-state--dirty" : ""}`} aria-live="polite">{saveState}</span>
       <div className="project-actions">
-        <button className="button button--secondary" type="button" onClick={requestNew}>New project</button>
-        <button className="button button--secondary" type="button" onClick={() => void openProjectList()}>Open projects</button>
-        <button ref={saveButtonRef} className="button button--primary" type="button" onClick={() => void saveProject()} disabled={projectBusy || routeHydrating || !routeLoadedCoherently}>{projectBusy ? "Working…" : "Save"}</button>
+        <button className="button button--quiet" type="button" onClick={requestNew}>New project</button>
+        <button className="button button--quiet" type="button" onClick={() => void openProjectList()}>Open projects</button>
+        <button ref={saveButtonRef} className="button button--secondary" type="button" onClick={() => void saveProject()} disabled={projectBusy || routeHydrating || !routeLoadedCoherently}>{projectBusy ? "Working…" : "Save"}</button>
         {auth.status === "authenticated" ? <><span className="account-email">{auth.user?.email}</span><button className="button button--quiet" type="button" onClick={() => void auth.logout()}>Log out</button></> : <button className="button button--quiet" type="button" onClick={openAuth}>{auth.status === "unknown" ? "Checking session…" : "Sign in"}</button>}
       </div>
     </section>
