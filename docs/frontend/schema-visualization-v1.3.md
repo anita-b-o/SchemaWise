@@ -22,7 +22,7 @@ The determinant node is the whole set. The UI never emits `A → C` or `B → C`
 
 ## Analysis evidence
 
-- Candidate-key buttons use `candidateKeys`; selecting one emphasizes exactly those attributes and mutes the others.
+- Candidate-key buttons use `candidateKeys`; selecting one emphasizes exactly those attributes and subdues the others with surface/border treatment while preserving text contrast.
 - Prime labels use `primeAttributes` and include visible text, not color alone.
 - 2NF selection shows candidate key, partial determinant and dependent non-prime attribute from one `SecondNormalFormViolationDto`.
 - 3NF and BCNF selection show determinant, dependent and diagnosed FD from their violation DTO.
@@ -38,7 +38,7 @@ Dependency preservation displays the observed `Preserved`/`Not preserved` respon
 
 ## Accessibility and responsive behavior
 
-- Labeled semantic sections and a full textual equivalent are part of the same DOM.
+- Labeled semantic sections/groups and a full textual equivalent are part of the same DOM.
 - Native buttons provide keyboard, mouse and touch selection with `aria-pressed`.
 - Decorative connectors are hidden from assistive technology.
 - Full attribute names remain DOM text and wrap at arbitrary characters; no essential label is available only through hover.
