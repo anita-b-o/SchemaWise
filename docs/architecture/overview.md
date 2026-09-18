@@ -8,14 +8,14 @@ Web → API → Normalization Engine
 
 ## Web
 
-`apps/web` será la interfaz React + TypeScript + Vite. Se ocupará de capturar la entrada del usuario y presentar resultados y explicaciones. No contiene reglas de normalización.
+`apps/web` es la interfaz React + TypeScript + Vite. Captura la entrada del usuario y presenta resultados y explicaciones. No contiene reglas de normalización.
 
 ## API
 
-`apps/api` será el límite de transporte y aplicación. Recibirá solicitudes de la Web, validará y transformará los datos de entrada, invocará el motor y devolverá respuestas. La API no debe duplicar algoritmos del dominio.
+`apps/api` es el límite de transporte y aplicación. Recibe solicitudes de la Web, valida y transforma los datos de entrada, invoca el motor y devuelve respuestas. La API no duplica algoritmos del dominio.
 
 ## Normalization Engine
 
-`packages/normalization-engine` es el núcleo de dominio en TypeScript puro. Contendrá el modelo y los algoritmos determinísticos de análisis. Debe permanecer independiente de React, HTTP, PostgreSQL, ORM, autenticación y cualquier otra infraestructura.
+`packages/normalization-engine` es el núcleo de dominio en TypeScript puro. Contiene el modelo y los algoritmos determinísticos de análisis. Permanece independiente de React, HTTP, PostgreSQL, ORM, autenticación y cualquier otra infraestructura.
 
 El motor no puede importar desde `apps/*`. Las dependencias deben apuntar hacia el dominio, no desde el dominio hacia adaptadores o interfaces.

@@ -1,10 +1,9 @@
 # Workspace UX
 
-> Educational UX v1.1 extends this implemented v1 baseline. The normative
-> progressive-disclosure, explanation, notation, mobile and data-sufficiency
-> decisions are documented in
-> [educational-ux-v1.1.md](./educational-ux-v1.1.md). Where this baseline uses a
-> shorter explanation, the v1.1 document takes precedence for future work.
+> **Historical baseline.** Educational UX v1.1 and UX Simplification v1.4
+> supersede the presentation details in this document. The normative current
+> decisions are in [educational-ux-v1.1.md](./educational-ux-v1.1.md) and
+> [ux-simplification-v1.4.md](./ux-simplification-v1.4.md).
 
 ## Jerarquía de escritorio
 

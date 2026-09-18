@@ -1,6 +1,10 @@
 # Frontend MVP
 
-Estado: propuesta de producto y UX previa a implementación.
+Estado: **histórico / superseded**. Propuesta previa a implementación,
+conservada como evidencia de diseño. Para el comportamiento actual prevalecen
+[`educational-ux-v1.1.md`](./educational-ux-v1.1.md),
+[`ux-simplification-v1.4.md`](./ux-simplification-v1.4.md) y
+[`project-recovery-v1.2.md`](./project-recovery-v1.2.md).
 
 ## Alcance
 
@@ -111,4 +115,3 @@ atomicidad de los valores no puede inferirse de las dependencias funcionales.
   contrato de sharing prematuro.
 - No se añade router hasta que exista una segunda ruta real.
 - No se precarga el ejemplo automáticamente ni se guarda un proyecto.
-

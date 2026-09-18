@@ -1,5 +1,10 @@
 # Frontend API integration
 
+> **Historical design baseline.** The current client surface is implemented in
+> `apps/web/src/api/`; the frozen HTTP contract in
+> [`apps/api/openapi/schemawise-api-v1.yaml`](../../apps/api/openapi/schemawise-api-v1.yaml)
+> is authoritative where example names in this document differ.
+
 ## Boundary
 
 All transport crosses `src/api/schemawise-api.ts`. Components receive typed

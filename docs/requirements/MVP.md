@@ -1,5 +1,11 @@
 # SchemaWise — MVP
 
+> **Historical baseline (superseded).** This pre-implementation scope is kept
+> as product history. It does not describe the shipped capability set. Use the
+> [architecture overview](../architecture/overview.md),
+> [engine v1 contract](../architecture/normalization-engine-v1.md), and root
+> README for the current system.
+
 ## Objetivo
 
 SchemaWise será una aplicación web para analizar y normalizar esquemas de bases de datos relacionales. El sistema debe permitir que el usuario describa un esquema y, posteriormente, obtener resultados determinísticos con explicaciones comprensibles.
