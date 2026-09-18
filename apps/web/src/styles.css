@@ -139,6 +139,8 @@ summary { width: fit-content; min-height: 2.75rem; padding-block: 0.7rem; cursor
 .closure-coverage { grid-template-columns: repeat(2, minmax(0, 1fr)); margin-block: var(--space-4); }
 .closure-formal-reasoning { color: var(--text-secondary); font-size: 0.82rem; }
 .analyze-help, .analysis-error { grid-column: 1 / -1; }
+.delayed-async-hint { margin: var(--space-2) 0 0; color: var(--text-secondary); font-size: 0.8rem; line-height: 1.45; }
+.analyze-action > .delayed-async-hint { grid-column: 1 / -1; }
 .analysis-error { padding: var(--space-3) var(--space-4); color: #76271f; background: var(--danger-surface); border-left: 3px solid var(--danger); }
 .analysis-error strong, .analysis-error p { display: block; margin-bottom: var(--space-1); }
 .analysis-error p { font-size: 0.86rem; }

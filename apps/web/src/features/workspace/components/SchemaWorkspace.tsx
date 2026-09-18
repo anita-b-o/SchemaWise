@@ -1,4 +1,5 @@
 import { useEffect, useReducer, useRef, useState } from "react";
+import { DelayedAsyncHint } from "../../../components/DelayedAsyncHint";
 import { schemawiseApi, SchemaWiseApiError, type SchemaWiseApi } from "../../../api/schemawise-api";
 import { projectApi as defaultProjectApi, type ProjectApi } from "../../../api/project-api";
 import { HttpApiError } from "../../../api/http-api";
@@ -457,6 +458,7 @@ export function SchemaWorkspace({ api = schemawiseApi, projectsApi = defaultProj
               {presentedError.code ? <span className="technical-error-code">Error code: {presentedError.code}</span> : null}
             </div>
           ) : null}
+          <DelayedAsyncHint active={isAnalyzing} requestKey={state.analysis.requestId} />
         </div>
       </section>
       <ClosureTool attributes={state.draft.attributes} issues={issues} state={state.closure} onCalculate={calculateClosure} />

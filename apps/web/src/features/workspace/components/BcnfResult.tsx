@@ -1,4 +1,5 @@
 import type { BcnfDecompositionResponseDto, DependencyPreservationResponseDto, SchemaInputDto } from "../../../api/schemawise-contracts";
+import { DelayedAsyncHint } from "../../../components/DelayedAsyncHint";
 import { buildBcnfDecompositionExplanation, buildBcnfStepExplanation } from "../../explanations/explanation-builders";
 import type { TransformationState } from "../workspace-reducer";
 import { TRANSFORMATION_COPY } from "../transformation-explanations";
@@ -87,6 +88,7 @@ export function BcnfResult({ result, snapshot, outOfDate, preservation, preserva
           {isLoading ? "Checking dependency preservation…" : preservation.data ? <>Check again<span className="visually-hidden">: dependency preservation</span></> : "Check dependency preservation"}
         </button>
         <div className="transformation-live-status" role="status" aria-live="polite">{isLoading ? (preservation.data ? "Updating dependency preservation…" : "Checking dependency preservation…") : preservation.status === "success" ? "Dependency preservation check complete." : ""}</div>
+        <DelayedAsyncHint active={isLoading} requestKey={preservation.requestId} />
         {preservationError ? <div className="transformation-error" role="alert"><strong>Unable to check dependency preservation.</strong><p>{preservationError}</p></div> : null}
       </div>
       {preservation.data ? <DependencyPreservationResult result={preservation.data} snapshot={snapshot} /> : null}

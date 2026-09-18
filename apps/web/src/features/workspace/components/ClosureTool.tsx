@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { DelayedAsyncHint } from "../../../components/DelayedAsyncHint";
 import { buildClosureExplanation, type ClosureExplanation as ClosureExplanationModel } from "../../explanations/explanation-builders";
 import type { AttributeDraft, ClosureState } from "../workspace-reducer";
 import type { ValidationIssue } from "../workspace-validation";
@@ -107,6 +108,7 @@ export function ClosureTool({ attributes, issues, state, onCalculate }: ClosureT
           </button>
           {issues.length > 0 ? <p className="closure-help">Resolve the schema issues before calculating closure. A prior analysis is not required.</p> : null}
           {isLoading ? <p className="closure-status" role="status">Calculating closure…</p> : null}
+          <DelayedAsyncHint active={isLoading} requestKey={state.requestId} />
           {state.outOfDate ? <div className="stale-notice closure-stale" role="status"><strong>Closure result is out of date</strong><p>The draft has changed since this calculation. Calculate again to update it.</p></div> : null}
           {state.status === "error" ? <div className="analysis-error closure-error" role="alert"><strong>Closure calculation failed</strong><p>{errorMessage}</p></div> : null}
           {explanation ? <ClosureExplanation model={explanation} selected={selectedSnapshot} closure={state.data!.closure} lookup={resultLookup} /> : null}

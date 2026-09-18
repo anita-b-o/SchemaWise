@@ -1,4 +1,5 @@
 import { useRef, useState } from "react";
+import { DelayedAsyncHint } from "../../../components/DelayedAsyncHint";
 import type { AnalysisResponseDto, BcnfDecompositionResponseDto, DependencyPreservationResponseDto, SchemaInputDto, ThirdNormalFormSynthesisResponseDto } from "../../../api/schemawise-contracts";
 import { formatRelation } from "../schema-formatters";
 import { TRANSFORMATION_COPY } from "../transformation-explanations";
@@ -106,6 +107,7 @@ export function AnalysisResults({ result, draftSnapshot, analyzedSnapshot, outOf
                 </button>
               </div>
               <div className="transformation-live-status" role="status" aria-live="polite">{synthesis.status === "loading" ? (synthesis.data ? "Updating synthesis…" : "Generating 3NF synthesis…") : synthesis.status === "success" ? "3NF synthesis complete." : ""}</div>
+              <DelayedAsyncHint active={synthesis.status === "loading"} requestKey={synthesis.requestId} />
               {synthesisError ? <div className="transformation-error" role="alert"><strong>Unable to generate 3NF synthesis.</strong><p>{synthesisError}</p></div> : null}
               {synthesis.data ? <SynthesisResult result={synthesis.data} snapshot={analyzedSnapshot} onViewDiagram={() => showTransformationsDiagram("3NF synthesis diagram")} /> : null}
             </div>
@@ -120,6 +122,7 @@ export function AnalysisResults({ result, draftSnapshot, analyzedSnapshot, outOf
                 </button>
               </div>
               <div className="transformation-live-status" role="status" aria-live="polite">{bcnf.status === "loading" ? (bcnf.data ? "Updating decomposition…" : "Generating BCNF decomposition…") : bcnf.status === "success" ? "BCNF decomposition complete." : ""}</div>
+              <DelayedAsyncHint active={bcnf.status === "loading"} requestKey={bcnf.requestId} />
               {bcnfError ? <div className="transformation-error" role="alert"><strong>Unable to generate BCNF decomposition.</strong><p>{bcnfError}</p></div> : null}
               {bcnf.data ? <BcnfResult result={bcnf.data} snapshot={analyzedSnapshot} outOfDate={outOfDate} preservation={preservation} preservationError={preservationError} onCheckPreservation={onCheckPreservation} onViewDiagram={() => showTransformationsDiagram("BCNF decomposition diagram")} /> : null}
             </div>
