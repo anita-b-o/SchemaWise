@@ -1,6 +1,8 @@
 # SchemaWise UX Simplification v1.4
 
-Status: **local implementation complete; final validation pending** (2026-09-17).
+Status: **staging approved with the authenticated persisted-project Save smoke
+deferred** (2026-09-17). See the
+[staging audit](../testing/ux-simplification-v1.4-staging-audit.md).
 
 ## Product objective
 
