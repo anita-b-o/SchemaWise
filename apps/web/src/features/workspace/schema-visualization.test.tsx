@@ -1,7 +1,7 @@
 import axe from "axe-core";
-import { render, screen, within } from "@testing-library/react";
+import { render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import type { AnalysisResponseDto, BcnfDecompositionResponseDto, DependencyPreservationResponseDto, SchemaInputDto, ThirdNormalFormSynthesisResponseDto } from "../../api/schemawise-contracts";
 import { AnalysisResults } from "./components/AnalysisResults";
 
@@ -66,6 +66,68 @@ async function openVisualization(user: ReturnType<typeof userEvent.setup>) {
 }
 
 describe("schema visualization", () => {
+  it("discloses large issue sets without changing counts or losing diagram selection", async () => {
+    const user = userEvent.setup();
+    const largeSnapshot: SchemaInputDto = {
+      relation: { name: "LargeIssues", attributes: ["A", "B", "C", "D", "E", "F"].map((name) => ({ id: name.toLowerCase(), name })) },
+      functionalDependencies: [{ left: ["a"], right: ["f"] }],
+    };
+    const pairs = Array.from({ length: 44 }, (_, index) => ({
+      determinant: ["a", "b", "c", "d", "e"].filter((_, bit) => (index % 32 & (1 << bit)) !== 0),
+      dependent: index < 32 ? "f" : "e",
+    }));
+    const largeResult: AnalysisResponseDto = {
+      relation: largeSnapshot.relation,
+      candidateKeys: [["a", "b"]],
+      primeAttributes: ["a", "b"],
+      minimalCover: largeSnapshot.functionalDependencies,
+      normalForms: {
+        second: { satisfied: false, violations: pairs.slice(0, 3).map(({ determinant, dependent }) => ({ candidateKey: ["a", "b"], determinant, dependent })) },
+        third: { satisfied: false, violations: pairs },
+        bcnf: { satisfied: false, violations: pairs },
+      },
+    };
+    const fetchSpy = vi.spyOn(globalThis, "fetch");
+    try {
+      const { container } = view({ analyzed: largeSnapshot, value: largeResult, outOfDate: true });
+      const issues = screen.getByRole("heading", { name: "Issues" }).parentElement!.parentElement!;
+      expect(issues.textContent).toContain("44 dependencies");
+      expect(issues.querySelectorAll(".issue-list > li")).toHaveLength(8);
+      expect(issues.textContent).toContain("includes dependencies implied by the entered functional dependencies");
+      const counts = [...document.querySelectorAll(".normal-form-count")].map((node) => node.textContent);
+      expect(counts).toEqual(["3 violations", "44 violations", "44 violations"]);
+
+      const expand = within(issues).getByRole("button", { name: "Show all 44 issues" });
+      expand.focus();
+      await user.keyboard("{Enter}");
+      expect(document.activeElement).toBe(expand);
+      expect(expand.getAttribute("aria-expanded")).toBe("true");
+      expect(issues.querySelectorAll(".issue-list > li")).toHaveLength(44);
+      const hiddenIssue = issues.querySelectorAll<HTMLElement>(".issue-list > li")[43]!;
+      await user.click(within(hiddenIssue).getByText(/Explain issue/));
+      await user.click(hiddenIssue.querySelector<HTMLElement>(".formal-reasoning-disclosure > summary")!);
+      expect(hiddenIssue.textContent).toContain("For every non-trivial dependency");
+      await user.click(within(hiddenIssue).getByRole("button", { name: /Show in diagram/ }));
+      const panel = document.querySelector<HTMLElement>(".schema-visualization__content")!;
+      await waitFor(() => expect(document.activeElement).toBe(panel));
+      expect(within(panel).getByRole("button", { name: "Analysis" }).getAttribute("aria-pressed")).toBe("true");
+      expect(within(panel).getByRole("button", { name: /^3NF:/, pressed: true })).toBeTruthy();
+      expect(screen.getByText("Results are out of date")).toBeTruthy();
+      expect(fetchSpy).not.toHaveBeenCalled();
+
+      const collapse = within(issues).getByRole("button", { name: "Show fewer issues" });
+      collapse.focus();
+      await user.keyboard("{Enter}");
+      expect(document.activeElement).toBe(collapse);
+      expect(issues.querySelectorAll(".issue-list > li")).toHaveLength(8);
+      expect(within(panel).getByRole("button", { name: /^3NF:/, pressed: true })).toBeTruthy();
+      expect(fetchSpy).not.toHaveBeenCalled();
+      expect((await axe.run(container)).violations).toEqual([]);
+    } finally {
+      fetchSpy.mockRestore();
+    }
+  });
+
   it("gives the diagram an accessible name, textual equivalents and an explicit composite determinant", async () => {
     const user = userEvent.setup();
     view();

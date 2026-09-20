@@ -55,6 +55,7 @@ describe("schema analysis interactions", () => {
     }
     expect(article.querySelectorAll("details[open]")).toHaveLength(0);
     expect(article.querySelectorAll(".issue-list > li")).toHaveLength(2);
+    expect(within(article).queryByRole("button", { name: /Show all \d+ issues|Show fewer issues/ })).toBeNull();
     expect(within(article).getByText("Concept reference").closest("details")?.open).toBe(false);
   });
 
