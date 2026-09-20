@@ -1,3 +1,4 @@
+import { useState } from "react";
 import type { AnalysisResponseDto, SchemaInputDto } from "../../../api/schemawise-contracts";
 import { explainBcnf, explainSecondNormalForm, explainThirdNormalForm, type Explanation } from "../../explanations/explanation-builders";
 import { EducationalExplanationView, FormalReasoning } from "./EducationalAnalysis";
@@ -23,6 +24,8 @@ interface Issue {
   readonly explanations: readonly IssueExplanation[];
 }
 
+const INITIAL_ISSUE_COUNT = 8;
+
 function issuesFor(result: AnalysisResponseDto, lookup: ReadonlyMap<string, string>, snapshot: SchemaInputDto): readonly Issue[] {
   const entries: IssueExplanation[] = [
     ...result.normalForms.second.violations.map((violation, index) => ({ groupKey: JSON.stringify([violation.determinant, violation.dependent]), normalForm: "2NF" as const, selectionId: violationSelectionId("2NF", index), explanation: explainSecondNormalForm(violation, lookup, snapshot) })),
@@ -35,8 +38,11 @@ function issuesFor(result: AnalysisResponseDto, lookup: ReadonlyMap<string, stri
 }
 
 export function ViolationDetails({ result, lookup, snapshot, selectedViolationId, onSelectViolation }: ViolationDetailsProps) {
+  const [expanded, setExpanded] = useState(false);
   const issues = issuesFor(result, lookup, snapshot);
   if (issues.length === 0) return null;
+  const largeSet = issues.length > INITIAL_ISSUE_COUNT;
+  const visibleIssues = largeSet && !expanded ? issues.slice(0, INITIAL_ISSUE_COUNT) : issues;
 
   return (
     <div className="normal-form-issues">
@@ -44,8 +50,9 @@ export function ViolationDetails({ result, lookup, snapshot, selectedViolationId
         <h4>Issues</h4>
         <span>{issues.length} {issues.length === 1 ? "dependency" : "dependencies"}</span>
       </div>
-      <ol className="issue-list">
-        {issues.map((issue) => {
+      {largeSet ? <p className="issues-context">This analysis includes dependencies implied by the entered functional dependencies, so it can report more violations than the number entered.</p> : null}
+      <ol className="issue-list" role="list" id="normal-form-issue-list">
+        {visibleIssues.map((issue) => {
           const selected = issue.explanations.some(({ selectionId }) => selectionId === selectedViolationId);
           const forms = issue.explanations.map(({ normalForm }) => normalForm);
           return (
@@ -84,6 +91,11 @@ export function ViolationDetails({ result, lookup, snapshot, selectedViolationId
           );
         })}
       </ol>
+      {largeSet ? (
+        <button className="button button--quiet issues-toggle" type="button" aria-expanded={expanded} aria-controls="normal-form-issue-list" onClick={() => setExpanded((current) => !current)}>
+          {expanded ? "Show fewer issues" : `Show all ${issues.length} issues`}
+        </button>
+      ) : null}
     </div>
   );
 }

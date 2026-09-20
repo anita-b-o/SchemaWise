@@ -222,6 +222,8 @@ summary { width: fit-content; min-height: 2.75rem; padding-block: 0.7rem; cursor
 .issues-heading-row { display: flex; justify-content: space-between; align-items: baseline; gap: var(--space-3); }
 .issues-heading-row h4 { margin: 0; font-size: 0.82rem; }
 .issues-heading-row > span { color: var(--text-secondary); font-size: 0.75rem; }
+.issues-context { margin: var(--space-2) 0 0; color: var(--text-secondary); font-size: 0.78rem; }
+.issues-toggle { margin-top: var(--space-3); }
 .issue-list { margin: var(--space-2) 0 0; padding: 0; list-style: none; border-top: 1px solid var(--border-default); }
 .issue-list > li { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: var(--space-3); align-items: start; padding: var(--space-3) 0; border-bottom: 1px solid var(--border-default); }
 .issue-summary { display: grid; gap: var(--space-1); min-width: 0; }
