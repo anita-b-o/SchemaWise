@@ -1,16 +1,16 @@
 # SchemaWise portfolio publication audit
 
-- Date: 2026-09-18
+- Date: 2026-09-19
 - Scope: final publication polish only; no product features
-- Product decision retained: **READY AFTER SMALL FIXES**
-- Final gate: **SCHEMAWISE: READY AFTER MANUAL PUBLICATION STEPS**
+- Product decision: **SCHEMAWISE: PORTFOLIO READY**
+- Final gate: **SCHEMAWISE: PORTFOLIO READY**
 
 ## Decision
 
 The repository-side publication work is complete and all local quality gates
-pass. No P0 or P1 product issue remains. The only incomplete publication work
-is the coordinated public-hostname transition: Render currently authorizes the
-staging Origin and the preferred clean Vercel alias has not been assigned.
+pass. No P0 or P1 product issue remains. The public hostname transition is
+closed: the clean alias is assigned, the Render allowlist retains staging, and
+the public smoke and recovery paths are approved.
 
 No educational, recovery, visualization, normalization, transformation,
 project, authentication, or routing scope was reopened.
@@ -247,36 +247,17 @@ the browser Origin and needs no code change. Host-only cookies will be distinct
 on the new alias, so users will sign in again there; no cookie weakening is
 required.
 
-## Remaining manual publication steps
+## Publication closeout
 
-Do these in order. Do not remove the staging Origin during the transition.
-
-1. Review and push the cohesive local commits. Confirm the first GitHub Actions
-   run is green and the Vercel production deployment for the existing project
-   is READY.
-2. In Render → `schemawise-api-staging` → Environment, append
-   `https://schemawise.vercel.app` to the existing comma-separated
-   `CORS_ORIGINS` value while preserving
-   `https://schemawise-staging.vercel.app`. Save and deploy the environment
-   change; auto-deploy is off.
-3. Confirm `/ready` is 200, then repeat the login OPTIONS preflight from both
-   Origins and require the corresponding exact ACAO value for each.
-4. In the Vercel `schemawise-staging` project, add
-   `schemawise.vercel.app` as a production domain/alias. If Vercel rejects it,
-   stop and use the candidates above in order; update Render first for the
-   chosen hostname. Do not guess a different hostname.
-5. Validate the clean URL: base page and metadata, anonymous Analyze, 3NF,
-   BCNF, preservation, register/login/logout, create/update/open/delete project,
-   cookie host, Origin/Referer enforcement, mobile layout, and no console error.
-   Keep the staging alias as a temporary technical alias throughout.
-6. Replace the single `[live-demo]` reference in the README, add the final
-   absolute `og:url`, and change `og:image`/`twitter:image` to absolute clean
-   URLs if the target crawler requires them. Push that small release commit and
-   revalidate both aliases.
-
-No Render or Vercel mutation was made in this pass because the required Render
-environment value could not be read safely through the connected tool and live
-evidence proves the clean Origin is not yet authorized.
+- Public alias assigned: `https://schemawise.vercel.app`.
+- `CORS_ORIGINS` updated to include the public alias while preserving
+  `https://schemawise-staging.vercel.app` as a technical alias.
+- Manual public smoke approved for homepage, Load example, Analyze, direct SPA
+  refresh, and metadata.
+- Auth, Projects, and deep-link/session recovery approved on the public alias.
+- Final URL: `https://schemawise.vercel.app`.
+- Free-tier limitations continue to apply; this is not a production-ready
+  commercial service.
 
 ## Validation record
 
@@ -297,8 +278,8 @@ integration documentation and tests remain unchanged.
 
 ## Final gate
 
-**SCHEMAWISE: READY AFTER MANUAL PUBLICATION STEPS**
+**SCHEMAWISE: PORTFOLIO READY**
 
-The repository is ready to publish. The gate is not `PORTFOLIO READY` yet only
-because the clean URL, two-Origin transition, first public CI run, and final
-post-alias browser validation require coordinated external changes after push.
+The public demo, staging technical alias, two-Origin transition, manual smoke,
+Auth/Projects/deep-link recovery, and release documentation are approved. This
+status does not mean production-ready commercial service.

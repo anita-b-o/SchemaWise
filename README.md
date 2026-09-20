@@ -149,7 +149,7 @@ For a release build, run `npm run build`. The Web artifact is `apps/web/dist`; t
 
 ## Project status
 
-The intended v1 product scope is complete. The repository is in publication polish; the current public demo URL remains the existing staging alias until the clean Vercel alias and matching Render allowlist transition are validated together.
+The intended v1 product scope is complete. The repository is portfolio-ready; the public demo is available at the clean Vercel alias, while the staging alias remains as a technical alias.
 
 ## Selected technical docs
 
@@ -162,4 +162,4 @@ The intended v1 product scope is complete. The repository is in publication poli
 7. [Vercel-to-Render proxy](docs/architecture/vercel-render-proxy.md)
 8. [Portfolio publication audit](docs/testing/schemawise-portfolio-publication-audit.md)
 
-[live-demo]: https://schemawise-staging.vercel.app
+[live-demo]: https://schemawise.vercel.app
