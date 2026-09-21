@@ -16,7 +16,7 @@ export function SynthesisResult({ result, snapshot, onViewDiagram }: SynthesisRe
 
   return (
     <section className="transformation-result" aria-labelledby="synthesis-result-heading">
-      <h5 id="synthesis-result-heading">Synthesis result</h5>
+      <h3 id="synthesis-result-heading">Synthesis result</h3>
       <ol className="relation-result-list">
         {result.relations.map((relation, index) => (
           <li key={`${relation.attributes.join(":")}:${index}`}>

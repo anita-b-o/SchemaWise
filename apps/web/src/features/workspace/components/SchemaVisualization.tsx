@@ -21,16 +21,13 @@ import {
 } from "../schema-visualization-model";
 import type { TransformationState } from "../workspace-reducer";
 
-export type VisualizationMode = "schema" | "analysis" | "transformations";
+export type VisualizationMode = "schema" | "analysis";
 
 interface SchemaVisualizationProps {
   readonly result: AnalysisResponseDto;
   readonly draftSnapshot: SchemaInputDto;
   readonly analyzedSnapshot: SchemaInputDto;
   readonly outOfDate: boolean;
-  readonly synthesis: TransformationState<ThirdNormalFormSynthesisResponseDto>;
-  readonly bcnf: TransformationState<BcnfDecompositionResponseDto>;
-  readonly preservation: TransformationState<DependencyPreservationResponseDto>;
   readonly open: boolean;
   readonly mode: VisualizationMode;
   readonly selectedViolationId?: string | undefined;
@@ -356,7 +353,7 @@ function PreservationDiagram({ snapshot, result }: { readonly snapshot: SchemaIn
   );
 }
 
-function TransformationsMode({ snapshot, synthesis, bcnf, preservation }: {
+export function TransformationsMode({ snapshot, synthesis, bcnf, preservation }: {
   readonly snapshot: SchemaInputDto;
   readonly synthesis: TransformationState<ThirdNormalFormSynthesisResponseDto>;
   readonly bcnf: TransformationState<BcnfDecompositionResponseDto>;
@@ -373,12 +370,11 @@ function TransformationsMode({ snapshot, synthesis, bcnf, preservation }: {
   );
 }
 
-export function SchemaVisualization({ result, draftSnapshot, analyzedSnapshot, outOfDate, synthesis, bcnf, preservation, open, mode, selectedViolationId, onToggle, onModeChange, onSelectViolation }: SchemaVisualizationProps) {
+export function SchemaVisualization({ result, draftSnapshot, analyzedSnapshot, outOfDate, open, mode, selectedViolationId, onToggle, onModeChange, onSelectViolation }: SchemaVisualizationProps) {
   const panelId = useId();
   const modes: readonly { id: VisualizationMode; label: string }[] = [
     { id: "schema", label: "Schema" },
     { id: "analysis", label: "Analysis" },
-    { id: "transformations", label: "Transformations" },
   ];
   return (
     <section className="schema-visualization" aria-labelledby={`${panelId}-heading`}>
@@ -395,7 +391,6 @@ export function SchemaVisualization({ result, draftSnapshot, analyzedSnapshot, o
           <div className="diagram-mode-panel" aria-live="polite">
             {mode === "schema" ? <SchemaMode snapshot={draftSnapshot} outOfDate={outOfDate} /> : null}
             {mode === "analysis" ? <AnalysisMode snapshot={analyzedSnapshot} result={result} selectedViolationId={selectedViolationId} onSelectViolation={onSelectViolation} /> : null}
-            {mode === "transformations" ? <TransformationsMode snapshot={analyzedSnapshot} synthesis={synthesis} bcnf={bcnf} preservation={preservation} /> : null}
           </div>
           {outOfDate && mode !== "schema" ? <p className="diagram-stale-note">Out of date: this diagram remains tied to {formatRelation(analyzedSnapshot)}, not the current draft.</p> : null}
         </div>

@@ -1,32 +1,24 @@
-import type { BcnfDecompositionResponseDto, DependencyPreservationResponseDto, SchemaInputDto } from "../../../api/schemawise-contracts";
-import { DelayedAsyncHint } from "../../../components/DelayedAsyncHint";
+import type { BcnfDecompositionResponseDto, SchemaInputDto } from "../../../api/schemawise-contracts";
 import { buildBcnfDecompositionExplanation, buildBcnfStepExplanation } from "../../explanations/explanation-builders";
-import type { TransformationState } from "../workspace-reducer";
 import { TRANSFORMATION_COPY } from "../transformation-explanations";
-import { DependencyPreservationResult } from "./DependencyPreservationResult";
 import { Content, EducationalExplanationView, FormalReasoning, TransformationReasoning } from "./EducationalAnalysis";
 import { MathematicalNotation } from "./MathematicalNotation";
 
 interface BcnfResultProps {
   readonly result: BcnfDecompositionResponseDto;
   readonly snapshot: SchemaInputDto;
-  readonly outOfDate: boolean;
-  readonly preservation: TransformationState<DependencyPreservationResponseDto>;
-  readonly preservationError?: string | undefined;
-  readonly onCheckPreservation: () => void;
   readonly onViewDiagram: () => void;
 }
 
-export function BcnfResult({ result, snapshot, outOfDate, preservation, preservationError, onCheckPreservation, onViewDiagram }: BcnfResultProps) {
+export function BcnfResult({ result, snapshot, onViewDiagram }: BcnfResultProps) {
   const lookup = new Map(snapshot.relation.attributes.map((attribute) => [attribute.id, attribute.name]));
-  const isLoading = preservation.status === "loading";
   const explanation = buildBcnfDecompositionExplanation(result, snapshot);
   const stepExplanations = result.steps.map((step) => buildBcnfStepExplanation(step, snapshot));
 
   return (
     <section className="transformation-result" aria-labelledby="bcnf-result-heading">
-      <h5 id="bcnf-result-heading">Decomposition result</h5>
-      <h6>Final relations</h6>
+      <h3 id="bcnf-result-heading">Decomposition result</h3>
+      <h4>Final relations</h4>
       <div className="final-relations">
         {result.relations.map((relation, index) => <MathematicalNotation key={`${relation.attributes.join(":")}:${index}`} value={{ kind: "attribute-set", ids: relation.attributes }} lookup={lookup} />)}
       </div>
@@ -83,15 +75,6 @@ export function BcnfResult({ result, snapshot, outOfDate, preservation, preserva
         </div>
       </details>
 
-      <div className="preservation-action" aria-busy={isLoading}>
-        <button className="button button--secondary" type="button" onClick={onCheckPreservation} disabled={outOfDate} aria-describedby={outOfDate ? "stale-transformation-help" : undefined}>
-          {isLoading ? "Checking dependency preservation…" : preservation.data ? <>Check again<span className="visually-hidden">: dependency preservation</span></> : "Check dependency preservation"}
-        </button>
-        <div className="transformation-live-status" role="status" aria-live="polite">{isLoading ? (preservation.data ? "Updating dependency preservation…" : "Checking dependency preservation…") : preservation.status === "success" ? "Dependency preservation check complete." : ""}</div>
-        <DelayedAsyncHint active={isLoading} requestKey={preservation.requestId} />
-        {preservationError ? <div className="transformation-error" role="alert"><strong>Unable to check dependency preservation.</strong><p>{preservationError}</p></div> : null}
-      </div>
-      {preservation.data ? <DependencyPreservationResult result={preservation.data} snapshot={snapshot} /> : null}
     </section>
   );
 }

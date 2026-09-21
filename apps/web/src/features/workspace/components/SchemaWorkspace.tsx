@@ -16,6 +16,7 @@ import { ClosureTool } from "./ClosureTool";
 import { FunctionalDependencyEditor } from "./FunctionalDependencyEditor";
 import { RelationEditor } from "./RelationEditor";
 import { AnalysisResults } from "./AnalysisResults";
+import { TransformSurface } from "./TransformSurface";
 import { createInitialWorkspaceState, draftToSchemaRequest, workspaceReducer } from "../workspace-reducer";
 import { validateDraft } from "../workspace-validation";
 import { WorkspaceViewProvider, useWorkspaceView } from "../workspace-view-navigation";
@@ -27,8 +28,6 @@ interface SchemaWorkspaceProps {
   readonly projectsApi?: ProjectApi;
   readonly initialProject?: ProjectDto;
   readonly focusAfterHydration?: boolean;
-  /** Transitional test harness for transformation request/state coverage until Transform is built. */
-  readonly legacyTransformationHarness?: boolean;
 }
 
 function WorkspaceNavigation({ activeView, onNavigate }: { readonly activeView: WorkspaceView; readonly onNavigate: (view: WorkspaceView) => void }) {
@@ -68,7 +67,7 @@ function focusFirstIssue(field: string) {
   document.querySelector<HTMLElement>(selector)?.focus();
 }
 
-function SchemaWorkspaceContent({ api = schemawiseApi, projectsApi = defaultProjectApi, initialProject, focusAfterHydration = false, legacyTransformationHarness = false }: SchemaWorkspaceProps) {
+function SchemaWorkspaceContent({ api = schemawiseApi, projectsApi = defaultProjectApi, initialProject, focusAfterHydration = false }: SchemaWorkspaceProps) {
   const auth = useAuth();
   const navigation = useProjectNavigation();
   const route = useProjectRouteCoordination();
@@ -521,23 +520,30 @@ function SchemaWorkspaceContent({ api = schemawiseApi, projectsApi = defaultProj
           draftSnapshot={draftToSchemaRequest(state.draft)}
           analyzedSnapshot={state.analysis.inputSnapshot!}
           outOfDate={state.analysis.outOfDate}
-          synthesis={state.synthesis}
-          bcnf={state.bcnf}
-          preservation={state.dependencyPreservation}
-          legacyTransformationHarness={legacyTransformationHarness}
-          synthesisError={state.synthesis.status === "error" ? transformationErrorMessage(state.synthesis.error) : undefined}
-          bcnfError={state.bcnf.status === "error" ? transformationErrorMessage(state.bcnf.error) : undefined}
-          preservationError={state.dependencyPreservation.status === "error" ? transformationErrorMessage(state.dependencyPreservation.error) : undefined}
-          onGenerateSynthesis={() => void generateSynthesis()}
-          onGenerateBcnf={() => void generateBcnf()}
-          onCheckPreservation={() => void checkDependencyPreservation()}
         /><div className="analysis-transform-link"><Link className="button button--secondary" to={(() => { const params = setWorkspaceView(new URLSearchParams(location.search), "transform"); return `${location.pathname}?${params}`; })()} onClick={() => { focusSurfaceAfterNavigation.current = true; }}>Explore transformations</Link></div></> : isAnalyzing ? (
           <div className="surface-empty-state"><p>Analyzing the schema…</p><DelayedAsyncHint active={isAnalyzing} requestKey={state.analysis.requestId} /></div>
         ) : (
           <div className="surface-empty-state"><p>{project.loadedProjectId ? "No analysis is available for this session. Analyze the schema to continue." : "No analysis is available yet. Go to Schema to analyze it."}</p><Link className="button button--primary" to={(() => { const params = setWorkspaceView(new URLSearchParams(location.search), "schema"); return `${location.pathname}${params.toString() ? `?${params}` : ""}` })()} onClick={() => { focusSurfaceAfterNavigation.current = true; }}>Go to Schema</Link></div>
         )}
       </section> : null}
-      {activeView === "transform" ? <section className="surface-empty-state transform-surface"><p className="eyebrow">Transform</p><h1 ref={surfaceHeadingRef} tabIndex={-1}>Transformations</h1><p>{hasResult ? "Transformation tools are being prepared for this workspace. Review the analysis in the meantime." : "Analyze the schema before exploring transformations."}</p>{hasResult ? <Link className="button button--secondary" to={(() => { const params = setWorkspaceView(new URLSearchParams(location.search), "analysis"); return `${location.pathname}?${params}`; })()} onClick={() => { focusSurfaceAfterNavigation.current = true; }}>Back to Analysis</Link> : <Link className="button button--primary" to={(() => { const params = setWorkspaceView(new URLSearchParams(location.search), "schema"); return `${location.pathname}${params.toString() ? `?${params}` : ""}` })()} onClick={() => { focusSurfaceAfterNavigation.current = true; }}>Go to Schema</Link>}</section> : null}
+      {activeView === "transform" ? <TransformSurface
+        analysis={hasResult ? state.analysis.data : undefined}
+        snapshot={hasResult ? state.analysis.inputSnapshot : undefined}
+        outOfDate={state.analysis.outOfDate}
+        synthesis={state.synthesis}
+        bcnf={state.bcnf}
+        preservation={state.dependencyPreservation}
+        synthesisError={state.synthesis.status === "error" ? transformationErrorMessage(state.synthesis.error) : undefined}
+        bcnfError={state.bcnf.status === "error" ? transformationErrorMessage(state.bcnf.error) : undefined}
+        preservationError={state.dependencyPreservation.status === "error" ? transformationErrorMessage(state.dependencyPreservation.error) : undefined}
+        analysisHref={(() => { const params = setWorkspaceView(new URLSearchParams(location.search), "analysis"); return `${location.pathname}?${params}`; })()}
+        schemaHref={(() => { const params = setWorkspaceView(new URLSearchParams(location.search), "schema"); return `${location.pathname}${params.toString() ? `?${params}` : ""}`; })()}
+        onNavigate={() => { focusSurfaceAfterNavigation.current = true; }}
+        onGenerateSynthesis={() => void generateSynthesis()}
+        onGenerateBcnf={() => void generateBcnf()}
+        onCheckPreservation={() => void checkDependencyPreservation()}
+        headingRef={surfaceHeadingRef}
+      /> : null}
     </div>
   );
 }
