@@ -31,11 +31,16 @@ body { margin: 0; min-width: 0; background: var(--surface-page); color: var(--te
 button, input { font: inherit; }
 button { min-height: 2.75rem; }
 .shell { width: min(100% - 2rem, 90rem); margin-inline: auto; }
+.app-shell { min-height: 100dvh; display: flex; flex-direction: column; }
 .site-header { border-bottom: 1px solid var(--border-default); background: var(--surface-raised); }
 .site-header__inner { min-height: 4rem; display: flex; align-items: center; gap: var(--space-3); }
 .wordmark { color: var(--text-primary); font-size: 1.05rem; font-weight: 760; letter-spacing: -0.02em; text-decoration: none; }
 .site-header__context { padding-left: var(--space-3); border-left: 1px solid var(--border-default); color: var(--text-secondary); font-size: 0.85rem; }
 .workspace-page { padding-block: clamp(2rem, 5vw, 4rem); }
+.workspace-page { flex: 1; }
+.site-footer { margin-top: var(--space-8); border-top: 1px solid var(--border-default); }
+.site-footer__inner { padding-block: var(--space-4) var(--space-6); color: var(--text-secondary); font-size: 0.78rem; text-align: center; }
+.site-footer__inner strong { color: var(--text-primary); font-weight: 700; }
 .route-state { max-width: 42rem; padding-block: clamp(1rem, 4vw, 3rem); }
 .route-state p { color: var(--text-secondary); }
 .route-state .button { margin-top: var(--space-3); }

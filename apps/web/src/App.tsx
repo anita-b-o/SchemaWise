@@ -6,19 +6,23 @@ import type { SchemaWiseApi } from "./api/schemawise-api";
 import { AuthProvider } from "./features/auth/auth-context";
 import { ProjectRoute } from "./features/projects/project-route";
 import { ProjectNavigationCoordinator } from "./features/projects/project-navigation";
+import { SiteFooter } from "./components/SiteFooter";
 
 export function AppRoutes({ api, projectsApi }: { readonly api?: SchemaWiseApi; readonly projectsApi?: ProjectApi }) {
   return (
     <ProjectNavigationCoordinator>
-      <header className="site-header">
-        <div className="shell site-header__inner">
-          <Link className="wordmark" to="/" aria-label="SchemaWise home">SchemaWise</Link>
-          <span className="site-header__context">Relational normalization</span>
-        </div>
-      </header>
-      <main className="shell workspace-page">
-        <ProjectRoute {...(api ? { api } : {})} {...(projectsApi ? { projectsApi } : {})} />
-      </main>
+      <div className="app-shell">
+        <header className="site-header">
+          <div className="shell site-header__inner">
+            <Link className="wordmark" to="/" aria-label="SchemaWise home">SchemaWise</Link>
+            <span className="site-header__context">Relational normalization</span>
+          </div>
+        </header>
+        <main className="shell workspace-page">
+          <ProjectRoute {...(api ? { api } : {})} {...(projectsApi ? { projectsApi } : {})} />
+        </main>
+        <SiteFooter />
+      </div>
     </ProjectNavigationCoordinator>
   );
 }
