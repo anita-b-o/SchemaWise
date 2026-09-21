@@ -89,7 +89,7 @@ export function SchemaWorkspace({ api = schemawiseApi, projectsApi = defaultProj
   const hasResult = state.analysis.data !== undefined && state.analysis.inputSnapshot !== undefined;
   const isPristine = state.draft.relationName === "" && state.draft.attributes.length === 0 && state.draft.functionalDependencies.length === 0;
   const dirty = isProjectDirty(project, state.draft);
-  const locationKeyRef = useRef(navigation?.locationKey);
+  const rootTransitionKeyRef = useRef(navigation?.rootTransitionKey);
   const appliedProjectRef = useRef(initialProject);
   const handledRouteErrorRef = useRef<string | undefined>(undefined);
   const referenceCounts = new Map(state.draft.attributes.map((attribute) => [
@@ -140,14 +140,14 @@ export function SchemaWorkspace({ api = schemawiseApi, projectsApi = defaultProj
     setProjectError("Could not load the saved version. Your local draft is unchanged.");
   }, [route?.hydrationReason, route?.hydrationStatus, route?.routeProjectId]);
   useEffect(() => {
-    if (!navigation || navigation.pathname !== "/" || locationKeyRef.current === navigation.locationKey) return;
-    locationKeyRef.current = navigation.locationKey;
+    if (!navigation?.rootTransitionKey || rootTransitionKeyRef.current === navigation.rootTransitionKey) return;
+    rootTransitionKeyRef.current = navigation.rootTransitionKey;
     const detach = navigation.consumeDetachIntent();
     if (detach) {
       setProject((current) => ({ ...initialProjectSession, name: current.name, detached: true }));
       setConflict(false); setConfirmConflictReload(false); setProjectError(detach.message); setProjectsOpen(false); setPendingDelete(undefined);
     } else newProject();
-  }, [navigation?.locationKey, navigation?.pathname]);
+  }, [navigation?.rootTransitionKey]);
   useEffect(() => { if (pendingDelete) deleteCancelRef.current?.focus(); }, [pendingDelete]);
   useEffect(() => { if (conflict) conflictHeadingRef.current?.focus(); }, [conflict]);
   useEffect(() => { if (confirmConflictReload) conflictKeepRef.current?.focus(); }, [confirmConflictReload]);

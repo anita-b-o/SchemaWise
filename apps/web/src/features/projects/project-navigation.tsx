@@ -2,11 +2,13 @@ import { createContext, useCallback, useContext, useEffect, useMemo, useRef, use
 import { useBlocker, useLocation, useNavigate } from "react-router-dom";
 import type { ProjectDto } from "../../api/schemawise-contracts";
 import { recordProjectAdoption } from "./project-route-adoption";
+import { workspaceResourceIdentity } from "./workspace-resource-identity";
+import { useWorkspaceView } from "../workspace/workspace-view-navigation";
+import { setWorkspaceView } from "../workspace/workspace-view";
 
 interface ProjectNavigationValue {
   readonly blocked: boolean;
-  readonly locationKey: string;
-  readonly pathname: string;
+  readonly rootTransitionKey: string | undefined;
   readonly promptHeading: RefObject<HTMLHeadingElement | null>;
   setDirty(dirty: boolean): void;
   navigateToProject(projectId: string, source?: HTMLElement | null): void;
@@ -28,17 +30,25 @@ export function useProjectNavigation(): ProjectNavigationValue | undefined {
 export function ProjectNavigationCoordinator({ children }: { readonly children: ReactNode }) {
   const navigate = useNavigate();
   const location = useLocation();
+  const activeView = useWorkspaceView().activeView;
+  const activeViewRef = useRef(activeView);
+  activeViewRef.current = activeView;
   const [dirty, setDirty] = useState(false);
+  const previousResource = useRef(workspaceResourceIdentity(location.pathname));
+  const committedLocationKey = useRef(location.key);
   const requestedNavigation = useRef<{ pathname: string; force: boolean } | undefined>(undefined);
   const bypassPathname = useRef<string | undefined>(undefined);
   const returnFocus = useRef<HTMLElement | null>(null);
   const promptHeading = useRef<HTMLHeadingElement>(null);
   const proceeding = useRef(false);
   const detachIntent = useRef<{ message: string } | undefined>(undefined);
+  const resource = workspaceResourceIdentity(location.pathname);
+  const rootTransitionKey = location.pathname === "/" && committedLocationKey.current !== location.key && (previousResource.current !== resource || requestedNavigation.current?.force === true)
+    ? location.key : undefined;
 
   const blocker = useBlocker(({ currentLocation, nextLocation }) => {
     if (!dirty || bypassPathname.current === nextLocation.pathname) return false;
-    return currentLocation.pathname !== nextLocation.pathname || requestedNavigation.current?.force === true;
+    return workspaceResourceIdentity(currentLocation.pathname) !== workspaceResourceIdentity(nextLocation.pathname) || requestedNavigation.current?.force === true;
   });
 
   useEffect(() => {
@@ -56,11 +66,15 @@ export function ProjectNavigationCoordinator({ children }: { readonly children: 
   }, [dirty]);
 
   useEffect(() => {
+    const changed = previousResource.current !== resource;
+    const forced = requestedNavigation.current?.force === true;
+    previousResource.current = resource;
+    committedLocationKey.current = location.key;
     requestedNavigation.current = undefined;
     bypassPathname.current = undefined;
     proceeding.current = false;
-    setDirty(false);
-  }, [location.key]);
+    if (changed || forced) setDirty(false);
+  }, [location.key, resource]);
 
   const requestNavigation = useCallback((pathname: string, source?: HTMLElement | null) => {
     returnFocus.current = source ?? (document.activeElement instanceof HTMLElement ? document.activeElement : null);
@@ -72,7 +86,8 @@ export function ProjectNavigationCoordinator({ children }: { readonly children: 
     const pathname = `/projects/${project.id}`;
     const adoptionToken = recordProjectAdoption(project);
     bypassPathname.current = pathname;
-    navigate(pathname, { replace: true, state: { adoptionToken } });
+    const search = setWorkspaceView(new URLSearchParams(), activeViewRef.current).toString();
+    navigate({ pathname, search }, { replace: true, state: { adoptionToken } });
   }, [navigate]);
 
   const detachCurrentProject = useCallback((message: string) => {
@@ -83,8 +98,7 @@ export function ProjectNavigationCoordinator({ children }: { readonly children: 
 
   const value = useMemo<ProjectNavigationValue>(() => ({
     blocked: blocker.state === "blocked",
-    locationKey: location.key,
-    pathname: location.pathname,
+    rootTransitionKey,
     promptHeading,
     setDirty,
     navigateToProject: (projectId, source) => requestNavigation(`/projects/${projectId}`, source),
@@ -99,7 +113,7 @@ export function ProjectNavigationCoordinator({ children }: { readonly children: 
     updateCurrentProjectTitle: (name) => { document.title = `${name} — SchemaWise`; },
     stay,
     discardAndContinue,
-  }), [adoptCreatedProject, blocker.state, detachCurrentProject, location.key, location.pathname, requestNavigation]);
+  }), [adoptCreatedProject, blocker.state, detachCurrentProject, requestNavigation, rootTransitionKey]);
 
   function stay() {
     blocker.reset?.();
