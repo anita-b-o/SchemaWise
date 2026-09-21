@@ -157,7 +157,7 @@ describe("project routes and hydration", () => {
     expect(screen.getByDisplayValue("Student").getAttribute("id")).toBe("attribute-student-id");
     expect(screen.getByDisplayValue("Course").getAttribute("id")).toBe("attribute-course-id");
     expect(screen.getByText("Saved")).toBeTruthy();
-    expect(screen.getByText("Define your relation and dependencies, then analyze the schema.")).toBeTruthy();
+    expect(screen.getByRole("heading", { name: "Define a relation and its dependencies." })).toBeTruthy();
     for (const method of Object.values(computations)) expect(method).not.toHaveBeenCalled();
 
     await user.clear(screen.getByRole("textbox", { name: "Project name" }));

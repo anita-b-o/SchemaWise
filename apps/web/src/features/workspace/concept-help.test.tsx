@@ -128,7 +128,7 @@ describe("dense and long educational content", () => {
         bcnf: { satisfied: false, violations },
       },
     };
-    const { container } = render(<AnalysisResults result={denseResult} analyzedSnapshot={denseSnapshot} outOfDate={false}
+    const { container } = render(<AnalysisResults legacyTransformationHarness result={denseResult} analyzedSnapshot={denseSnapshot} outOfDate={false}
       synthesis={{ status: "idle" }}
       bcnf={{ status: "success", data: { relations: [{ attributes: ids.slice(0, 3) }, { attributes: ids.slice(3) }], steps: [
         { source: ids, violation: violations[0]!, result: [ids.slice(0, 3), ids.slice(3)] },

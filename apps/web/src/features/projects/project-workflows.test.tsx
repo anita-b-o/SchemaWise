@@ -206,7 +206,7 @@ describe("project persistence UX", () => {
     await waitFor(() => expect((screen.getByRole("textbox", { name: "Relation name" }) as HTMLInputElement).value).toBe(""));
     expect(screen.getByDisplayValue("Untitled project")).toBeTruthy();
     expect(screen.getByText("Not saved")).toBeTruthy();
-    expect(screen.getByText("Define your relation and dependencies, then analyze the schema.")).toBeTruthy();
+    expect(screen.getByRole("heading", { name: "Define a relation and its dependencies." })).toBeTruthy();
     expect(router.state.location.pathname).toBe("/");
   });
 

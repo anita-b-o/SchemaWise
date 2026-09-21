@@ -55,6 +55,118 @@ function view() { return screen.getByTestId("active-view").textContent; }
 function url(router: ReturnType<typeof setup>["router"]) { return router.state.location.pathname + router.state.location.search; }
 
 describe("workspace view navigation", () => {
+  it("shows one semantic active link and one surface with shared project controls", async () => {
+    const { user, router, api, client } = setup("/");
+    const navigation = screen.getByRole("navigation", { name: "Workspace" });
+    const links = ["Schema", "Analysis", "Transform"].map((name) => screen.getByRole("link", { name }));
+    expect(navigation.querySelectorAll('[role="tab"]')).toHaveLength(0);
+    expect(links.filter((link) => link.getAttribute("aria-current") === "page")).toEqual([links[0]]);
+    expect(screen.getAllByRole("region", { name: "Project controls" })).toHaveLength(1);
+    expect(screen.getByRole("heading", { name: "Define a relation and its dependencies.", level: 1 })).toBeTruthy();
+    expect(document.querySelector('.page-introduction__illustration')).toBeTruthy();
+    for (const name of ["Relation", "Attributes", "Functional dependencies", "Attribute closure"]) expect(screen.getByRole("heading", { name })).toBeTruthy();
+    expect(screen.getByRole("button", { name: "Analyze schema" })).toBeTruthy();
+    expect(screen.queryByRole("heading", { name: "Issues" })).toBeNull();
+    expect(screen.queryByRole("heading", { name: "Minimal cover" })).toBeNull();
+    await user.click(links[1]!);
+    expect(url(router)).toBe("/?view=analysis");
+    expect(links.filter((link) => link.getAttribute("aria-current") === "page")).toEqual([links[1]]);
+    expect(document.activeElement).toBe(screen.getByRole("heading", { name: "Analysis", level: 1 }));
+    expect(screen.getByText("No analysis is available yet. Go to Schema to analyze it.")).toBeTruthy();
+    expect(screen.queryByRole("textbox", { name: "Relation name" })).toBeNull();
+    expect(document.querySelector('.page-introduction__illustration')).toBeNull();
+    expect(screen.queryByRole("heading", { name: "Attribute closure" })).toBeNull();
+    expect(screen.getAllByRole("region", { name: "Project controls" })).toHaveLength(1);
+    await user.click(links[2]!);
+    expect(url(router)).toBe("/?view=transform");
+    expect(links.filter((link) => link.getAttribute("aria-current") === "page")).toEqual([links[2]]);
+    expect(document.activeElement).toBe(screen.getByRole("heading", { name: "Transformations", level: 1 }));
+    expect(screen.getByText("Analyze the schema before exploring transformations.")).toBeTruthy();
+    expect(screen.queryByRole("heading", { name: "Analysis", level: 1 })).toBeNull();
+    expect(screen.queryByRole("textbox", { name: "Relation name" })).toBeNull();
+    expect(screen.getAllByRole("region", { name: "Project controls" })).toHaveLength(1);
+    expect(api.analyzeSchema).not.toHaveBeenCalled();
+    expect(client.getProject).not.toHaveBeenCalled();
+    await act(async () => { await router.navigate(-1); });
+    expect(view()).toBe("analysis");
+    expect(document.activeElement).not.toBe(screen.getByRole("heading", { name: "Analysis", level: 1 }));
+    await act(async () => { await router.navigate(1); });
+    expect(view()).toBe("transform");
+    expect(api.analyzeSchema).not.toHaveBeenCalled();
+  });
+
+  it("keeps Schema during Analyze, then focuses Analysis with one computation and no project GET", async () => {
+    let resolve!: (value: Awaited<ReturnType<SchemaWiseApi["analyzeSchema"]>>) => void;
+    const analyzeSchema = vi.fn<SchemaWiseApi["analyzeSchema"]>(() => new Promise((done) => { resolve = done; }));
+    const { user, router, client } = setup("/", { computations: { ...computations(), analyzeSchema }, strict: true });
+    await user.click(screen.getByRole("button", { name: "Load example" }));
+    await user.click(screen.getByRole("button", { name: "Analyze schema" }));
+    expect(url(router)).toBe("/");
+    expect(screen.getByRole("textbox", { name: "Relation name" })).toBeTruthy();
+    expect(screen.getByText("Analyzing schema…").textContent).toContain("Analyzing schema");
+    expect(analyzeSchema).toHaveBeenCalledTimes(1);
+    const input = vi.mocked(analyzeSchema).mock.calls[0]![0];
+    await act(async () => resolve({ relation: input.relation, candidateKeys: [[input.relation.attributes[0]!.id]], primeAttributes: [input.relation.attributes[0]!.id], minimalCover: input.functionalDependencies, normalForms: { second: { satisfied: true, violations: [] }, third: { satisfied: false, violations: [{ determinant: [input.relation.attributes[1]!.id], dependent: input.relation.attributes[2]!.id }] }, bcnf: { satisfied: false, violations: [{ determinant: [input.relation.attributes[1]!.id], dependent: input.relation.attributes[2]!.id }] } } }));
+    expect(url(router)).toBe("/?view=analysis");
+    expect(screen.getByRole("heading", { name: "R(A, B, C)" })).toBeTruthy();
+    expect(document.activeElement).toBe(screen.getByRole("heading", { name: "Analysis", level: 1 }));
+    expect(screen.getByRole("heading", { name: "Candidate keys" })).toBeTruthy();
+    expect(screen.getByRole("heading", { name: "Prime attributes" })).toBeTruthy();
+    expect(screen.getByRole("heading", { name: "Minimal cover" })).toBeTruthy();
+    expect(screen.getByRole("heading", { name: "Issues" })).toBeTruthy();
+    expect(screen.getByRole("button", { name: /Diagram/ })).toBeTruthy();
+    expect(screen.queryByRole("textbox", { name: "Relation name" })).toBeNull();
+    expect(screen.queryByRole("heading", { name: "Attribute closure" })).toBeNull();
+    expect(client.getProject).not.toHaveBeenCalled();
+    expect(analyzeSchema).toHaveBeenCalledTimes(1);
+    await user.click(screen.getByRole("link", { name: "Transform" }));
+    expect(screen.getByText("Transformation tools are being prepared for this workspace. Review the analysis in the meantime.")).toBeTruthy();
+    expect(screen.queryByRole("heading", { name: "Candidate keys" })).toBeNull();
+    expect(screen.queryByRole("textbox", { name: "Relation name" })).toBeNull();
+    expect(screen.queryByRole("button", { name: "Generate 3NF synthesis" })).toBeNull();
+    expect(screen.getAllByRole("region", { name: "Project controls" })).toHaveLength(1);
+    expect(analyzeSchema).toHaveBeenCalledTimes(1);
+  });
+
+  it("keeps historical analysis after an FD edit and replaces its snapshot on reanalysis", async () => {
+    const analyzeSchema = vi.fn<SchemaWiseApi["analyzeSchema"]>(async (input) => {
+      const [a, b, c] = input.relation.attributes.map(({ id }) => id);
+      return { relation: input.relation, candidateKeys: [[a!]], primeAttributes: [a!], minimalCover: input.functionalDependencies, normalForms: { second: { satisfied: true, violations: [] }, third: { satisfied: false, violations: [{ determinant: [b!], dependent: c! }] }, bcnf: { satisfied: false, violations: [{ determinant: [b!], dependent: c! }] } } };
+    });
+    const api = { ...computations(), analyzeSchema };
+    const { user, router, client } = setup("/", { computations: api });
+    await user.click(screen.getByRole("button", { name: "Load example" }));
+    await user.click(screen.getByRole("button", { name: "Analyze schema" }));
+    expect(await screen.findByRole("heading", { name: "R(A, B, C)" })).toBeTruthy();
+    expect(screen.getAllByText("Current").length).toBeGreaterThan(0);
+    await user.click(screen.getAllByText(/Explain issue/)[0]!);
+    expect(screen.getByText("Therefore this dependency violates 3NF.")).toBeTruthy();
+    await user.click(screen.getByRole("button", { name: /Show in diagram/ }));
+    expect(document.querySelector('.schema-visualization__content')).toBeTruthy();
+    await user.click(screen.getByRole("link", { name: "Edit schema" }));
+    expect(url(router)).toBe("/");
+    expect(document.activeElement).toBe(screen.getByRole("heading", { name: "Define a relation and its dependencies.", level: 1 }));
+    expect(screen.getByDisplayValue("R")).toBeTruthy();
+    await user.click(screen.getByRole("button", { name: "Remove dependency A → B" }));
+    await user.clear(screen.getByRole("textbox", { name: "Attribute 1 name" }));
+    await user.type(screen.getByRole("textbox", { name: "Attribute 1 name" }), "Customer");
+    await user.click(screen.getByRole("link", { name: "Analysis" }));
+    expect(screen.getByText("Results are out of date")).toBeTruthy();
+    expect(screen.getByRole("heading", { name: "R(A, B, C)" })).toBeTruthy();
+    expect(screen.getByRole("heading", { name: "Issues" })).toBeTruthy();
+    expect(screen.getByText("Therefore this dependency violates 3NF.")).toBeTruthy();
+    await user.click(screen.getByRole("button", { name: /Diagram/ }));
+    expect(screen.getByRole("heading", { name: "R(A, B, C)" })).toBeTruthy();
+    expect(screen.queryByRole("textbox", { name: "Attribute 1 name" })).toBeNull();
+    expect(analyzeSchema).toHaveBeenCalledTimes(1);
+    expect(client.getProject).not.toHaveBeenCalled();
+    await user.click(screen.getByRole("link", { name: "Edit schema" }));
+    expect(screen.getByDisplayValue("Customer")).toBeTruthy();
+    await user.click(screen.getByRole("button", { name: "Analyze again" }));
+    expect(await screen.findByRole("heading", { name: "R(Customer, B, C)" })).toBeTruthy();
+    expect(screen.queryByText("Results are out of date")).toBeNull();
+    expect(analyzeSchema).toHaveBeenCalledTimes(2);
+  });
   it("has no automated axe violations in the unchanged workspace presentation", async () => {
     const router = createMemoryRouter([{ path: "*", element: <AuthProvider api={authApi()}><AppRoutes projectsApi={projectsApi()} api={computations()} /></AuthProvider> }], { initialEntries: ["/?view=transform"] });
     render(<RouterProvider router={router} />);
@@ -66,14 +178,13 @@ describe("workspace view navigation", () => {
     const { user, router, client, auth } = setup("/?campaign=abc");
     await screen.findByText("person@example.com");
     await user.type(screen.getByRole("textbox", { name: "Relation name" }), "Local draft");
-    const input = screen.getByRole("textbox", { name: "Relation name" });
-    input.focus();
+    screen.getByRole("textbox", { name: "Relation name" }).focus();
     const fetchSpy = vi.spyOn(globalThis, "fetch");
     await user.click(screen.getByRole("button", { name: "Go Analysis" }));
     expect(url(router)).toBe("/?campaign=abc&view=analysis");
     expect(view()).toBe("analysis");
-    expect(screen.getByRole("textbox", { name: "Relation name" })).toBe(input);
-    expect(screen.getByDisplayValue("Local draft")).toBeTruthy();
+    expect(screen.queryByRole("textbox", { name: "Relation name" })).toBeNull();
+    expect(screen.getByRole("heading", { name: "Analysis", level: 1 })).toBeTruthy();
     expect(screen.queryByRole("heading", { name: "Unsaved changes" })).toBeNull();
     await user.click(screen.getByRole("button", { name: "Go Transform" }));
     expect(view()).toBe("transform");
@@ -85,7 +196,7 @@ describe("workspace view navigation", () => {
     expect(view()).toBe("analysis");
     await user.click(screen.getByRole("button", { name: "Go Schema" }));
     expect(url(router)).toBe("/?campaign=abc");
-    expect(screen.getByRole("textbox", { name: "Relation name" })).toBe(input);
+    expect(screen.getByDisplayValue("Local draft")).toBeTruthy();
     expect(fetchSpy).not.toHaveBeenCalled();
     expect(client.getProject).not.toHaveBeenCalled();
     expect(auth.me).toHaveBeenCalledTimes(1);
@@ -105,12 +216,13 @@ describe("workspace view navigation", () => {
     await act(async () => resolve(project()));
     expect(await screen.findByDisplayValue("Project A")).toBeTruthy();
     expect(view()).toBe("transform");
+    expect(screen.queryByRole("textbox", { name: "Relation name" })).toBeNull();
     await user.click(screen.getByRole("button", { name: "Go Analysis" }));
     expect(url(router)).toBe(`/projects/${A}?view=analysis`);
     expect(getProject).toHaveBeenCalledTimes(1);
     expect(auth.me).toHaveBeenCalledTimes(1);
     expect(api.analyzeSchema).not.toHaveBeenCalled();
-    expect(screen.getByText("Define your relation and dependencies, then analyze the schema.")).toBeTruthy();
+    expect(screen.getByText("No analysis is available for this session. Analyze the schema to continue.")).toBeTruthy();
   });
 
   it("keeps a computed result mounted across view changes without running Analyze again", async () => {
@@ -124,28 +236,29 @@ describe("workspace view navigation", () => {
     const { user, client } = setup(`/projects/${A}`, { computations: { ...computations(), analyzeSchema } });
     expect(await screen.findByDisplayValue("Project A")).toBeTruthy();
     await user.click(screen.getByRole("button", { name: "Analyze schema" }));
-    const result = (await screen.findByRole("heading", { name: "R(A)" })).closest("article");
-    await user.click(screen.getByRole("button", { name: "Go Analysis" }));
+    expect(await screen.findByRole("heading", { name: "R(A)" })).toBeTruthy();
     await user.click(screen.getByRole("button", { name: "Go Transform" }));
+    expect(screen.queryByRole("heading", { name: "R(A)" })).toBeNull();
     await user.click(screen.getByRole("button", { name: "Go Schema" }));
-    expect(screen.getByRole("heading", { name: "R(A)" }).closest("article")).toBe(result);
+    expect(screen.queryByRole("heading", { name: "R(A)" })).toBeNull();
+    await user.click(screen.getByRole("button", { name: "Go Analysis" }));
+    expect(screen.getByRole("heading", { name: "R(A)" })).toBeTruthy();
     expect(analyzeSchema).toHaveBeenCalledTimes(1);
     expect(client.getProject).toHaveBeenCalledTimes(1);
   });
 
   it("does not move focus when a view URL changes without a visual control", async () => {
     const { router } = setup("/");
-    const input = screen.getByRole("textbox", { name: "Relation name" });
-    input.focus();
+    screen.getByRole("textbox", { name: "Relation name" }).focus();
     await act(async () => { await router.navigate("/?view=analysis"); });
-    expect(document.activeElement).toBe(input);
     expect(view()).toBe("analysis");
+    expect(document.activeElement).not.toBe(screen.getByRole("heading", { name: "Analysis", level: 1 }));
   });
 
   it("restores view intent without restoring anonymous analysis on root refresh", async () => {
     const { api, client } = setup("/?view=analysis");
     expect(view()).toBe("analysis");
-    expect(screen.getByText("Define your relation and dependencies, then analyze the schema.")).toBeTruthy();
+    expect(screen.getByText("No analysis is available yet. Go to Schema to analyze it.")).toBeTruthy();
     expect(api.analyzeSchema).not.toHaveBeenCalled();
     expect(client.getProject).not.toHaveBeenCalled();
   });
@@ -153,20 +266,42 @@ describe("workspace view navigation", () => {
   it("saves a new root draft while retaining Analysis and avoiding a redundant GET", async () => {
     const { user, router, client } = setup("/?view=analysis");
     await screen.findByText("person@example.com");
+    await user.click(screen.getByRole("button", { name: "Go Schema" }));
     await user.type(screen.getByRole("textbox", { name: "Relation name" }), "Draft");
+    await user.click(screen.getByRole("button", { name: "Go Analysis" }));
     await user.click(screen.getByRole("button", { name: "Save" }));
     await waitFor(() => expect(client.createProject).toHaveBeenCalledTimes(1));
     expect(url(router)).toBe(`/projects/${B}?view=analysis`);
     expect(view()).toBe("analysis");
+    expect(screen.getByRole("heading", { name: "Analysis", level: 1 })).toBeTruthy();
+    await user.click(screen.getByRole("button", { name: "Go Schema" }));
     expect(screen.getByDisplayValue("Draft")).toBeTruthy();
     expect(client.getProject).not.toHaveBeenCalled();
+  });
+
+  it("adopts a newly saved project without remounting its visible Analysis result", async () => {
+    const analyzeSchema = vi.fn<SchemaWiseApi["analyzeSchema"]>(async (input) => ({ relation: input.relation, candidateKeys: [[input.relation.attributes[0]!.id]], primeAttributes: [input.relation.attributes[0]!.id], minimalCover: input.functionalDependencies, normalForms: { second: { satisfied: true, violations: [] }, third: { satisfied: true, violations: [] }, bcnf: { satisfied: true, violations: [] } } }));
+    const { user, router, client } = setup("/", { computations: { ...computations(), analyzeSchema } });
+    await screen.findByText("person@example.com");
+    await user.click(screen.getByRole("button", { name: "Load example" }));
+    await user.click(screen.getByRole("button", { name: "Analyze schema" }));
+    const article = (await screen.findByRole("heading", { name: "R(A, B, C)" })).closest("article");
+    await user.click(screen.getByRole("button", { name: "Save" }));
+    await waitFor(() => expect(url(router)).toBe(`/projects/${B}?view=analysis`));
+    expect(screen.getByRole("heading", { name: "Analysis", level: 1 })).toBeTruthy();
+    expect(screen.getByRole("heading", { name: "R(A, B, C)" }).closest("article")).toBe(article);
+    expect(client.createProject).toHaveBeenCalledTimes(1);
+    expect(client.getProject).not.toHaveBeenCalled();
+    expect(analyzeSchema).toHaveBeenCalledTimes(1);
   });
 
   it("keeps the same history entry and view on PUT", async () => {
     const { user, router, client } = setup(`/projects/${A}?view=transform`);
     expect(await screen.findByDisplayValue("Project A")).toBeTruthy();
-    const key = router.state.location.key;
+    await user.click(screen.getByRole("button", { name: "Go Schema" }));
     await user.type(screen.getByRole("textbox", { name: "Relation name" }), " edit");
+    await user.click(screen.getByRole("button", { name: "Go Transform" }));
+    const key = router.state.location.key;
     await user.click(screen.getByRole("button", { name: "Save" }));
     await waitFor(() => expect(client.updateProject).toHaveBeenCalledWith(A, expect.objectContaining({ expectedRevision: 1 }), "csrf-token"));
     expect(url(router)).toBe(`/projects/${A}?view=transform`);
@@ -177,6 +312,7 @@ describe("workspace view navigation", () => {
   it("blocks resource changes while dirty and opens another project on Schema after discard", async () => {
     const { user, router, client } = setup(`/projects/${A}?view=analysis`);
     expect(await screen.findByDisplayValue("Project A")).toBeTruthy();
+    await user.click(screen.getByRole("button", { name: "Go Schema" }));
     await user.type(screen.getByRole("textbox", { name: "Relation name" }), " dirty");
     await user.click(screen.getByRole("button", { name: "Go Transform" }));
     expect(screen.queryByRole("heading", { name: "Unsaved changes" })).toBeNull();
@@ -208,9 +344,12 @@ describe("workspace view navigation", () => {
     await user.type(screen.getByLabelText("Password"), "password-long");
     await user.click(document.querySelector<HTMLButtonElement>('.auth-form button[type="submit"]')!);
     expect(await screen.findByDisplayValue("After login")).toBeTruthy();
+    expect(screen.getByText("No analysis is available for this session. Analyze the schema to continue.")).toBeTruthy();
     expect(getProject).toHaveBeenCalledTimes(2);
     expect(view()).toBe("analysis");
+    await user.click(screen.getByRole("button", { name: "Go Schema" }));
     await user.type(screen.getByRole("textbox", { name: "Relation name" }), " dirty");
+    await user.click(screen.getByRole("button", { name: "Go Analysis" }));
     await user.click(screen.getByRole("button", { name: "Save" }));
     expect(await screen.findByRole("heading", { name: "This project was updated elsewhere." })).toBeTruthy();
     expect(url(router)).toBe(`/projects/${A}?view=analysis`);
@@ -226,7 +365,9 @@ describe("workspace view navigation", () => {
     const updateProject = vi.fn(async () => { throw new HttpApiError({ kind: "api", status: 404, code: "PROJECT_NOT_FOUND", message: "missing" }); });
     const { user, router } = setup(`/projects/${A}?view=analysis`, { projects: projectsApi({ getProject, updateProject }) });
     expect(await screen.findByDisplayValue("Project A")).toBeTruthy();
+    await user.click(screen.getByRole("button", { name: "Go Schema" }));
     await user.type(screen.getByRole("textbox", { name: "Relation name" }), " local");
+    await user.click(screen.getByRole("button", { name: "Go Analysis" }));
     await user.click(screen.getByRole("button", { name: "Log out" }));
     await user.click(screen.getByRole("button", { name: "Sign in" }));
     await user.type(screen.getByLabelText("Email"), "person@example.com");
@@ -259,12 +400,14 @@ describe("workspace view navigation", () => {
     const updateProject = vi.fn(async () => { throw new HttpApiError({ kind: "api", status: 409, code: "PROJECT_REVISION_CONFLICT", message: "conflict" }); });
     const { user, router } = setup(`/projects/${A}?view=analysis`, { projects: projectsApi({ getProject, updateProject }) });
     expect(await screen.findByDisplayValue("Project A")).toBeTruthy();
+    await user.click(screen.getByRole("button", { name: "Go Schema" }));
     await user.type(screen.getByRole("textbox", { name: "Relation name" }), " local");
+    await user.click(screen.getByRole("button", { name: "Go Analysis" }));
     await user.click(screen.getByRole("button", { name: "Save" }));
     await user.click(await screen.findByRole("button", { name: "Reload saved version" }));
     await user.click(screen.getByRole("button", { name: "Reload and discard" }));
     await waitFor(() => expect(url(router)).toBe("/"));
-    expect(view()).toBe("schema");
+    await waitFor(() => expect(view()).toBe("schema"));
     expect(screen.getByDisplayValue("R local")).toBeTruthy();
     expect(getProject).toHaveBeenCalledTimes(2);
   });

@@ -134,8 +134,12 @@ describe("schema analysis interactions", () => {
     await user.type(first, "Customer");
     await user.click(screen.getByRole("button", { name: "Analyze schema" }));
     await screen.findByRole("heading", { name: "R(Customer, B, C)" });
-    await user.clear(first);
-    await user.type(first, "Client");
+    await user.click(screen.getByRole("link", { name: "Edit schema" }));
+    const editFirst = screen.getByRole("textbox", { name: "Attribute 1 name" });
+    await user.clear(editFirst);
+    await user.type(editFirst, "Client");
+    expect(screen.getByRole("button", { name: "Analyze again" })).toBeTruthy();
+    await user.click(screen.getByRole("link", { name: "Analysis" }));
     expect(screen.getByText("Results are out of date")).toBeTruthy();
     expect(screen.getByText("The schema has changed since this analysis. Analyze again to update the results.")).toBeTruthy();
     const results = screen.getByRole("heading", { name: "R(Customer, B, C)" }).closest("article");
@@ -147,7 +151,6 @@ describe("schema analysis interactions", () => {
     await user.click(within(candidateSection).getByText("Explain candidate keys"));
     expect([...candidateSection.querySelectorAll(".educational-disclosure [aria-hidden]")].map((node) => node.textContent)).toContain("{Customer}");
     expect(candidateSection.textContent).not.toContain("Client");
-    expect(screen.getByRole("button", { name: "Analyze again" })).toBeTruthy();
   });
 
   it("re-analysis keeps previous results visible, then replaces their snapshot", async () => {
@@ -159,11 +162,14 @@ describe("schema analysis interactions", () => {
     await loadExample(user);
     await user.click(screen.getByRole("button", { name: "Analyze schema" }));
     await screen.findByRole("heading", { name: "R(A, B, C)" });
+    await user.click(screen.getByRole("link", { name: "Edit schema" }));
     const first = screen.getByRole("textbox", { name: "Attribute 1 name" });
     await user.clear(first);
     await user.type(first, "Client");
     await user.click(screen.getByRole("button", { name: "Analyze again" }));
     expect(screen.getByText("Updating analysis…")).toBeTruthy();
+    expect(screen.queryByRole("heading", { name: "R(A, B, C)" })).toBeNull();
+    await user.click(screen.getByRole("link", { name: "Analysis" }));
     expect(screen.getByRole("heading", { name: "R(A, B, C)" })).toBeTruthy();
     const input = vi.mocked(api.analyzeSchema).mock.calls[1]![0];
     second.resolve(analysisFor(input));
@@ -182,12 +188,16 @@ describe("schema analysis interactions", () => {
     await loadExample(user);
     await user.click(screen.getByRole("button", { name: "Analyze schema" }));
     await screen.findByRole("heading", { name: "R(A, B, C)" });
+    await user.click(screen.getByRole("link", { name: "Edit schema" }));
     await user.clear(screen.getByRole("textbox", { name: "Relation name" }));
     await user.type(screen.getByRole("textbox", { name: "Relation name" }), "Changed");
     await user.click(screen.getByRole("button", { name: "Analyze again" }));
     expect(await screen.findByText("Analysis failed")).toBeTruthy();
+    expect(screen.getByRole("heading", { name: "Define a relation and its dependencies." })).toBeTruthy();
+    await user.click(screen.getByRole("link", { name: "Analysis" }));
     expect(screen.getByRole("heading", { name: "R(A, B, C)" })).toBeTruthy();
     expect(screen.getByText("Results are out of date")).toBeTruthy();
+    await user.click(screen.getByRole("link", { name: "Edit schema" }));
     expect(screen.getByText("We couldn't reach SchemaWise. Check your connection and try again.")).toBeTruthy();
     expect(screen.queryByText(/socket stack secret/)).toBeNull();
   });
@@ -259,11 +269,14 @@ describe("schema analysis interactions", () => {
     expect(screen.queryByText("Analysis failed")).toBeNull();
   });
 
-  it("keeps editor before results in DOM order for responsive reading", () => {
-    const api = apiWith(async (input) => analysisFor(input));
-    const { container } = render(<SchemaWorkspace api={api} />);
-    const editor = container.querySelector(".schema-editor")!;
-    const results = container.querySelector(".results-region")!;
-    expect(editor.compareDocumentPosition(results) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+  it("keeps editor and results in separate surfaces for responsive reading", async () => {
+    const user = userEvent.setup();
+    render(<SchemaWorkspace api={apiWith(async (input) => analysisFor(input))} />);
+    expect(screen.getByRole("region", { name: "Schema editor" })).toBeTruthy();
+    expect(screen.queryByRole("heading", { name: "Analysis", level: 1 })).toBeNull();
+    await loadExample(user);
+    await user.click(screen.getByRole("button", { name: "Analyze schema" }));
+    expect(await screen.findByRole("heading", { name: "Analysis", level: 1 })).toBeTruthy();
+    expect(screen.queryByRole("region", { name: "Schema editor" })).toBeNull();
   });
 });

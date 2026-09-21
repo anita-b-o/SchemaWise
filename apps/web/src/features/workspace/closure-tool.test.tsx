@@ -19,6 +19,22 @@ async function expectClosureFormula(value: string) {
 }
 
 describe("attribute closure tool", () => {
+  it("keeps a closure result across Analysis and Schema navigation without another request", async () => {
+    const user = userEvent.setup();
+    const api = apiWith(async (input) => result(input, input.relation.attributes.map(({ id }) => id)));
+    render(<SchemaWorkspace api={api} />);
+    await openExample(user);
+    await user.click(tool().getByRole("checkbox", { name: "A" }));
+    await user.click(tool().getByRole("button", { name: "Calculate closure" }));
+    await expectClosureFormula("A⁺ = {A, B, C}");
+    await user.click(screen.getByRole("link", { name: "Analysis" }));
+    expect(screen.getByRole("heading", { name: "Analysis", level: 1 })).toBeTruthy();
+    expect(screen.queryByRole("heading", { name: "Attribute closure" })).toBeNull();
+    await user.click(screen.getByRole("link", { name: "Schema" }));
+    await expectClosureFormula("A⁺ = {A, B, C}");
+    expect(api.calculateClosure).toHaveBeenCalledTimes(1);
+    expect(api.analyzeSchema).not.toHaveBeenCalled();
+  });
   it("renders current attributes, supports simple and compound selections, and calculates from draft without analysis", async () => {
     const user = userEvent.setup();
     const api = apiWith(async (input) => result(input, input.relation.attributes.map((attribute) => attribute.id)));

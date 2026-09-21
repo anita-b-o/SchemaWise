@@ -120,6 +120,7 @@ describe("delayed async hint", () => {
     await act(async () => first.resolve(analysisFor(firstInput)));
     expect(screen.queryByText(HINT)).toBeNull();
 
+    fireEvent.click(screen.getByRole("link", { name: "Edit schema" }));
     fireEvent.click(screen.getByRole("button", { name: "Analyze again" }));
     act(() => vi.advanceTimersByTime(DELAYED_ASYNC_HINT_MS));
     expect(screen.getByText(HINT)).toBeTruthy();
