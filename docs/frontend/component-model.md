@@ -10,8 +10,8 @@
 > [project-recovery-v1.2.md](./project-recovery-v1.2.md).
 > UX Simplification v1.4 composes the same capabilities into a compact default;
 > see [ux-simplification-v1.4.md](./ux-simplification-v1.4.md).
-> Multi-Surface Workspace Tranche 2 presents Schema, Analysis, and a temporary
-> Transform surface. See [workspace-flow-redesign.md](./workspace-flow-redesign.md).
+> Multi-Surface Workspace Tranche 3 presents complete Schema, Analysis, and
+> Transform surfaces. See [workspace-flow-redesign.md](./workspace-flow-redesign.md).
 
 ## Component hierarchy
 
@@ -32,7 +32,11 @@ App / WorkspaceViewProvider
    │     ├─ NormalFormSummary / ViolationDetails / MinimalCoverResult
    │     ├─ SchemaVisualization         integrated, closed by default
    │     └─ ConceptGlossary
-   └─ Transform temporary surface       when view=transform
+   └─ TransformSurface                  when view=transform
+      ├─ SynthesisResult / BcnfResult
+      ├─ DependencyPreservationResult   contextual after BCNF
+      ├─ Neutral comparison             when both results exist
+      └─ TransformationsMode            existing diagram models
 ```
 
 For Educational UX v1.1, extend these cohesive result components rather than
@@ -121,9 +125,10 @@ explicit labelled native group.
 - `ViolationDetails` maps typed evidence to fixed explanation templates and
   groups identical displayed dependencies into one Level 1 issue while keeping
   each normal-form rule and formal proof distinct.
-- `SynthesisResult`, `BcnfResult` and preservation result render separate
-  asynchronous resources. `BcnfResult` owns the contextual preservation action,
-  which consumes its leaf attribute sets plus the immutable analysis snapshot.
+- `TransformSurface` composes separate asynchronous 3NF, BCNF, and preservation
+  resources already owned by `SchemaWorkspace`. It reveals the preservation
+  action only after BCNF and passes the immutable analyzed snapshot to every
+  result. It provides the neutral comparison when both outputs exist.
 - `SynthesisResult` keeps final relations and guarantees visible, then provides
   one Explain disclosure for source provenance, minimal cover and nested formal
   reasoning plus a direct diagram action.
@@ -133,8 +138,6 @@ explicit labelled native group.
 - `DependencyPreservationResult` labels its status as observed/checked, keeps
   lost dependencies primary and preserved dependencies secondary, and explains
   the projection procedure contractually without exposing a fictional trace.
-  Tranche 2 retains these transformation components and request state for
-  transitional tests; the product Transform surface does not render them yet.
 - `ClosureTool` is independent of analysis but consumes the current draft
   snapshot and API boundary. Its checkbox selection is local visual state; the
   reducer owns request status, selected input, response snapshot and stale
@@ -142,29 +145,32 @@ explicit labelled native group.
   meaning and formal-reasoning disclosures. Coverage is built only from the
   response and that captured snapshot; stale results never read the live draft.
 
-Schema Visualization v1.3 adds one secondary branch owned by `AnalysisResults`:
+Schema Visualization v1.3 provides presentation-only diagram models. Tranche 3
+places schema and analysis diagrams in Analysis, and transformation diagrams in
+Transform:
 
 ```text
 AnalysisResults
 └─ SchemaVisualization                 local open/mode/violation selection
    ├─ RelationDiagram                  semantic relation + exact FD rails
-   ├─ AnalysisMode                     returned keys/prime/violations
-   └─ TransformationsMode
-      ├─ SynthesisDiagram              fan-out, never a split tree
-      ├─ BcnfDiagram                   ordered selectable DTO split steps
-      └─ PreservationDiagram           checked status + returned lost FDs
+   └─ AnalysisMode                     returned keys/prime/violations
+TransformSurface
+└─ TransformationsMode                 disclosed after a result exists
+   ├─ SynthesisDiagram                 fan-out, never a split tree
+   ├─ BcnfDiagram                      ordered selectable DTO split steps
+   └─ PreservationDiagram              checked status + returned lost FDs
 ```
 
 Pure builders in `schema-visualization-model.ts` translate DTOs and snapshots
 to presentation-only records. The Schema mode receives the current draft;
-Analysis and Transformations receive the immutable analyzed snapshot. Diagram
+Analysis and Transform receive the immutable analyzed snapshot. Diagram
 state is neither persisted nor added to the workspace reducer. See
 [`schema-visualization-model.md`](./schema-visualization-model.md) and
 [ADR 018](../adr/018-schema-visualization.md).
 
-V1.4 keeps this branch between the compact summary and Transformations. Textual
-issue and transformation actions control the existing local open/mode/selection
-state and move focus to the requested diagram; no duplicate render tree or
+V1.4 keeps the Analysis branch below the compact summary. Textual issue and
+transformation actions control their respective local diagram state and move
+focus to the requested diagram; no duplicate render tree or
 additional calculation is introduced.
 
 ## Feature-oriented source layout

@@ -3,8 +3,8 @@
 Status: implemented MVP plus manual project persistence; Educational UX v1.1
 and locally audited Project Recovery + Deep Links v1.2 are frozen. UX
 Simplification v1.4 reorganizes the existing frontend surfaces without changing
-those state or service boundaries. Multi-Surface Workspace Tranche 2 now renders
-one active Schema, Analysis, or temporary Transform surface at a time.
+those state or service boundaries. Multi-Surface Workspace Tranche 3 now renders
+one active Schema, Analysis, or complete Transform surface at a time.
 
 ## Context and boundaries
 
@@ -39,6 +39,16 @@ preserving the mounted `SchemaWorkspace` owner; surface changes do not hydrate,
 compute, or invoke the dirty resource blocker. Successful Analyze selects
 Analysis. Direct Analysis entry without an in-memory result shows an empty
 state, even after a saved project schema hydrates.
+
+Transform entry without an in-memory analysis likewise remains at its URL and
+shows an empty state. `Explore transformations` pushes the Transform view from
+Analysis without a computation. `SchemaWorkspace` passes its analyzed snapshot
+and existing transformation resources into `TransformSurface`; no derived data
+is persisted. Stale results remain readable with generation disabled, while a
+successful analysis of a changed revision invalidates them in the reducer.
+Transform owns 3NF, BCNF, preservation, their neutral comparison, and their
+existing diagram model. Analysis keeps only schema/analysis diagrams and the
+entry link. The prior test-only transformation harness is removed.
 
 `/` remains the anonymous-first new local workspace. `/projects/:projectId`
 references a private persisted project; it waits for auth initialization and

@@ -1,6 +1,18 @@
 # SchemaWise workspace flow redesign
 
-Status: **Multi-Surface Workspace Tranche 2 complete locally**, 2026-09-21. No deployment or push was made.
+Status: **Multi-Surface Workspace Tranche 3 implemented locally**, 2026-09-21. No deployment or push was made.
+
+## Tranche 3 implementation and browser evidence
+
+`TransformSurface` now composes the existing 3NF, BCNF, preservation, explanation, and diagram components from the one analyzed snapshot owned by `SchemaWorkspace`. The reducer and API contracts did not change. Analysis contains its own schema/analysis diagram and the `Explore transformations` link; the temporary test-only transformation harness was removed. Transform presents 3NF, BCNF, and contextual preservation in that order. Both outputs reveal a neutral comparison; Explain, formal reasoning, steps, and diagrams stay disclosed until requested. A relation already satisfying 3NF or BCNF receives a plain explanation instead of an unnecessary Generate action.
+
+Direct `?view=transform` without in-memory analysis remains an empty state. A stale analyzed snapshot without transformations blocks generation and links to Analysis and Schema. Existing stale transformation results remain visible under `Out of date`, with new operations disabled. A successful new analysis of a changed revision resets the transformation resources as before. Surface links push history and do not compute or hydrate. Project Save, Open, New, Delete, logout, reconnect, and OCC retain the Tranche 1 resource semantics.
+
+Browser audit used local Vite and the real stateless computation routes from `createServer`, with a local auth response for the shell. At 1440×900, 390×844, 320×720, 768×1024, and 1024×768, the example flow covered empty Transform, Analyze, 3NF, BCNF, preservation, stale historical results, and reanalysis reset. Each computation made one POST, while surface navigation, Explain, and diagrams made none. No viewport had horizontal overflow, browser console warnings/errors, or axe-core violations/incomplete checks in the audited states. At 390 px, Transform `body.scrollHeight` measured 1436 px initially, 1856 px after 3NF, 2571 px after BCNF, and 2731 px after preservation; at 1440 px these values were 996, 1371, 1875, and 2034 px. Disclosure keeps the optional reasoning and diagrams out of those initial heights.
+
+The six-attribute Enrollment case was entered through Schema and exercised against the real computation routes with the deterministic fixture attribute IDs. Analysis returned 3/44/44 normal-form violations. Transform displayed the expected four 3NF relations and four BCNF relations, 3 ordered BCNF steps, lossless join on both, and `Not preserved` with `Department → Office` lost. Browser axe-core reported zero violations and zero incomplete checks in the full result. A one-attribute relation already satisfying BCNF showed no generation buttons and explained why preservation checking was unavailable.
+
+Final local gates: `npm run typecheck`, `npm test`, `npm run build`, `npm run test --workspace @schemawise/web`, and `git diff --check` passed. The suite has **533 tests** (API 142, Web 218, engine 173), seven more than the Tranche 2 baseline. `npm audit --omit=dev` reported **0 vulnerabilities**. No push or deployment was performed.
 
 ## Tranche 2 closure evidence
 
@@ -195,5 +207,5 @@ Expected scope: roughly 8–12 frontend files plus focused route/workspace/educa
 
 The architecture above is approved. Tranche 1 established URL, navigation,
 history, and recovery safety; Tranche 2 delivered separate Schema and Analysis
-surfaces plus a temporary Transform surface. The final Transform composition
-is the next tranche.
+surfaces; Tranche 3 completed Transform without changing resource ownership.
+Tranche 4 is reserved for integral hardening and public-deployment preparation.
