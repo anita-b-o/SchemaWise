@@ -44,12 +44,11 @@ const preservation: DependencyPreservationResponseDto = {
   lostDependencies: [{ left: ["a", "b"], right: ["c"] }],
 };
 
-function view(options: { draftSnapshot?: SchemaInputDto; analyzed?: SchemaInputDto; value?: AnalysisResponseDto; outOfDate?: boolean } = {}) {
+function view(options: { analyzed?: SchemaInputDto; value?: AnalysisResponseDto; outOfDate?: boolean } = {}) {
   const analysisSnapshot = options.analyzed ?? analyzedSnapshot;
   return render(
     <AnalysisResults
       result={options.value ?? result}
-      draftSnapshot={options.draftSnapshot ?? analysisSnapshot}
       analyzedSnapshot={analysisSnapshot}
       outOfDate={options.outOfDate ?? false}
     />,
@@ -167,7 +166,7 @@ describe("schema visualization", () => {
     const user = userEvent.setup();
     view();
     const panel = await openVisualization(user);
-    expect(within(panel).getByRole("region", { name: "Draft schema" })).toBeTruthy();
+    expect(within(panel).getByRole("region", { name: "Analyzed schema" })).toBeTruthy();
     expect(within(panel).getByText("{A, B}")).toBeTruthy();
     expect(within(panel).getByText("∅")).toBeTruthy();
     expect(within(panel).getByText(/A, B functionally determines C/)).toBeTruthy();
@@ -202,18 +201,15 @@ describe("schema visualization", () => {
     expect(screen.getByRole("button", { name: /Selected in diagram: A → C/ }).getAttribute("aria-pressed")).toBe("true");
   });
 
-  it("keeps draft and historical analysis names separate when stale", async () => {
+  it("keeps both diagram modes on the historical snapshot when stale", async () => {
     const user = userEvent.setup();
-    const draft: SchemaInputDto = {
-      relation: { name: "DraftR", attributes: [{ id: "a", name: "Renamed A" }, { id: "b", name: "B" }] },
-      functionalDependencies: [{ left: ["a"], right: ["b"] }],
-    };
-    view({ draftSnapshot: draft, outOfDate: true });
+    view({ outOfDate: true });
     const panel = await openVisualization(user);
-    expect(within(panel).getByText("Renamed A")).toBeTruthy();
+    expect(within(panel).getByText("Analyzed schema")).toBeTruthy();
+    expect(within(panel).getByText("A")).toBeTruthy();
+    expect(within(panel).getByText(/remains tied to R\(A, B, C\)/)).toBeTruthy();
     await user.click(within(panel).getByRole("button", { name: "Analysis" }));
     expect(within(panel).getByText("A")).toBeTruthy();
-    expect(within(panel).queryByText("Renamed A")).toBeNull();
     expect(within(panel).getByText(/remains tied to R\(A, B, C\)/)).toBeTruthy();
   });
 

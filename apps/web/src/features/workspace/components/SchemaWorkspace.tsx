@@ -110,6 +110,7 @@ function SchemaWorkspaceContent({ api = schemawiseApi, projectsApi = defaultProj
   const dirty = isProjectDirty(project, state.draft);
   const rootTransitionKeyRef = useRef(navigation?.rootTransitionKey);
   const appliedProjectRef = useRef(initialProject);
+  const savedAdoptionRef = useRef<{ id: string; revision: number } | undefined>(undefined);
   const handledRouteErrorRef = useRef<string | undefined>(undefined);
   const referenceCounts = new Map(state.draft.attributes.map((attribute) => [
     attribute.id,
@@ -142,6 +143,10 @@ function SchemaWorkspaceContent({ api = schemawiseApi, projectsApi = defaultProj
   useEffect(() => {
     if (!initialProject || appliedProjectRef.current === initialProject) return;
     appliedProjectRef.current = initialProject;
+    if (savedAdoptionRef.current?.id === initialProject.id && savedAdoptionRef.current.revision === initialProject.revision) {
+      savedAdoptionRef.current = undefined;
+      return;
+    }
     activeAnalysis.current?.abort(); activeSynthesis.current?.abort(); activeBcnf.current?.abort(); activePreservation.current?.abort(); activeClosure.current?.abort();
     dispatch({ type: "replaceDraft", draft: persistedSchemaToDraft(initialProject.schema) });
     setProject(sessionFromProject(initialProject));
@@ -241,7 +246,10 @@ function SchemaWorkspaceContent({ api = schemawiseApi, projectsApi = defaultProj
         : await projectsApi.createProject({ name: project.name, schema }, auth.csrfToken);
       setProject(sessionFromProject(saved));
       setConflict(false);
-      if (!isExisting) navigation?.adoptCreatedProject(saved);
+      if (!isExisting) {
+        savedAdoptionRef.current = { id: saved.id, revision: saved.revision };
+        navigation?.adoptCreatedProject(saved);
+      }
       else navigation?.updateCurrentProjectTitle(saved.name);
     } catch (error) {
       if (error instanceof HttpApiError && error.status === 409 && error.code === "PROJECT_REVISION_CONFLICT") { setConfirmConflictReload(false); setConflict(true); }
@@ -517,7 +525,6 @@ function SchemaWorkspaceContent({ api = schemawiseApi, projectsApi = defaultProj
         </div>
         {hasResult ? <><AnalysisResults
           result={state.analysis.data!}
-          draftSnapshot={draftToSchemaRequest(state.draft)}
           analyzedSnapshot={state.analysis.inputSnapshot!}
           outOfDate={state.analysis.outOfDate}
         /><div className="analysis-transform-link"><Link className="button button--secondary" to={(() => { const params = setWorkspaceView(new URLSearchParams(location.search), "transform"); return `${location.pathname}?${params}`; })()} onClick={() => { focusSurfaceAfterNavigation.current = true; }}>Explore transformations</Link></div></> : isAnalyzing ? (

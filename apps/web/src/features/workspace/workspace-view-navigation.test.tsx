@@ -225,6 +225,8 @@ describe("workspace view navigation", () => {
     expect(screen.getByText("Therefore this dependency violates 3NF.")).toBeTruthy();
     await user.click(screen.getByRole("button", { name: /Diagram/ }));
     expect(screen.getByRole("heading", { name: "R(A, B, C)" })).toBeTruthy();
+    expect(screen.getByText("Analyzed schema")).toBeTruthy();
+    expect(document.querySelector(".analysis-results")?.textContent).not.toContain("Customer");
     expect(screen.queryByRole("textbox", { name: "Attribute 1 name" })).toBeNull();
     expect(analyzeSchema).toHaveBeenCalledTimes(1);
     expect(client.getProject).not.toHaveBeenCalled();
@@ -356,7 +358,10 @@ describe("workspace view navigation", () => {
     const article = (await screen.findByRole("heading", { name: "R(A, B, C)" })).closest("article");
     await user.click(screen.getByRole("button", { name: "Save" }));
     await waitFor(() => expect(url(router)).toBe(`/projects/${B}?view=analysis`));
+    await waitFor(() => expect(screen.getByText("Saved")).toBeTruthy());
     expect(screen.getByRole("heading", { name: "Analysis", level: 1 })).toBeTruthy();
+    expect(screen.getByRole("heading", { name: "R(A, B, C)" }).closest("article")).toBe(article);
+    await new Promise((resolve) => setTimeout(resolve, 0));
     expect(screen.getByRole("heading", { name: "R(A, B, C)" }).closest("article")).toBe(article);
     expect(client.createProject).toHaveBeenCalledTimes(1);
     expect(client.getProject).not.toHaveBeenCalled();

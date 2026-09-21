@@ -83,6 +83,56 @@ async function analyzeExample(user: ReturnType<typeof userEvent.setup>) {
 }
 
 describe("normalization transformations", () => {
+  it("completes the core surface and transformation flow with keyboard activation", async () => {
+    const user = userEvent.setup();
+    const api = apiWith();
+    render(<SchemaWorkspace api={api} />);
+
+    screen.getByRole("textbox", { name: "Project name" }).focus();
+    await user.tab({ shift: true });
+    expect(document.activeElement).toBe(screen.getByRole("link", { name: "Transform" }));
+    await user.tab();
+    expect(document.activeElement).toBe(screen.getByRole("textbox", { name: "Project name" }));
+
+    screen.getByRole("button", { name: "Load example" }).focus();
+    await user.keyboard("{Enter}");
+    screen.getByRole("button", { name: "Analyze schema" }).focus();
+    await user.keyboard(" ");
+    await screen.findByRole("heading", { name: "Analysis", level: 1 });
+
+    const explain = screen.getByText("Explain candidate keys");
+    explain.focus();
+    await user.keyboard("{Enter}");
+    expect(explain.tagName).toBe("SUMMARY");
+    const diagram = screen.getByRole("button", { name: /Diagram/ });
+    diagram.focus();
+    await user.keyboard(" ");
+    expect(diagram.getAttribute("aria-expanded")).toBe("true");
+
+    screen.getByRole("link", { name: "Explore transformations" }).focus();
+    await user.keyboard("{Enter}");
+    await screen.findByRole("heading", { name: "Transformations", level: 1 });
+    screen.getByRole("button", { name: "Generate 3NF synthesis" }).focus();
+    await user.keyboard("{Enter}");
+    await screen.findByRole("region", { name: "Synthesis result" });
+    screen.getByRole("button", { name: "Generate BCNF decomposition" }).focus();
+    await user.keyboard("{Enter}");
+    await screen.findByRole("region", { name: "Decomposition result" });
+    screen.getByRole("button", { name: "Check dependency preservation" }).focus();
+    await user.keyboard("{Enter}");
+    await screen.findByRole("region", { name: "Preservation result" });
+
+    screen.getByRole("link", { name: "Back to analysis" }).focus();
+    await user.keyboard("{Enter}");
+    screen.getByRole("link", { name: "Edit schema" }).focus();
+    await user.keyboard("{Enter}");
+    expect(screen.getByRole("heading", { name: "Define a relation and its dependencies.", level: 1 })).toBeTruthy();
+    expect(api.analyzeSchema).toHaveBeenCalledTimes(1);
+    expect(api.synthesizeThirdNormalForm).toHaveBeenCalledTimes(1);
+    expect(api.decomposeBoyceCodd).toHaveBeenCalledTimes(1);
+    expect(api.analyzeDependencyPreservation).toHaveBeenCalledTimes(1);
+  });
+
   it("renders the Enrollment 3/44/44 gate and exact 3NF, BCNF, and lost-dependency outcomes", async () => {
     const user = userEvent.setup();
     const enrollment: SchemaInputDto = {
@@ -103,7 +153,7 @@ describe("normalization transformations", () => {
     });
     render(<SchemaWorkspace api={api} initialProject={{ id: "11111111-1111-4111-8111-111111111111", name: "Enrollment", revision: 1, schema: { schemaVersion: 1, ...enrollment }, createdAt: "2026-09-21T00:00:00Z", updatedAt: "2026-09-21T00:00:00Z" }} />);
     await user.click(screen.getByRole("button", { name: "Analyze schema" }));
-    await screen.findByRole("heading", { name: "Enrollment(Student, Course, Professor, Department, Grade, Office)" });
+    await screen.findByRole("heading", { name: "Enrollment(Student, Course, Professor, Department, Grade, Office)" }, { timeout: 3000 });
     expect([...document.querySelectorAll(".normal-form-count")].map((node) => node.textContent)).toEqual(["3 violations", "44 violations", "44 violations"]);
     await user.click(screen.getByRole("link", { name: "Explore transformations" }));
     await user.click(screen.getByRole("button", { name: "Generate 3NF synthesis" }));

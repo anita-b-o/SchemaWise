@@ -25,7 +25,6 @@ export type VisualizationMode = "schema" | "analysis";
 
 interface SchemaVisualizationProps {
   readonly result: AnalysisResponseDto;
-  readonly draftSnapshot: SchemaInputDto;
   readonly analyzedSnapshot: SchemaInputDto;
   readonly outOfDate: boolean;
   readonly open: boolean;
@@ -159,13 +158,13 @@ function RelationDiagram({ model, label, description, selectedAttributes = [], m
   );
 }
 
-function SchemaMode({ snapshot, outOfDate }: { readonly snapshot: SchemaInputDto; readonly outOfDate: boolean }) {
+function SchemaMode({ snapshot }: { readonly snapshot: SchemaInputDto }) {
   const model = buildSchemaDiagramModel(snapshot);
   return (
     <RelationDiagram
       model={model}
-      label="Draft schema"
-      description={`${outOfDate ? "Current draft, distinct from the historical analysis below. " : "Current draft. "}This input view keeps every entered dependency intact, including multi-attribute right-hand sides.`}
+      label="Analyzed schema"
+      description="Schema captured for this analysis. This input view keeps every entered dependency intact, including multi-attribute right-hand sides."
     />
   );
 }
@@ -370,7 +369,7 @@ export function TransformationsMode({ snapshot, synthesis, bcnf, preservation }:
   );
 }
 
-export function SchemaVisualization({ result, draftSnapshot, analyzedSnapshot, outOfDate, open, mode, selectedViolationId, onToggle, onModeChange, onSelectViolation }: SchemaVisualizationProps) {
+export function SchemaVisualization({ result, analyzedSnapshot, outOfDate, open, mode, selectedViolationId, onToggle, onModeChange, onSelectViolation }: SchemaVisualizationProps) {
   const panelId = useId();
   const modes: readonly { id: VisualizationMode; label: string }[] = [
     { id: "schema", label: "Schema" },
@@ -389,10 +388,10 @@ export function SchemaVisualization({ result, draftSnapshot, analyzedSnapshot, o
             {modes.map((item) => <button key={item.id} type="button" aria-pressed={mode === item.id} onClick={() => onModeChange(item.id)}>{item.label}</button>)}
           </div>
           <div className="diagram-mode-panel" aria-live="polite">
-            {mode === "schema" ? <SchemaMode snapshot={draftSnapshot} outOfDate={outOfDate} /> : null}
+            {mode === "schema" ? <SchemaMode snapshot={analyzedSnapshot} /> : null}
             {mode === "analysis" ? <AnalysisMode snapshot={analyzedSnapshot} result={result} selectedViolationId={selectedViolationId} onSelectViolation={onSelectViolation} /> : null}
           </div>
-          {outOfDate && mode !== "schema" ? <p className="diagram-stale-note">Out of date: this diagram remains tied to {formatRelation(analyzedSnapshot)}, not the current draft.</p> : null}
+          {outOfDate ? <p className="diagram-stale-note">Out of date: this diagram remains tied to {formatRelation(analyzedSnapshot)}, not the current draft.</p> : null}
         </div>
       ) : null}
     </section>

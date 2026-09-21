@@ -8,12 +8,11 @@ import { SchemaVisualization, type VisualizationMode } from "./SchemaVisualizati
 
 interface AnalysisResultsProps {
   readonly result: AnalysisResponseDto;
-  readonly draftSnapshot?: SchemaInputDto | undefined;
   readonly analyzedSnapshot: SchemaInputDto;
   readonly outOfDate: boolean;
 }
 
-export function AnalysisResults({ result, draftSnapshot, analyzedSnapshot, outOfDate }: AnalysisResultsProps) {
+export function AnalysisResults({ result, analyzedSnapshot, outOfDate }: AnalysisResultsProps) {
   const lookup = new Map(analyzedSnapshot.relation.attributes.map((attribute) => [attribute.id, attribute.name]));
   const [visualizationOpen, setVisualizationOpen] = useState(false);
   const [visualizationMode, setVisualizationMode] = useState<VisualizationMode>("schema");
@@ -60,7 +59,6 @@ export function AnalysisResults({ result, draftSnapshot, analyzedSnapshot, outOf
 
       <SchemaVisualization
         result={result}
-        draftSnapshot={draftSnapshot ?? analyzedSnapshot}
         analyzedSnapshot={analyzedSnapshot}
         outOfDate={outOfDate}
         open={visualizationOpen}
