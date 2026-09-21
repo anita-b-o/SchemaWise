@@ -84,12 +84,13 @@ visual space.
 
 ## Layout and context
 
-Desktop uses an approximately 34/66 input/results split. The input remains a
-normal document (no nested scrolling and no tall sticky editor). Instead, the
-small analyzed-relation header is sticky at widths above 1024px, keeping the
-historical schema and `Current` / `Out of date` state visible while results are
-read. Mobile keeps DOM and visual order as Input then Results; sticky behavior
-is disabled.
+Desktop uses an approximately 34/66 input/results split. Above 1024px, Input
+stays beside Results and scrolls within the available viewport height when its
+content is taller. Project controls, the editor, Analyze, and Tools share that
+scroll. Results keep the document scroll, and the small analyzed-relation header
+remains sticky in its own column, keeping the historical schema and `Current` /
+`Out of date` state visible while results are read. At 1024px and below, Input
+precedes Results in one column with only the document scroll and no sticky Input.
 
 The project bar retains Project name, state, New, Open, Save and authentication.
 New/Open/auth are tertiary, Save is visible secondary, and Analyze remains the

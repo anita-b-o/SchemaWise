@@ -400,6 +400,16 @@ summary { width: fit-content; min-height: 2.75rem; padding-block: 0.7rem; cursor
 :focus-visible { outline: 3px solid var(--focus-ring); outline-offset: 2px; }
 
 @media (min-width: 64.0625rem) {
+  .workspace-primary {
+    position: sticky;
+    top: var(--space-4);
+    max-height: calc(100dvh - 2 * var(--space-4));
+    overflow-y: auto;
+    overscroll-behavior-y: contain;
+    scrollbar-gutter: stable;
+  }
+  .project-bar { grid-template-columns: minmax(0, 1fr); }
+  .project-actions { justify-content: flex-start; }
   .analysis-header { position: sticky; top: 0; z-index: 3; }
 }
 

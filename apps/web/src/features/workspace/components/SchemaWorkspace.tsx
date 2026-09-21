@@ -387,27 +387,27 @@ export function SchemaWorkspace({ api = schemawiseApi, projectsApi = defaultProj
 
   return (
     <>
-    <section className="project-bar" aria-label="Project controls">
-      <div className="project-title-field"><label htmlFor="project-name">Project name</label><input ref={projectNameRef} id="project-name" type="text" maxLength={120} value={project.name} onChange={(event) => setProject((current) => ({ ...current, name: event.target.value }))} /></div>
-      <span className={`save-state ${dirty ? "save-state--dirty" : ""}`} aria-live="polite">{saveState}</span>
-      <div className="project-actions">
-        <button className="button button--quiet" type="button" onClick={requestNew}>New project</button>
-        <button className="button button--quiet" type="button" onClick={() => void openProjectList()}>Open projects</button>
-        <button ref={saveButtonRef} className="button button--secondary" type="button" onClick={() => void saveProject()} disabled={projectBusy || routeHydrating || !routeLoadedCoherently}>{projectBusy ? "Working…" : "Save"}</button>
-        {auth.status === "authenticated" ? <><span className="account-email">{auth.user?.email}</span><button className="button button--quiet" type="button" onClick={() => void auth.logout()}>Log out</button></> : <button className="button button--quiet" type="button" onClick={openAuth}>{auth.status === "unknown" ? "Checking session…" : "Sign in"}</button>}
-      </div>
-    </section>
-    <ProjectNavigationPrompt />
-    {auth.initializationError ? <p className="project-notice" role="status">{auth.initializationError}</p> : null}
-    {auth.sessionError ? <p className="project-notice project-notice--error" role="alert">{auth.sessionError}</p> : null}
-    {route?.dirtyReconnectPreserved && dirty && auth.status === "authenticated" ? <p className="project-notice" role="status">Signed in. This project has unsaved local changes.</p> : null}
-    {projectError ? <div className="project-notice project-notice--error" role="alert"><p>{projectError}</p><button className="button button--quiet" type="button" onClick={() => setProjectError(undefined)}>Dismiss</button></div> : null}
-    {authOpen ? <AuthPanel onClose={closeAuth} /> : null}
-    {projectsOpen ? <ProjectListPanel projects={projectList} total={projectTotal} loading={projectBusy} {...(projectError ? { error: projectError } : {})} onOpen={requestOpen} onDelete={(selected) => { deleteReturnFocus.current = document.activeElement instanceof HTMLElement ? document.activeElement : null; setPendingDelete(selected); }} onClose={closeProjects} /> : null}
-    {!navigation?.blocked && pendingDelete ? <div className="inline-confirmation" role="alert"><p>Delete “{pendingDelete.name}” permanently?</p><div className="button-row"><button ref={deleteCancelRef} className="button button--secondary" type="button" onClick={() => { setPendingDelete(undefined); setTimeout(() => deleteReturnFocus.current?.focus()); }}>Cancel</button><button className="button button--danger-solid" type="button" onClick={() => void confirmDelete()}>Delete project</button></div></div> : null}
-    {!navigation?.blocked && conflict ? <section className="conflict-panel" aria-labelledby="conflict-heading"><h2 ref={conflictHeadingRef} tabIndex={-1} id="conflict-heading">This project was updated elsewhere.</h2><p>The saved version changed since you opened this project. Your changes have not been overwritten. Reloading will permanently discard your unsaved local changes.</p>{confirmConflictReload ? <div className="inline-confirmation" role="alert"><p>Discard local changes and reload the saved version?</p><div className="button-row"><button ref={conflictKeepRef} className="button button--secondary" type="button" onClick={() => { setConfirmConflictReload(false); setTimeout(() => conflictHeadingRef.current?.focus()); }}>Keep local changes</button><button className="button button--danger-solid" type="button" disabled={routeHydrating} onClick={() => route?.rehydrateCurrentRoute()}>Reload and discard</button></div></div> : <div className="button-row"><button className="button button--primary" type="button" onClick={() => setConfirmConflictReload(true)}>Reload saved version</button><button className="button button--secondary" type="button" onClick={() => { setConflict(false); setTimeout(() => saveButtonRef.current?.focus()); }}>Cancel</button></div>}</section> : null}
     <div className="workspace-layout">
       <div className="workspace-primary">
+      <section className="project-bar" aria-label="Project controls">
+        <div className="project-title-field"><label htmlFor="project-name">Project name</label><input ref={projectNameRef} id="project-name" type="text" maxLength={120} value={project.name} onChange={(event) => setProject((current) => ({ ...current, name: event.target.value }))} /></div>
+        <span className={`save-state ${dirty ? "save-state--dirty" : ""}`} aria-live="polite">{saveState}</span>
+        <div className="project-actions">
+          <button className="button button--quiet" type="button" onClick={requestNew}>New project</button>
+          <button className="button button--quiet" type="button" onClick={() => void openProjectList()}>Open projects</button>
+          <button ref={saveButtonRef} className="button button--secondary" type="button" onClick={() => void saveProject()} disabled={projectBusy || routeHydrating || !routeLoadedCoherently}>{projectBusy ? "Working…" : "Save"}</button>
+          {auth.status === "authenticated" ? <><span className="account-email">{auth.user?.email}</span><button className="button button--quiet" type="button" onClick={() => void auth.logout()}>Log out</button></> : <button className="button button--quiet" type="button" onClick={openAuth}>{auth.status === "unknown" ? "Checking session…" : "Sign in"}</button>}
+        </div>
+      </section>
+      <ProjectNavigationPrompt />
+      {auth.initializationError ? <p className="project-notice" role="status">{auth.initializationError}</p> : null}
+      {auth.sessionError ? <p className="project-notice project-notice--error" role="alert">{auth.sessionError}</p> : null}
+      {route?.dirtyReconnectPreserved && dirty && auth.status === "authenticated" ? <p className="project-notice" role="status">Signed in. This project has unsaved local changes.</p> : null}
+      {projectError ? <div className="project-notice project-notice--error" role="alert"><p>{projectError}</p><button className="button button--quiet" type="button" onClick={() => setProjectError(undefined)}>Dismiss</button></div> : null}
+      {authOpen ? <AuthPanel onClose={closeAuth} /> : null}
+      {projectsOpen ? <ProjectListPanel projects={projectList} total={projectTotal} loading={projectBusy} {...(projectError ? { error: projectError } : {})} onOpen={requestOpen} onDelete={(selected) => { deleteReturnFocus.current = document.activeElement instanceof HTMLElement ? document.activeElement : null; setPendingDelete(selected); }} onClose={closeProjects} /> : null}
+      {!navigation?.blocked && pendingDelete ? <div className="inline-confirmation" role="alert"><p>Delete “{pendingDelete.name}” permanently?</p><div className="button-row"><button ref={deleteCancelRef} className="button button--secondary" type="button" onClick={() => { setPendingDelete(undefined); setTimeout(() => deleteReturnFocus.current?.focus()); }}>Cancel</button><button className="button button--danger-solid" type="button" onClick={() => void confirmDelete()}>Delete project</button></div></div> : null}
+      {!navigation?.blocked && conflict ? <section className="conflict-panel" aria-labelledby="conflict-heading"><h2 ref={conflictHeadingRef} tabIndex={-1} id="conflict-heading">This project was updated elsewhere.</h2><p>The saved version changed since you opened this project. Your changes have not been overwritten. Reloading will permanently discard your unsaved local changes.</p>{confirmConflictReload ? <div className="inline-confirmation" role="alert"><p>Discard local changes and reload the saved version?</p><div className="button-row"><button ref={conflictKeepRef} className="button button--secondary" type="button" onClick={() => { setConfirmConflictReload(false); setTimeout(() => conflictHeadingRef.current?.focus()); }}>Keep local changes</button><button className="button button--danger-solid" type="button" disabled={routeHydrating} onClick={() => route?.rehydrateCurrentRoute()}>Reload and discard</button></div></div> : <div className="button-row"><button className="button button--primary" type="button" onClick={() => setConfirmConflictReload(true)}>Reload saved version</button><button className="button button--secondary" type="button" onClick={() => { setConflict(false); setTimeout(() => saveButtonRef.current?.focus()); }}>Cancel</button></div>}</section> : null}
       <section className="schema-editor" aria-label="Schema editor">
         <div className="editor-toolbar">
           <div>
