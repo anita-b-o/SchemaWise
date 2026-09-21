@@ -1,4 +1,5 @@
 import { useEffect, useReducer, useRef, useState } from "react";
+import { Link, MemoryRouter, useInRouterContext, useLocation } from "react-router-dom";
 import { DelayedAsyncHint } from "../../../components/DelayedAsyncHint";
 import { schemawiseApi, SchemaWiseApiError, type SchemaWiseApi } from "../../../api/schemawise-api";
 import { projectApi as defaultProjectApi, type ProjectApi } from "../../../api/project-api";
@@ -17,11 +18,25 @@ import { RelationEditor } from "./RelationEditor";
 import { AnalysisResults } from "./AnalysisResults";
 import { createInitialWorkspaceState, draftToSchemaRequest, workspaceReducer } from "../workspace-reducer";
 import { validateDraft } from "../workspace-validation";
+import { WorkspaceViewProvider, useWorkspaceView } from "../workspace-view-navigation";
+import { setWorkspaceView, type WorkspaceView } from "../workspace-view";
+import schemawiseBirds from "../../../assets/schemawise-birds.webp";
 
 interface SchemaWorkspaceProps {
   readonly api?: SchemaWiseApi;
   readonly projectsApi?: ProjectApi;
   readonly initialProject?: ProjectDto;
+  readonly focusAfterHydration?: boolean;
+  /** Transitional test harness for transformation request/state coverage until Transform is built. */
+  readonly legacyTransformationHarness?: boolean;
+}
+
+function WorkspaceNavigation({ activeView, onNavigate }: { readonly activeView: WorkspaceView; readonly onNavigate: (view: WorkspaceView) => void }) {
+  const location = useLocation();
+  const href = (view: WorkspaceView) => `${location.pathname}${(() => { const params = setWorkspaceView(new URLSearchParams(location.search), view); const search = params.toString(); return search ? `?${search}` : ""; })()}`;
+  return <nav className="workspace-navigation" aria-label="Workspace">
+    {(["schema", "analysis", "transform"] as const).map((view) => <Link key={view} className="workspace-navigation__link" to={href(view)} aria-current={activeView === view ? "page" : undefined} onClick={() => onNavigate(view)}>{view === "schema" ? "Schema" : view === "analysis" ? "Analysis" : "Transform"}</Link>)}
+  </nav>;
 }
 
 const API_ERROR_MESSAGES: Partial<Record<ErrorCode, string>> = {
@@ -53,10 +68,12 @@ function focusFirstIssue(field: string) {
   document.querySelector<HTMLElement>(selector)?.focus();
 }
 
-export function SchemaWorkspace({ api = schemawiseApi, projectsApi = defaultProjectApi, initialProject }: SchemaWorkspaceProps) {
+function SchemaWorkspaceContent({ api = schemawiseApi, projectsApi = defaultProjectApi, initialProject, focusAfterHydration = false, legacyTransformationHarness = false }: SchemaWorkspaceProps) {
   const auth = useAuth();
   const navigation = useProjectNavigation();
   const route = useProjectRouteCoordination();
+  const { activeView, goToAnalysis } = useWorkspaceView();
+  const location = useLocation();
   const [state, dispatch] = useReducer(workspaceReducer, initialProject, (loaded) => loaded
     ? workspaceReducer(createInitialWorkspaceState(), { type: "replaceDraft", draft: persistedSchemaToDraft(loaded.schema) })
     : createInitialWorkspaceState());
@@ -84,6 +101,9 @@ export function SchemaWorkspace({ api = schemawiseApi, projectsApi = defaultProj
   const conflictKeepRef = useRef<HTMLButtonElement>(null);
   const projectNameRef = useRef<HTMLInputElement>(null);
   const saveButtonRef = useRef<HTMLButtonElement>(null);
+  const surfaceHeadingRef = useRef<HTMLHeadingElement>(null);
+  const focusSurfaceAfterNavigation = useRef(false);
+  const hydrationFocusMoved = useRef(false);
   const issues = validateDraft(state.draft);
   const isAnalyzing = state.analysis.status === "loading";
   const hasResult = state.analysis.data !== undefined && state.analysis.inputSnapshot !== undefined;
@@ -151,6 +171,17 @@ export function SchemaWorkspace({ api = schemawiseApi, projectsApi = defaultProj
   useEffect(() => { if (pendingDelete) deleteCancelRef.current?.focus(); }, [pendingDelete]);
   useEffect(() => { if (conflict) conflictHeadingRef.current?.focus(); }, [conflict]);
   useEffect(() => { if (confirmConflictReload) conflictKeepRef.current?.focus(); }, [confirmConflictReload]);
+  useEffect(() => {
+    if (focusAfterHydration && !hydrationFocusMoved.current) {
+      hydrationFocusMoved.current = true;
+      surfaceHeadingRef.current?.focus();
+    }
+  }, [focusAfterHydration, initialProject]);
+  useEffect(() => {
+    if (!focusSurfaceAfterNavigation.current) return;
+    focusSurfaceAfterNavigation.current = false;
+    surfaceHeadingRef.current?.focus();
+  }, [activeView]);
 
   function openAuth() {
     authReturnFocus.current = document.activeElement instanceof HTMLElement ? document.activeElement : null;
@@ -305,6 +336,8 @@ export function SchemaWorkspace({ api = schemawiseApi, projectsApi = defaultProj
     try {
       const data = await api.analyzeSchema(inputSnapshot, controller.signal);
       dispatch({ type: "analysisSuccess", requestId, data });
+      focusSurfaceAfterNavigation.current = true;
+      goToAnalysis();
     } catch (error) {
       if (error instanceof SchemaWiseApiError && error.kind === "aborted") {
         dispatch({ type: "analysisAborted", requestId });
@@ -385,13 +418,22 @@ export function SchemaWorkspace({ api = schemawiseApi, projectsApi = defaultProj
     : project.persistedSnapshot && !dirty ? "Saved"
     : dirty ? "Unsaved changes" : "Not saved";
 
+  const contextRelation = state.draft.relationName.trim() || "Untitled relation";
+  const contextCounts = `${state.draft.attributes.length} attributes · ${state.draft.functionalDependencies.length} dependencies`;
+
   return (
-    <>
-    <div className="workspace-layout">
-      <div className="workspace-primary">
+    <div className="workspace-shell">
+      <header className="workspace-context">
+        <div className="workspace-context__identity">
+          <p className="eyebrow">{project.loadedProjectId ? "Project" : "Local schema"}</p>
+          <p className="workspace-context__name">{project.name.trim() || contextRelation}</p>
+          <p className="workspace-context__meta">{contextRelation} · {contextCounts}</p>
+        </div>
+        <WorkspaceNavigation activeView={activeView} onNavigate={(view) => { if (view !== activeView) focusSurfaceAfterNavigation.current = true; }} />
+        <span className={`save-state ${dirty ? "save-state--dirty" : ""}`} aria-live="polite"><span>{saveState}</span>{activeView !== "schema" && hasResult ? <span className={state.analysis.outOfDate ? "analysis-currency--stale" : "analysis-currency"}>{state.analysis.outOfDate ? "Out of date" : "Current"}</span> : null}</span>
+      </header>
       <section className="project-bar" aria-label="Project controls">
         <div className="project-title-field"><label htmlFor="project-name">Project name</label><input ref={projectNameRef} id="project-name" type="text" maxLength={120} value={project.name} onChange={(event) => setProject((current) => ({ ...current, name: event.target.value }))} /></div>
-        <span className={`save-state ${dirty ? "save-state--dirty" : ""}`} aria-live="polite">{saveState}</span>
         <div className="project-actions">
           <button className="button button--quiet" type="button" onClick={requestNew}>New project</button>
           <button className="button button--quiet" type="button" onClick={() => void openProjectList()}>Open projects</button>
@@ -408,6 +450,11 @@ export function SchemaWorkspace({ api = schemawiseApi, projectsApi = defaultProj
       {projectsOpen ? <ProjectListPanel projects={projectList} total={projectTotal} loading={projectBusy} {...(projectError ? { error: projectError } : {})} onOpen={requestOpen} onDelete={(selected) => { deleteReturnFocus.current = document.activeElement instanceof HTMLElement ? document.activeElement : null; setPendingDelete(selected); }} onClose={closeProjects} /> : null}
       {!navigation?.blocked && pendingDelete ? <div className="inline-confirmation" role="alert"><p>Delete “{pendingDelete.name}” permanently?</p><div className="button-row"><button ref={deleteCancelRef} className="button button--secondary" type="button" onClick={() => { setPendingDelete(undefined); setTimeout(() => deleteReturnFocus.current?.focus()); }}>Cancel</button><button className="button button--danger-solid" type="button" onClick={() => void confirmDelete()}>Delete project</button></div></div> : null}
       {!navigation?.blocked && conflict ? <section className="conflict-panel" aria-labelledby="conflict-heading"><h2 ref={conflictHeadingRef} tabIndex={-1} id="conflict-heading">This project was updated elsewhere.</h2><p>The saved version changed since you opened this project. Your changes have not been overwritten. Reloading will permanently discard your unsaved local changes.</p>{confirmConflictReload ? <div className="inline-confirmation" role="alert"><p>Discard local changes and reload the saved version?</p><div className="button-row"><button ref={conflictKeepRef} className="button button--secondary" type="button" onClick={() => { setConfirmConflictReload(false); setTimeout(() => conflictHeadingRef.current?.focus()); }}>Keep local changes</button><button className="button button--danger-solid" type="button" disabled={routeHydrating} onClick={() => route?.rehydrateCurrentRoute()}>Reload and discard</button></div></div> : <div className="button-row"><button className="button button--primary" type="button" onClick={() => setConfirmConflictReload(true)}>Reload saved version</button><button className="button button--secondary" type="button" onClick={() => { setConflict(false); setTimeout(() => saveButtonRef.current?.focus()); }}>Cancel</button></div>}</section> : null}
+      {activeView === "schema" ? <>
+      <div className="page-introduction">
+        <div className="page-introduction__copy"><p className="eyebrow">Schema</p><h1 ref={surfaceHeadingRef} tabIndex={-1}>Define a relation and its dependencies.</h1><p>Model the facts your relation stores. SchemaWise will use this input to explain normalization step by step.</p></div>
+        <img className="page-introduction__illustration" src={schemawiseBirds} width="600" height="600" alt="" aria-hidden="true" decoding="async" fetchPriority="high" />
+      </div>
       <section className="schema-editor" aria-label="Schema editor">
         <div className="editor-toolbar">
           <div>
@@ -450,6 +497,7 @@ export function SchemaWorkspace({ api = schemawiseApi, projectsApi = defaultProj
           <button className="button button--primary analyze-button" type="button" onClick={analyze} disabled={issues.length > 0} aria-describedby={analyzeHelp ? "analyze-help" : presentedError ? "analysis-error" : undefined} title={isAnalyzing ? "Restart analysis with the current schema" : undefined}>
             {isAnalyzing ? "Analyzing…" : hasResult ? "Analyze again" : "Analyze schema"}
           </button>
+          <div className="analysis-live-status" role="status" aria-live="polite">{isAnalyzing ? (hasResult ? "Updating analysis…" : "Analyzing schema…") : ""}</div>
           {analyzeHelp ? <p className="analyze-help" id="analyze-help">{analyzeHelp}</p> : null}
           {presentedError ? (
             <div className="analysis-error" id="analysis-error" role="alert">
@@ -462,12 +510,13 @@ export function SchemaWorkspace({ api = schemawiseApi, projectsApi = defaultProj
         </div>
       </section>
       <ClosureTool attributes={state.draft.attributes} issues={issues} state={state.closure} onCalculate={calculateClosure} />
-      </div>
-      <aside className="results-region" aria-label="Analysis results" aria-busy={isAnalyzing}>
+      </> : null}
+      {activeView === "analysis" ? <section className="analysis-surface" aria-busy={isAnalyzing}>
+        <header className="surface-heading"><div><p className="eyebrow">Understand</p><h1 ref={surfaceHeadingRef} tabIndex={-1}>Analysis</h1><p>{hasResult ? "Understand the analyzed snapshot of this schema." : "Analyze the schema to see candidate keys, normal forms, and violations."}</p></div><Link className="button button--secondary" to={(() => { const params = setWorkspaceView(new URLSearchParams(location.search), "schema"); return `${location.pathname}${params.toString() ? `?${params}` : ""}` })()} onClick={() => { focusSurfaceAfterNavigation.current = true; }}>Edit schema</Link></header>
         <div className="analysis-live-status" role="status" aria-live="polite">
           {isAnalyzing ? (hasResult ? "Updating analysis…" : "Analyzing schema…") : state.analysis.status === "success" ? "Analysis complete." : ""}
         </div>
-        {hasResult ? <AnalysisResults
+        {hasResult ? <><AnalysisResults
           result={state.analysis.data!}
           draftSnapshot={draftToSchemaRequest(state.draft)}
           analyzedSnapshot={state.analysis.inputSnapshot!}
@@ -475,19 +524,27 @@ export function SchemaWorkspace({ api = schemawiseApi, projectsApi = defaultProj
           synthesis={state.synthesis}
           bcnf={state.bcnf}
           preservation={state.dependencyPreservation}
+          legacyTransformationHarness={legacyTransformationHarness}
           synthesisError={state.synthesis.status === "error" ? transformationErrorMessage(state.synthesis.error) : undefined}
           bcnfError={state.bcnf.status === "error" ? transformationErrorMessage(state.bcnf.error) : undefined}
           preservationError={state.dependencyPreservation.status === "error" ? transformationErrorMessage(state.dependencyPreservation.error) : undefined}
-          onGenerateSynthesis={generateSynthesis}
-          onGenerateBcnf={generateBcnf}
-          onCheckPreservation={checkDependencyPreservation}
-        /> : isAnalyzing ? (
-          <div className="results-placeholder"><p className="eyebrow">Results</p><p>Analyzing the schema…</p></div>
+          onGenerateSynthesis={() => void generateSynthesis()}
+          onGenerateBcnf={() => void generateBcnf()}
+          onCheckPreservation={() => void checkDependencyPreservation()}
+        /><div className="analysis-transform-link"><Link className="button button--secondary" to={(() => { const params = setWorkspaceView(new URLSearchParams(location.search), "transform"); return `${location.pathname}?${params}`; })()} onClick={() => { focusSurfaceAfterNavigation.current = true; }}>Explore transformations</Link></div></> : isAnalyzing ? (
+          <div className="surface-empty-state"><p>Analyzing the schema…</p><DelayedAsyncHint active={isAnalyzing} requestKey={state.analysis.requestId} /></div>
         ) : (
-          <div className="results-placeholder"><p className="eyebrow">Results</p><p>Define your relation and dependencies, then analyze the schema.</p></div>
+          <div className="surface-empty-state"><p>{project.loadedProjectId ? "No analysis is available for this session. Analyze the schema to continue." : "No analysis is available yet. Go to Schema to analyze it."}</p><Link className="button button--primary" to={(() => { const params = setWorkspaceView(new URLSearchParams(location.search), "schema"); return `${location.pathname}${params.toString() ? `?${params}` : ""}` })()} onClick={() => { focusSurfaceAfterNavigation.current = true; }}>Go to Schema</Link></div>
         )}
-      </aside>
+      </section> : null}
+      {activeView === "transform" ? <section className="surface-empty-state transform-surface"><p className="eyebrow">Transform</p><h1 ref={surfaceHeadingRef} tabIndex={-1}>Transformations</h1><p>{hasResult ? "Transformation tools are being prepared for this workspace. Review the analysis in the meantime." : "Analyze the schema before exploring transformations."}</p>{hasResult ? <Link className="button button--secondary" to={(() => { const params = setWorkspaceView(new URLSearchParams(location.search), "analysis"); return `${location.pathname}?${params}`; })()} onClick={() => { focusSurfaceAfterNavigation.current = true; }}>Back to Analysis</Link> : <Link className="button button--primary" to={(() => { const params = setWorkspaceView(new URLSearchParams(location.search), "schema"); return `${location.pathname}${params.toString() ? `?${params}` : ""}` })()} onClick={() => { focusSurfaceAfterNavigation.current = true; }}>Go to Schema</Link>}</section> : null}
     </div>
-    </>
   );
+}
+
+/** Standalone tests and embedded consumers retain a usable Schema surface. */
+export function SchemaWorkspace(props: SchemaWorkspaceProps) {
+  const inRouter = useInRouterContext();
+  if (inRouter) return <SchemaWorkspaceContent {...props} />;
+  return <MemoryRouter><WorkspaceViewProvider><SchemaWorkspaceContent {...props} /></WorkspaceViewProvider></MemoryRouter>;
 }

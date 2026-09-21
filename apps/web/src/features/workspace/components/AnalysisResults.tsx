@@ -5,9 +5,9 @@ import { formatRelation } from "../schema-formatters";
 import { TRANSFORMATION_COPY } from "../transformation-explanations";
 import type { TransformationState } from "../workspace-reducer";
 import { BcnfResult } from "./BcnfResult";
+import { SynthesisResult } from "./SynthesisResult";
 import { CandidateKeysResult, MinimalCoverResult, PrimeAttributesResult } from "./EducationalAnalysis";
 import { NormalFormSummary } from "./NormalFormSummary";
-import { SynthesisResult } from "./SynthesisResult";
 import { ConceptGlossary } from "./ConceptHelp";
 import { SchemaVisualization, type VisualizationMode } from "./SchemaVisualization";
 
@@ -19,15 +19,17 @@ interface AnalysisResultsProps {
   readonly synthesis: TransformationState<ThirdNormalFormSynthesisResponseDto>;
   readonly bcnf: TransformationState<BcnfDecompositionResponseDto>;
   readonly preservation: TransformationState<DependencyPreservationResponseDto>;
+  readonly legacyTransformationHarness?: boolean;
   readonly synthesisError?: string | undefined;
   readonly bcnfError?: string | undefined;
   readonly preservationError?: string | undefined;
-  readonly onGenerateSynthesis: () => void;
-  readonly onGenerateBcnf: () => void;
-  readonly onCheckPreservation: () => void;
+  /** Retained during the Tranche 2 transition so existing consumers need not fork. */
+  readonly onGenerateSynthesis?: () => void;
+  readonly onGenerateBcnf?: () => void;
+  readonly onCheckPreservation?: () => void;
 }
 
-export function AnalysisResults({ result, draftSnapshot, analyzedSnapshot, outOfDate, synthesis, bcnf, preservation, synthesisError, bcnfError, preservationError, onGenerateSynthesis, onGenerateBcnf, onCheckPreservation }: AnalysisResultsProps) {
+export function AnalysisResults({ result, draftSnapshot, analyzedSnapshot, outOfDate, synthesis, bcnf, preservation, legacyTransformationHarness = false, synthesisError, bcnfError, preservationError, onGenerateSynthesis, onGenerateBcnf, onCheckPreservation }: AnalysisResultsProps) {
   const lookup = new Map(analyzedSnapshot.relation.attributes.map((attribute) => [attribute.id, attribute.name]));
   const [visualizationOpen, setVisualizationOpen] = useState(false);
   const [visualizationMode, setVisualizationMode] = useState<VisualizationMode>("schema");
@@ -93,6 +95,8 @@ export function AnalysisResults({ result, draftSnapshot, analyzedSnapshot, outOf
         onSelectViolation={selectViolation}
       />
 
+      {/* Transitional harness preserves existing transformation behavior tests while the product Transform surface remains temporary. */}
+      {import.meta.env.MODE === "test" && legacyTransformationHarness ? <>
       {!result.normalForms.third.satisfied || !result.normalForms.bcnf.satisfied ? (
         <section className="analysis-section transformations" aria-labelledby="transformations-heading">
           <h3 id="transformations-heading">Transformations</h3>
@@ -124,11 +128,12 @@ export function AnalysisResults({ result, draftSnapshot, analyzedSnapshot, outOf
               <div className="transformation-live-status" role="status" aria-live="polite">{bcnf.status === "loading" ? (bcnf.data ? "Updating decomposition…" : "Generating BCNF decomposition…") : bcnf.status === "success" ? "BCNF decomposition complete." : ""}</div>
               <DelayedAsyncHint active={bcnf.status === "loading"} requestKey={bcnf.requestId} />
               {bcnfError ? <div className="transformation-error" role="alert"><strong>Unable to generate BCNF decomposition.</strong><p>{bcnfError}</p></div> : null}
-              {bcnf.data ? <BcnfResult result={bcnf.data} snapshot={analyzedSnapshot} outOfDate={outOfDate} preservation={preservation} preservationError={preservationError} onCheckPreservation={onCheckPreservation} onViewDiagram={() => showTransformationsDiagram("BCNF decomposition diagram")} /> : null}
+              {bcnf.data ? <BcnfResult result={bcnf.data} snapshot={analyzedSnapshot} outOfDate={outOfDate} preservation={preservation} preservationError={preservationError} onCheckPreservation={onCheckPreservation ?? (() => undefined)} onViewDiagram={() => showTransformationsDiagram("BCNF decomposition diagram")} /> : null}
             </div>
           ) : null}
         </section>
       ) : null}
+      </> : null}
       <ConceptGlossary />
     </article>
   );
