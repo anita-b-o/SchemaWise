@@ -3,12 +3,12 @@
 Status: implemented MVP plus manual project persistence; Educational UX v1.1
 and locally audited Project Recovery + Deep Links v1.2 are frozen. UX
 Simplification v1.4 reorganizes the existing frontend surfaces without changing
-those state or service boundaries.
+those state or service boundaries. Multi-Surface Workspace Tranche 2 now renders
+one active Schema, Analysis, or temporary Transform surface at a time.
 
 ## Context and boundaries
 
-`apps/web` is a React 19 + TypeScript + Vite baseline that currently renders
-only `SchemaWise baseline`. The MVP remains a single-page, client-rendered
+`apps/web` is a React 19 + TypeScript + Vite application. The MVP remains a single-page, client-rendered
 workspace backed by the stateless Computational API v1.
 
 ```text
@@ -32,6 +32,13 @@ React Router 7.18.3 now runs through the stable browser data-router provider
 persisted workspace on refresh. Open/New use route navigation, Save-new uses
 replace plus one-shot response adoption, and one dirty guard covers links and
 Back/Forward. `beforeunload` exists only while the visible draft is dirty.
+
+`?view=analysis` and `?view=transform` select local workspace surfaces on
+either route. Schema is the default. Ordinary links push surface history while
+preserving the mounted `SchemaWorkspace` owner; surface changes do not hydrate,
+compute, or invoke the dirty resource blocker. Successful Analyze selects
+Analysis. Direct Analysis entry without an in-memory result shows an empty
+state, even after a saved project schema hydrates.
 
 `/` remains the anonymous-first new local workspace. `/projects/:projectId`
 references a private persisted project; it waits for auth initialization and
@@ -79,8 +86,8 @@ cache, state library, or mutation replay.
 ### Snapshot-based calculations
 
 Each analysis records the exact request and draft revision. Synthesis and BCNF
-operate only on that analyzed snapshot. This prevents the results column from
-mixing evidence from one schema with a newly edited draft. Closure uses its own
+operate only on that analyzed snapshot. This prevents Analysis from mixing
+evidence from one schema with a newly edited draft. Closure uses its own
 explicit snapshot. Request IDs and abort signals prevent late-response races.
 
 ### One typed API adapter
@@ -144,17 +151,12 @@ disappear on refresh.
 
 ## Responsive architecture
 
-The DOM follows task order: editor before results, summary before detail. CSS
-uses a single column at small/medium widths and a two-region grid only when both
-regions can meet readable minimum widths. Large screens cap line length and
-total width. No component branches into a different mobile application; layout
-and a few disclosure defaults adapt responsively.
-
-At desktop widths above 1024px, the small analyzed-relation header is sticky so
-the immutable result snapshot and its `Current` / `Out of date` state remain in
-context. The tall editor is deliberately not made sticky and no region gains
-nested scrolling. At and below 1024px the header is static and the existing
-linear DOM order is preserved.
+The active surface has one document scroll. Schema centers the editor and
+Closure; Analysis caps reading width and presents summary before detail. The
+old parallel editor/results grid and nested sticky editor scroll are gone.
+Small screens keep the same semantic content in a single column; the local
+navigation fits at 320 px. The shared context and project controls stay above
+the active surface at every viewport width.
 
 ## Styling architecture
 

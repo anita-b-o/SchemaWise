@@ -1,6 +1,74 @@
 # SchemaWise workspace flow redesign
 
-Status: architecture C approved; Multi-Surface Workspace Tranche 1 implemented, 2026-09-21. Visible surface separation remains planned for Tranche 2.
+Status: **Multi-Surface Workspace Tranche 2 complete locally**, 2026-09-21. No deployment or push was made.
+
+## Tranche 2 closure evidence
+
+The initial Web suite had **34 failures / 206 tests** across seven files. Before
+test edits, they were classified as obsolete combined-layout expectations or
+test harness assumptions: 14 transformation presentation tests, 11 view
+navigation tests, 5 analysis interaction tests, and one each in delayed hint,
+project route, project workflow, and dense educational content. No initial
+failure established lost computation or project data. During the migration,
+the Schema loading announcement and an active-link focus edge case were
+corrected in the product code.
+
+The migrated suite keeps its 14 transformation request, reducer, error,
+snapshot, preservation, and rendering checks through an explicit transitional
+test harness. Product Analysis and Transform never enable that harness.
+Tranche 3 must move those UI checks to the dedicated Transform surface and
+remove the harness after equivalent coverage passes. Product Transform in
+Tranche 2 only explains availability and links to Schema or Analysis.
+
+Browser audit used the local Vite app and a browser-only response stub for
+Analyze because local PostgreSQL credentials were unavailable. No backend
+or persistence result was inferred from that visual audit. At 1440×900,
+390×844, 320×720, 768×1024, and 1024×768, the active surface, navigation,
+footer, and project controls rendered without page-wide horizontal overflow.
+The 768 px project actions and desktop project bar were adjusted after visual
+inspection. A 120-character project name remained clipped in the context bar
+without widening the 320 px viewport. The browser flow covered example load,
+Analyze, Explain, diagram focus, FD edit, historical stale results, reanalysis,
+and temporary Transform. The large six-attribute fixture displayed 3/44/44
+normal-form violation counts, 8 initial issues, 44 expanded issues, and 8
+after collapse; a hidden issue opened Explain and the diagram without another
+request.
+
+At 390 px, the example Schema surface measured **3050 px** and its Analysis
+surface **2078 px** (`body.scrollHeight`). The prior combined page measured
+approximately **4357 px** after Analyze. These are separate task scrolls;
+their heights are not added. At 320 px, the example Schema surface measured
+3162 px. Browser axe-core 4.13.0 reported zero violations for desktop
+Schema, current and stale Analysis, the collapsed large-issue Analysis,
+mobile Schema and Analysis, and temporary Transform. Some ordinary example
+states returned one `color-contrast` incomplete node; the large issue and
+empty Transform states returned no incomplete checks. Browser console and
+page errors contained no React/router warning, missing asset, unhandled
+promise, or runtime exception; Vite emitted only development connection and
+hot-update messages.
+
+Final local gates: `npm run typecheck` passed; `npm test` passed **526 tests**
+(API 142, Web 211, normalization engine 173); `npm run build` passed;
+`npm run test --workspace @schemawise/web` passed **211 tests**;
+`git diff --check` passed; `npm audit --omit=dev` reported **0**
+vulnerabilities. No push or deployment was performed.
+
+## Tranche 2 implementation record
+
+Tranche 2 makes the URL-derived view visible without changing the Tranche 1 resource, hydration, dirty-state, or recovery contracts. `SchemaWorkspace` remains the sole owner of draft and computed in-memory state; it conditionally composes one product surface at a time.
+
+- The shared compact shell identifies the local schema or project, relation, attribute/FD counts, project save state, and Analysis currency. Its labelled `Workspace` navigation uses ordinary links for Schema, Analysis, and Transform, with `aria-current="page"` on the active link. Query parameters and history are preserved by the existing view model.
+- Schema contains the birds/intro, editor, Analyze action, and Closure only. The former desktop sticky input/results layout is removed; the editor is centered and allowed a useful reading width.
+- Analyze stays on Schema while pending or failing. A successful response pushes Analysis and moves focus to its `h1`. A direct/refresh Analysis URL with no in-memory computation presents a calm session-empty state and never redirects or recomputes.
+- Analysis contains the historical snapshot, currency notice, educational results, and diagram. `Edit schema` is an URL link back to Schema. Current and stale snapshots remain readable; stale copy explicitly says that results describe the earlier schema version.
+- Transform remains an addressable, deliberately temporary surface. It never accidentally exposes the old combined result page. Analysis offers `Explore transformations`; Tranche 3 will move the existing generation UI there without duplicating result state.
+- Navigation-triggered focus is limited to an explicit local link or successful Analyze. Browser history changes do not request focus, so Back/Forward do not unexpectedly interrupt reading.
+
+Document title behavior is unchanged: the application keeps its existing project-oriented title contract rather than introducing a view title midstream. No navigation request, diagram action, or Back/Forward transition causes network activity; only Analyze does.
+
+### Transitional debt
+
+The reducer and API clients for 3NF synthesis, BCNF decomposition, and dependency preservation remain in the workspace owner during this tranche. Their presentation has been removed from productive Analysis and Transform intentionally presents availability copy. Tranche 3 should compose those existing resources under Transform, preserving their snapshot and stale safeguards rather than creating a second result store.
 
 ## Tranche 1 implementation contract
 
@@ -48,7 +116,7 @@ Path-per-surface routing, such as `/projects/:id/analysis`, is an optional futur
 | --- | --- | --- |
 | Schema | Relation, attributes, FDs, validation; **Analyze schema** | Load example, contextual Closure, Save/project controls |
 | Analysis | Analyzed relation, candidate keys, prime attributes, normal forms, issue evidence, minimal cover, contextual Explain and Formal reasoning; **Explore transformations** when relevant | Edit schema, Diagram, concept reference in contextual disclosure |
-| Transform | 3NF synthesis, BCNF decomposition, dependency preservation and result diagrams; operation-specific **Run 3NF** or **Run BCNF** before results | Back to analysis, Edit schema, Check preservation after BCNF |
+| Transform (target for Tranche 3) | 3NF synthesis, BCNF decomposition, dependency preservation and result diagrams; operation-specific **Run 3NF** or **Run BCNF** before results | Back to analysis, Edit schema, Check preservation after BCNF |
 
 Analysis may still offer Transform when 3NF/BCNF are satisfied, but should state that no repair is required and explain available explorations. Do not fabricate a required next step.
 
@@ -125,4 +193,7 @@ Use one `h1` for the active surface, nested headings for results, header/navigat
 
 Expected scope: roughly 8–12 frontend files plus focused route/workspace/education tests and this design document; no backend or database changes. Main risk is accidental draft loss on query changes, followed by misrepresenting a refreshed result URL as a stored analysis. Keep `SchemaWorkspace` as the state owner initially; do not rewrite the normalization engine, API contracts, auth, Project Navigation Coordinator's resource transitions, educational content, or diagram model.
 
-The architecture above is approved. The migration plan's visible composition and interaction steps remain future work; Tranche 1 establishes URL, navigation, history, and recovery safety only.
+The architecture above is approved. Tranche 1 established URL, navigation,
+history, and recovery safety; Tranche 2 delivered separate Schema and Analysis
+surfaces plus a temporary Transform surface. The final Transform composition
+is the next tranche.

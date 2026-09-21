@@ -10,6 +10,8 @@
 > [project-recovery-v1.2.md](./project-recovery-v1.2.md).
 > UX Simplification v1.4 composes the same capabilities into a compact default;
 > see [ux-simplification-v1.4.md](./ux-simplification-v1.4.md).
+> Multi-Surface Workspace Tranche 2 presents Schema, Analysis, and a temporary
+> Transform surface. See [workspace-flow-redesign.md](./workspace-flow-redesign.md).
 
 ## Component hierarchy
 
@@ -17,30 +19,20 @@ The first implementation should prefer cohesive feature components over a
 component per label or row.
 
 ```text
-App
-└─ SchemaWorkspace
-   ├─ ProductHeader
-   ├─ SchemaEditor
-   │  ├─ RelationEditor
-   │  ├─ AttributeList
-   │  ├─ FunctionalDependencyEditor
-   │  │  ├─ DependencyComposer
-   │  │  └─ DependencyList
-   │  ├─ AnalyzeAction
-   │  └─ ClosureTool
-   └─ ResultsWorkspace
-      ├─ AnalysisOverview
-      │  ├─ CandidateKeysResult
-      │  └─ PrimeAttributesResult
-      ├─ NormalFormSummary
-      │  └─ ViolationDetails           deduplicated issue evidence
-      ├─ MinimalCoverResult
-      ├─ SchemaVisualization           integrated, closed by default
-      ├─ Transformations
-      │  ├─ SynthesisResult            compact result -> Explain/Diagram
-      │  └─ BcnfResult                 compact result -> Steps/Explain/Diagram
-      │     └─ DependencyPreservationResult
-      └─ ConceptGlossary
+App / WorkspaceViewProvider
+└─ SchemaWorkspace                     one draft, analysis, and project owner
+   ├─ Shared context and project controls
+   ├─ Schema surface                    when view=schema or view omitted
+   │  ├─ RelationEditor / AttributeList / FunctionalDependencyEditor
+   │  ├─ Analyze action
+   │  └─ ClosureTool                    uses the current draft
+   ├─ Analysis surface                  when view=analysis
+   │  └─ AnalysisResults               uses the analyzed snapshot
+   │     ├─ CandidateKeysResult / PrimeAttributesResult
+   │     ├─ NormalFormSummary / ViolationDetails / MinimalCoverResult
+   │     ├─ SchemaVisualization         integrated, closed by default
+   │     └─ ConceptGlossary
+   └─ Transform temporary surface       when view=transform
 ```
 
 For Educational UX v1.1, extend these cohesive result components rather than
@@ -74,7 +66,7 @@ App
       ├─ AuthPanel                      inline, focused form
       ├─ ProjectListPanel               fresh compact list
       ├─ OCC / confirmation panels
-      └─ Existing editor and results    workspace reducer
+      └─ Conditional workspace surface  workspace reducer remains mounted
 ```
 
 `AuthProvider` does not own workspace or project data. `SchemaWorkspace` owns a
@@ -124,8 +116,8 @@ explicit labelled native group.
   references. Its checkbox groups operate on IDs but display names.
 - `AnalyzeAction` exposes submit state and validation summary without owning
   validation rules.
-- `ResultsWorkspace` receives an immutable result view model and never reads
-  mutable input directly.
+- `AnalysisResults` receives an immutable analyzed snapshot. Its diagram's
+  explicitly labelled Draft schema mode may also read the current draft.
 - `ViolationDetails` maps typed evidence to fixed explanation templates and
   groups identical displayed dependencies into one Level 1 issue while keeping
   each normal-form rule and formal proof distinct.
@@ -141,6 +133,8 @@ explicit labelled native group.
 - `DependencyPreservationResult` labels its status as observed/checked, keeps
   lost dependencies primary and preserved dependencies secondary, and explains
   the projection procedure contractually without exposing a fictional trace.
+  Tranche 2 retains these transformation components and request state for
+  transitional tests; the product Transform surface does not render them yet.
 - `ClosureTool` is independent of analysis but consumes the current draft
   snapshot and API boundary. Its checkbox selection is local visual state; the
   reducer owns request status, selected input, response snapshot and stale
