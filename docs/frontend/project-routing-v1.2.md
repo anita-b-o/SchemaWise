@@ -95,6 +95,13 @@ and [navigation blocking](https://reactrouter.com/how-to/navigation-blocking).
 | `/` | A new local workspace, usable anonymously or while authenticated |
 | `/projects/:projectId` | A reference to one persisted project owned by the authenticated user |
 
+Multi-Surface Workspace Tranche 1 also accepts `?view=analysis` and
+`?view=transform` on either pathname. They select a local workspace view, not a
+different resource or an analysis route. Omitted, `view=schema`, and unknown
+values use Schema. Surface actions push history and preserve unrelated search
+parameters; Save New retains the selected view, while Open/New and detachment
+return to Schema.
+
 No `/login`, `/register`, `/settings`, `/projects`, `/dashboard`, `/share`, or
 analysis routes are introduced. Open Projects remains an in-workspace panel.
 Unknown paths use a technical accessible not-found boundary; that boundary is
@@ -230,7 +237,9 @@ workspace contains persistable content/name changes. It excludes analysis and
 presentation state.
 
 One route-bound blocker covers Open, New, internal links, Back, and Forward
-when the destination pathname differs. It presents the existing product-owned
+when the destination resource identity differs, plus an explicit New action
+while already at root. A query-only view change within the same resource does
+not block or clear dirty state. It presents the existing product-owned
 `Discard unsaved changes?` UI. Cancel calls the blocker reset and keeps the
 current route/draft; Proceed calls the blocker proceed exactly once. Save-new
 replacement and delete-detachment are explicit transition intents and must not

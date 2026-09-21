@@ -22,6 +22,13 @@ name/schema and server revision, begins Saved, and clears every derived result.
 It never analyzes. URL identity does not prove that a server snapshot is loaded,
 does not grant ownership, and does not authorize overwriting local work.
 
+Multi-Surface Workspace Tranche 1 adds a URL view selector without changing
+project identity. `/projects/:projectId?view=analysis` hydrates the same project
+once; later view changes neither rehydrate nor clear the draft, session,
+revision, analysis, closure, or transformations. A refreshed view URL recovers
+only persisted project fields; computed resources start idle. The dirty SPA/POP
+blocker applies to resource changes, while `beforeunload` remains dirty based.
+
 ## State ownership
 
 Keep the existing boundary: auth state in `AuthProvider`, mutable schema and
