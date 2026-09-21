@@ -3,8 +3,9 @@
 Status: implemented MVP plus manual project persistence; Educational UX v1.1
 and locally audited Project Recovery + Deep Links v1.2 are frozen. UX
 Simplification v1.4 reorganizes the existing frontend surfaces without changing
-those state or service boundaries. Multi-Surface Workspace Tranche 3 now renders
-one active Schema, Analysis, or complete Transform surface at a time.
+those state or service boundaries. Multi-Surface Workspace Tranche 4 has
+audited one active Schema, Analysis, or Transform surface at a time. See the
+[release audit](../testing/multi-surface-workspace-audit.md).
 
 ## Context and boundaries
 
@@ -80,6 +81,11 @@ the existing `replaceDraft` reset semantics and never invokes analysis. The
 same route hydrator handles direct entry, Retry, clean auth reconnection, and
 confirmed OCC reload; dirty reconnect does not hydrate.
 
+Save New installs the returned project identity through response adoption with
+`replace`. The mounted workspace recognizes that adoption and retains its
+in-memory analysis, transformations, and closure. Normal project hydration and
+confirmed OCC reload still replace the draft and reset derived resources.
+
 Vercel routing keeps `/api/v1/(.*) -> /api/proxy` before the final
 `/(.*) -> /index.html` SPA fallback. Configuration assertions make this order a
 release invariant, while the Function itself rejects direct `/api/proxy`
@@ -140,9 +146,9 @@ inference.
 
 Schema Visualization v1.3 follows the same boundary. Pure builders map DTOs
 and the appropriate snapshot to short-lived diagram models; semantic HTML/CSS
-renders those models without graph or layout libraries. Schema mode may read
-the current draft and is labeled accordingly. Analysis, 3NF, BCNF and
-preservation diagrams read only the immutable analyzed snapshot and returned
+renders those models without graph or layout libraries. Both Schema and
+Analysis diagram modes inside Analysis, as well as 3NF, BCNF and
+preservation diagrams, read only the immutable analyzed snapshot and returned
 DTO evidence. Composite determinants remain one set-valued endpoint. Diagram
 selection is local presentation state and cannot mutate a schema, revision or
 calculation resource. See [ADR 018](../adr/018-schema-visualization.md).

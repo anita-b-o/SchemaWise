@@ -10,8 +10,9 @@
 > [project-recovery-v1.2.md](./project-recovery-v1.2.md).
 > UX Simplification v1.4 composes the same capabilities into a compact default;
 > see [ux-simplification-v1.4.md](./ux-simplification-v1.4.md).
-> Multi-Surface Workspace Tranche 3 presents complete Schema, Analysis, and
-> Transform surfaces. See [workspace-flow-redesign.md](./workspace-flow-redesign.md).
+> Multi-Surface Workspace Tranche 4 hardens the complete Schema, Analysis, and
+> Transform flow. See [workspace-flow-redesign.md](./workspace-flow-redesign.md)
+> and [the release audit](../testing/multi-surface-workspace-audit.md).
 
 ## Component hierarchy
 
@@ -102,6 +103,11 @@ outside the route hydrator. A clean matching draft rehydrates after login; a
 dirty one stays attached without a GET. No global store, query cache, or
 state-machine library was introduced.
 
+Save New adopts its POST response without applying that same schema a second
+time to the mounted workspace. Applying it again would reset in-memory Analysis,
+Transform, and Closure resources. A real project hydration or confirmed OCC
+reload still replaces the draft and clears those resources.
+
 Route hydration owns its focus intent through the committed render: direct,
 Open, Back/Forward, and Retry GETs focus the workspace heading, while response
 adoption, clean reconnect, and OCC reload retain their dedicated focus rules.
@@ -120,8 +126,9 @@ explicit labelled native group.
   references. Its checkbox groups operate on IDs but display names.
 - `AnalyzeAction` exposes submit state and validation summary without owning
   validation rules.
-- `AnalysisResults` receives an immutable analyzed snapshot. Its diagram's
-  explicitly labelled Draft schema mode may also read the current draft.
+- `AnalysisResults` receives an immutable analyzed snapshot. Both its Schema
+  and Analysis diagram modes read that snapshot, including when the draft has
+  changed. The live draft is only editable on Schema.
 - `ViolationDetails` maps typed evidence to fixed explanation templates and
   groups identical displayed dependencies into one Level 1 issue while keeping
   each normal-form rule and formal proof distinct.
@@ -162,8 +169,8 @@ TransformSurface
 ```
 
 Pure builders in `schema-visualization-model.ts` translate DTOs and snapshots
-to presentation-only records. The Schema mode receives the current draft;
-Analysis and Transform receive the immutable analyzed snapshot. Diagram
+to presentation-only records. Both diagram modes within Analysis and all
+Transform diagrams receive the immutable analyzed snapshot. Diagram
 state is neither persisted nor added to the workspace reducer. See
 [`schema-visualization-model.md`](./schema-visualization-model.md) and
 [ADR 018](../adr/018-schema-visualization.md).

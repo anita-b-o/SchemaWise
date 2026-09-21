@@ -1,6 +1,27 @@
 # SchemaWise workspace flow redesign
 
-Status: **Multi-Surface Workspace Tranche 3 implemented locally**, 2026-09-21. No deployment or push was made.
+Status: **Multi-Surface Workspace Tranche 4 audited locally**, 2026-09-21. No deployment or push was made. Full evidence and remaining external checks are in [the release audit](../testing/multi-surface-workspace-audit.md).
+
+## Tranche 4 hardening
+
+The final workspace keeps one reducer and project session mounted across Schema,
+Analysis, and Transform. The URL query selects only a surface. Save New adopts
+the POST response with `replace` and preserves in-memory calculations; project
+hydration, resource changes, and confirmed OCC reload replace the draft and
+clear derived resources. A direct Analysis or Transform URL still has an empty
+state until an explicit Analyze request succeeds in that tab.
+
+Two browser-discovered defects were fixed. Analysis's Schema diagram mode had
+read the live draft after an edit, so it could show a renamed attribute beside
+historical results. Both Analysis diagram modes now use the immutable analyzed
+snapshot. Save New had reapplied its returned schema to the mounted workspace,
+clearing visible Analysis and Transform results. The one-shot adoption skips
+that redundant reset while normal hydration continues to replace the draft.
+
+The local release audit used Chrome, Vite, stateless computation routes and an
+in-memory HTTP project/auth harness. It covered route, history, snapshot,
+responsive, accessibility, and recovery behavior. It did not exercise a live
+database, hosted Vercel deployment, physical device, or attended screen reader.
 
 ## Tranche 3 implementation and browser evidence
 
