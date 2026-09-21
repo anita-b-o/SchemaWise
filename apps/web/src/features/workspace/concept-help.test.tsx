@@ -6,6 +6,8 @@ import type { AnalysisResponseDto, SchemaInputDto } from "../../api/schemawise-c
 import { CONCEPT_DEFINITIONS, CONCEPT_DEFINITIONS_BY_ID } from "../explanations/concept-definitions";
 import { AnalysisResults } from "./components/AnalysisResults";
 import { ConceptHelp } from "./components/ConceptHelp";
+import { TransformSurface } from "./components/TransformSurface";
+import { MemoryRouter } from "react-router-dom";
 
 const snapshot: SchemaInputDto = {
   relation: { name: "R", attributes: [{ id: "a", name: "A" }, { id: "b", name: "B" }, { id: "c", name: "C" }] },
@@ -25,9 +27,7 @@ const result: AnalysisResponseDto = {
 };
 
 function renderResult(outOfDate = false) {
-  return render(<AnalysisResults result={result} analyzedSnapshot={snapshot} outOfDate={outOfDate}
-    synthesis={{ status: "idle" }} bcnf={{ status: "idle" }} preservation={{ status: "idle" }}
-    onGenerateSynthesis={() => undefined} onGenerateBcnf={() => undefined} onCheckPreservation={() => undefined} />);
+  return render(<AnalysisResults result={result} analyzedSnapshot={snapshot} outOfDate={outOfDate} />);
 }
 
 describe("concept definitions", () => {
@@ -80,22 +80,14 @@ describe("contextual concept help", () => {
     expect(glossary.querySelectorAll("dl > div")).toHaveLength(16);
   });
 
-  it("does not call the network or transformation callbacks when education is opened", async () => {
+  it("does not call the network when education is opened", async () => {
     const user = userEvent.setup();
     const fetchSpy = vi.spyOn(globalThis, "fetch");
-    const onSynthesis = vi.fn();
-    const onBcnf = vi.fn();
-    const onPreservation = vi.fn();
-    render(<AnalysisResults result={result} analyzedSnapshot={snapshot} outOfDate={true}
-      synthesis={{ status: "idle" }} bcnf={{ status: "idle" }} preservation={{ status: "idle" }}
-      onGenerateSynthesis={onSynthesis} onGenerateBcnf={onBcnf} onCheckPreservation={onPreservation} />);
+    render(<AnalysisResults result={result} analyzedSnapshot={snapshot} outOfDate={true} />);
     await user.click(screen.getByText("Explain candidate keys"));
     await user.click(screen.getByText("Concept reference"));
     await user.click(screen.getByText(/Explain issue/));
     expect(fetchSpy).not.toHaveBeenCalled();
-    expect(onSynthesis).not.toHaveBeenCalled();
-    expect(onBcnf).not.toHaveBeenCalled();
-    expect(onPreservation).not.toHaveBeenCalled();
     expect(screen.getByRole("heading", { name: "Candidate keys" }).parentElement?.textContent).toContain("SchemaWise discovers candidate keys");
     fetchSpy.mockRestore();
   });
@@ -108,7 +100,7 @@ describe("contextual concept help", () => {
 });
 
 describe("dense and long educational content", () => {
-  it("keeps six-attribute keys, long names, repeated violations, BCNF steps and lost dependencies in one responsive DOM", () => {
+  it("keeps six-attribute analysis and transformation details readable across the two surfaces", () => {
     const longName = "Attribute".padEnd(120, "X");
     const attributes = Array.from({ length: 6 }, (_, index) => ({ id: `a${index}`, name: index === 0 ? longName : `Attribute${index + 1}` }));
     const ids = attributes.map(({ id }) => id);
@@ -128,19 +120,20 @@ describe("dense and long educational content", () => {
         bcnf: { satisfied: false, violations },
       },
     };
-    const { container } = render(<AnalysisResults legacyTransformationHarness result={denseResult} analyzedSnapshot={denseSnapshot} outOfDate={false}
+    const { container } = render(<AnalysisResults result={denseResult} analyzedSnapshot={denseSnapshot} outOfDate={false} />);
+    expect(screen.getByRole("heading", { name: new RegExp("^RelationR") }).textContent).toContain(longName);
+    expect(container.querySelectorAll(".key-fact .notation-list code")).toHaveLength(2);
+    expect(container.querySelectorAll(".issue-list > li")).toHaveLength(4);
+    const transform = render(<MemoryRouter><TransformSurface analysis={denseResult} snapshot={denseSnapshot} outOfDate={false}
       synthesis={{ status: "idle" }}
       bcnf={{ status: "success", data: { relations: [{ attributes: ids.slice(0, 3) }, { attributes: ids.slice(3) }], steps: [
         { source: ids, violation: violations[0]!, result: [ids.slice(0, 3), ids.slice(3)] },
         { source: ids.slice(0, 3), violation: violations[1]!, result: [ids.slice(0, 2), ids.slice(1, 3)] },
       ] } }}
       preservation={{ status: "success", data: { preserved: false, lostDependencies: denseSnapshot.functionalDependencies, preservedDependencies: [] } }}
-      onGenerateSynthesis={() => undefined} onGenerateBcnf={() => undefined} onCheckPreservation={() => undefined} />);
-    expect(screen.getByRole("heading", { name: new RegExp("^RelationR") }).textContent).toContain(longName);
-    expect(container.querySelectorAll(".key-fact .notation-list code")).toHaveLength(2);
-    expect(container.querySelectorAll(".issue-list > li")).toHaveLength(4);
-    expect(container.querySelectorAll(".decomposition-steps > ol > li")).toHaveLength(2);
-    expect(container.querySelectorAll(".dependency-evidence-list > li")).toHaveLength(1);
+      analysisHref="/?view=analysis" schemaHref="/" onNavigate={() => undefined} onGenerateSynthesis={() => undefined} onGenerateBcnf={() => undefined} onCheckPreservation={() => undefined} headingRef={() => undefined} /></MemoryRouter>);
+    expect(transform.container.querySelectorAll(".decomposition-steps > ol > li")).toHaveLength(2);
+    expect(transform.container.querySelectorAll(".dependency-evidence-list > li")).toHaveLength(1);
     expect(container.querySelectorAll(".analysis-results")).toHaveLength(1);
   });
 });

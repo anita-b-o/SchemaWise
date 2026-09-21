@@ -4,6 +4,8 @@ import userEvent from "@testing-library/user-event";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import type { AnalysisResponseDto, BcnfDecompositionResponseDto, DependencyPreservationResponseDto, SchemaInputDto, ThirdNormalFormSynthesisResponseDto } from "../../api/schemawise-contracts";
 import { AnalysisResults } from "./components/AnalysisResults";
+import { TransformSurface } from "./components/TransformSurface";
+import { MemoryRouter } from "react-router-dom";
 
 const analyzedSnapshot: SchemaInputDto = {
   relation: { name: "R", attributes: [{ id: "a", name: "A" }, { id: "b", name: "B" }, { id: "c", name: "C" }] },
@@ -42,7 +44,7 @@ const preservation: DependencyPreservationResponseDto = {
   lostDependencies: [{ left: ["a", "b"], right: ["c"] }],
 };
 
-function view(options: { draftSnapshot?: SchemaInputDto; analyzed?: SchemaInputDto; value?: AnalysisResponseDto; outOfDate?: boolean; transformations?: boolean } = {}) {
+function view(options: { draftSnapshot?: SchemaInputDto; analyzed?: SchemaInputDto; value?: AnalysisResponseDto; outOfDate?: boolean } = {}) {
   const analysisSnapshot = options.analyzed ?? analyzedSnapshot;
   return render(
     <AnalysisResults
@@ -50,12 +52,6 @@ function view(options: { draftSnapshot?: SchemaInputDto; analyzed?: SchemaInputD
       draftSnapshot={options.draftSnapshot ?? analysisSnapshot}
       analyzedSnapshot={analysisSnapshot}
       outOfDate={options.outOfDate ?? false}
-      synthesis={options.transformations ? { status: "success", data: synthesis } : { status: "idle" }}
-      bcnf={options.transformations ? { status: "success", data: bcnf } : { status: "idle" }}
-      preservation={options.transformations ? { status: "success", data: preservation } : { status: "idle" }}
-      onGenerateSynthesis={() => undefined}
-      onGenerateBcnf={() => undefined}
-      onCheckPreservation={() => undefined}
     />,
   );
 }
@@ -221,11 +217,13 @@ describe("schema visualization", () => {
     expect(within(panel).getByText(/remains tied to R\(A, B, C\)/)).toBeTruthy();
   });
 
-  it("renders synthesis as a fan-out, BCNF as selectable splits and lost dependencies without assigning blame", async () => {
+  it("renders transformation diagrams on Transform as fan-out, ordered splits and lost dependencies", async () => {
     const user = userEvent.setup();
-    view({ transformations: true });
-    const panel = await openVisualization(user);
-    await user.click(within(panel).getByRole("button", { name: "Transformations" }));
+    render(<MemoryRouter><TransformSurface analysis={result} snapshot={analyzedSnapshot} outOfDate={false}
+      synthesis={{ status: "success", data: synthesis }} bcnf={{ status: "success", data: bcnf }} preservation={{ status: "success", data: preservation }}
+      analysisHref="/?view=analysis" schemaHref="/" onNavigate={() => undefined} onGenerateSynthesis={() => undefined} onGenerateBcnf={() => undefined} onCheckPreservation={() => undefined} headingRef={() => undefined} /></MemoryRouter>);
+    await user.click(screen.getByRole("button", { name: /Transformation diagrams/ }));
+    const panel = document.querySelector<HTMLElement>(".transform-visualization .schema-visualization__content")!;
     expect(within(panel).getByRole("region", { name: "3NF synthesis diagram" })).toBeTruthy();
     expect(within(panel).getByText("One synthesis operation produces a set of relations; this is not a decomposition tree.")).toBeTruthy();
     const bcnfDiagram = within(panel).getByRole("region", { name: "BCNF decomposition diagram" });
@@ -238,12 +236,11 @@ describe("schema visualization", () => {
     expect(within(panel).getByText(/Lost dependency does not mean lost data/)).toBeTruthy();
   });
 
-  it("shows explicit empty states and has no automated axe violations", async () => {
+  it("keeps Analysis diagrams separate and has no automated axe violations", async () => {
     const user = userEvent.setup();
     const { container } = view();
     const panel = await openVisualization(user);
-    await user.click(within(panel).getByRole("button", { name: "Transformations" }));
-    expect(within(panel).getByText(/No transformation has been generated yet/)).toBeTruthy();
+    expect(within(panel).queryByRole("button", { name: "Transformations" })).toBeNull();
     const report = await axe.run(container, { rules: { "color-contrast": { enabled: false } } });
     expect(report.violations).toEqual([]);
   });

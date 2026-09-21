@@ -25,7 +25,7 @@ function result(overrides: Partial<AnalysisResponseDto>): AnalysisResponseDto {
 }
 
 function view(value: AnalysisResponseDto, analyzedSnapshot = snapshot, outOfDate = false) {
-  return render(<AnalysisResults result={value} analyzedSnapshot={analyzedSnapshot} outOfDate={outOfDate} synthesis={{ status: "idle" }} bcnf={{ status: "idle" }} preservation={{ status: "idle" }} onGenerateSynthesis={() => undefined} onGenerateBcnf={() => undefined} onCheckPreservation={() => undefined} />);
+  return render(<AnalysisResults result={value} analyzedSnapshot={analyzedSnapshot} outOfDate={outOfDate} />);
 }
 
 describe("normal form educational reasoning", () => {

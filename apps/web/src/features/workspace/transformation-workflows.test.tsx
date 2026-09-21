@@ -3,6 +3,7 @@ import userEvent from "@testing-library/user-event";
 import { describe, expect, it, vi } from "vitest";
 import { SchemaWiseApiError, type SchemaWiseApi } from "../../api/schemawise-api";
 import type { AnalysisResponseDto, BcnfDecompositionResponseDto, DependencyPreservationRequestDto, DependencyPreservationResponseDto, SchemaInputDto, ThirdNormalFormSynthesisResponseDto } from "../../api/schemawise-contracts";
+import { analyzeSchema, synthesizeThirdNormalForm, decomposeBoyceCodd, analyzeDependencyPreservationUseCase } from "../../../../api/src/application/use-cases";
 import { SchemaWorkspace } from "./components/SchemaWorkspace";
 
 function analysisFor(input: SchemaInputDto, satisfied = false): AnalysisResponseDto {
@@ -76,32 +77,127 @@ function deferred<T>() {
 async function analyzeExample(user: ReturnType<typeof userEvent.setup>) {
   await user.click(screen.getByRole("button", { name: "Load example" }));
   await user.click(screen.getByRole("button", { name: "Analyze schema" }));
-  await screen.findByRole("heading", { name: "Transformations" });
+  await screen.findByRole("link", { name: "Explore transformations" });
+  await user.click(screen.getByRole("link", { name: "Explore transformations" }));
+  await screen.findByRole("heading", { name: "Transformations", level: 1 });
 }
 
 describe("normalization transformations", () => {
+  it("renders the Enrollment 3/44/44 gate and exact 3NF, BCNF, and lost-dependency outcomes", async () => {
+    const user = userEvent.setup();
+    const enrollment: SchemaInputDto = {
+      relation: { name: "Enrollment", attributes: [
+        { id: "d", name: "Student" }, { id: "c", name: "Course" }, { id: "a", name: "Professor" },
+        { id: "b", name: "Department" }, { id: "e", name: "Grade" }, { id: "f", name: "Office" },
+      ] },
+      functionalDependencies: [
+        { left: ["d", "c"], right: ["e"] }, { left: ["c"], right: ["a"] },
+        { left: ["a"], right: ["b"] }, { left: ["a"], right: ["f"] }, { left: ["b"], right: ["f"] },
+      ],
+    };
+    const api = apiWith({
+      analyzeSchema: vi.fn(async (input) => analyzeSchema(input)),
+      synthesizeThirdNormalForm: vi.fn(async (input) => synthesizeThirdNormalForm(input)),
+      decomposeBoyceCodd: vi.fn(async (input) => decomposeBoyceCodd(input)),
+      analyzeDependencyPreservation: vi.fn(async (input) => analyzeDependencyPreservationUseCase(input)),
+    });
+    render(<SchemaWorkspace api={api} initialProject={{ id: "11111111-1111-4111-8111-111111111111", name: "Enrollment", revision: 1, schema: { schemaVersion: 1, ...enrollment }, createdAt: "2026-09-21T00:00:00Z", updatedAt: "2026-09-21T00:00:00Z" }} />);
+    await user.click(screen.getByRole("button", { name: "Analyze schema" }));
+    await screen.findByRole("heading", { name: "Enrollment(Student, Course, Professor, Department, Grade, Office)" });
+    expect([...document.querySelectorAll(".normal-form-count")].map((node) => node.textContent)).toEqual(["3 violations", "44 violations", "44 violations"]);
+    await user.click(screen.getByRole("link", { name: "Explore transformations" }));
+    await user.click(screen.getByRole("button", { name: "Generate 3NF synthesis" }));
+    const synthesis = await screen.findByRole("region", { name: "Synthesis result" });
+    expect([...synthesis.querySelectorAll(".relation-result-list code")].map((node) => node.querySelector('[aria-hidden="true"]')?.textContent).sort()).toEqual([
+      "{Professor, Department}", "{Course, Professor}", "{Department, Office}", "{Student, Course, Grade}",
+    ].sort());
+    await user.click(screen.getByRole("button", { name: "Generate BCNF decomposition" }));
+    const bcnf = await screen.findByRole("region", { name: "Decomposition result" });
+    expect([...bcnf.querySelectorAll(".final-relations code")].map((node) => node.querySelector('[aria-hidden="true"]')?.textContent).sort()).toEqual([
+      "{Professor, Department}", "{Course, Professor}", "{Professor, Office}", "{Student, Course, Grade}",
+    ].sort());
+    expect(bcnf.querySelectorAll(".decomposition-steps > ol > li")).toHaveLength(3);
+    await user.click(screen.getByRole("button", { name: "Check dependency preservation" }));
+    expect(await screen.findByText("× Not preserved")).toBeTruthy();
+    expect(within(screen.getByRole("region", { name: "Preservation result" })).getByText("Department → Office")).toBeTruthy();
+    expect(api.analyzeSchema).toHaveBeenCalledTimes(1);
+    expect(api.synthesizeThirdNormalForm).toHaveBeenCalledTimes(1);
+    expect(api.decomposeBoyceCodd).toHaveBeenCalledTimes(1);
+    expect(api.analyzeDependencyPreservation).toHaveBeenCalledTimes(1);
+  });
+
+  it("keeps a stale snapshot without results readable and blocks every generation", async () => {
+    const user = userEvent.setup();
+    const api = apiWith();
+    render(<SchemaWorkspace api={api} />);
+    await analyzeExample(user);
+    await user.click(screen.getByRole("link", { name: "Edit schema" }));
+    await user.clear(screen.getByRole("textbox", { name: "Attribute 1 name" }));
+    await user.type(screen.getByRole("textbox", { name: "Attribute 1 name" }), "Changed");
+    await user.click(screen.getByRole("link", { name: "Transform" }));
+    expect(screen.getByText("Out of date", { selector: ".stale-notice strong" })).toBeTruthy();
+    expect(screen.getByText(/Analyze the updated schema before generating a transformation/)).toBeTruthy();
+    expect(screen.queryByRole("button", { name: /Generate (3NF|BCNF)/ })).toBeNull();
+    expect(screen.getByRole("link", { name: "View analysis" })).toBeTruthy();
+    expect(screen.getByRole("link", { name: "Edit schema" })).toBeTruthy();
+    expect(api.synthesizeThirdNormalForm).not.toHaveBeenCalled();
+    expect(api.decomposeBoyceCodd).not.toHaveBeenCalled();
+  });
+
+  it("compares both results without ranking them and distinguishes unchecked preservation", async () => {
+    const user = userEvent.setup();
+    render(<SchemaWorkspace api={apiWith()} />);
+    await analyzeExample(user);
+    expect(screen.queryByRole("heading", { name: "Compare the results" })).toBeNull();
+    await user.click(screen.getByRole("button", { name: "Generate 3NF synthesis" }));
+    await user.click(screen.getByRole("button", { name: "Generate BCNF decomposition" }));
+    const comparison = screen.getByRole("heading", { name: "Compare the results" }).closest("section")!;
+    expect(comparison.textContent).toContain("Dependency preserving");
+    expect(comparison.textContent).toContain("Lossless join");
+    expect(comparison.textContent).toContain("Not checked");
+    expect(comparison.textContent).not.toContain("better");
+    await user.click(screen.getByRole("button", { name: "Check dependency preservation" }));
+    expect(comparison.textContent).toContain("Preserved");
+    expect(comparison.textContent).not.toContain("Not checked");
+  });
+
+  it("retains a successful BCNF result when the first synthesis request fails", async () => {
+    const user = userEvent.setup();
+    const api = apiWith({ synthesizeThirdNormalForm: vi.fn(async () => { throw new SchemaWiseApiError({ kind: "network", message: "private detail" }); }) });
+    render(<SchemaWorkspace api={api} />);
+    await analyzeExample(user);
+    await user.click(screen.getByRole("button", { name: "Generate BCNF decomposition" }));
+    await screen.findByRole("heading", { name: "Decomposition result" });
+    await user.click(screen.getByRole("button", { name: "Generate 3NF synthesis" }));
+    expect((await screen.findByRole("alert")).textContent).toContain("Unable to generate 3NF synthesis.");
+    expect(screen.getByRole("heading", { name: "Decomposition result" })).toBeTruthy();
+    expect(screen.getByRole("button", { name: "Check dependency preservation" })).toBeTruthy();
+  });
+
   it("shows transformation CTAs only for violated normal forms", async () => {
     const user = userEvent.setup();
     const api = apiWith();
-    const view = render(<SchemaWorkspace api={api} legacyTransformationHarness />);
+    const view = render(<SchemaWorkspace api={api} />);
     await analyzeExample(user);
     expect(screen.getByRole("button", { name: "Generate 3NF synthesis" })).toBeTruthy();
     expect(screen.getByRole("button", { name: "Generate BCNF decomposition" })).toBeTruthy();
 
     view.unmount();
     const satisfiedApi = apiWith({ analyzeSchema: vi.fn(async (input) => analysisFor(input, true)) });
-    render(<SchemaWorkspace api={satisfiedApi} legacyTransformationHarness />);
+    render(<SchemaWorkspace api={satisfiedApi} />);
     await user.click(screen.getByRole("button", { name: "Load example" }));
     await user.click(screen.getByRole("button", { name: "Analyze schema" }));
     await screen.findByRole("heading", { name: "R(A, B, C)" });
+    await user.click(screen.getByRole("link", { name: "Explore transformations" }));
     expect(screen.queryByRole("button", { name: /Generate 3NF synthesis/ })).toBeNull();
     expect(screen.queryByRole("button", { name: /Generate BCNF decomposition/ })).toBeNull();
+    expect(screen.getByText("The relation already satisfies BCNF, so there is no decomposition to check.")).toBeTruthy();
   });
 
   it("uses the analyzed snapshot and renders synthesis sources, cover and guarantees", async () => {
     const user = userEvent.setup();
     const api = apiWith({ synthesizeThirdNormalForm: vi.fn(async (input) => synthesisFor(input, true)) });
-    render(<SchemaWorkspace api={api} legacyTransformationHarness />);
+    render(<SchemaWorkspace api={api} />);
     await analyzeExample(user);
     await user.click(screen.getByRole("button", { name: "Generate 3NF synthesis" }));
 
@@ -125,7 +221,7 @@ describe("normalization transformations", () => {
 
   it("does not render an empty candidate-key section when none was added", async () => {
     const user = userEvent.setup();
-    render(<SchemaWorkspace api={apiWith()} legacyTransformationHarness />);
+    render(<SchemaWorkspace api={apiWith()} />);
     await analyzeExample(user);
     await user.click(screen.getByRole("button", { name: "Generate 3NF synthesis" }));
     expect(screen.queryByText("Additional candidate-key relation")).toBeNull();
@@ -136,14 +232,14 @@ describe("normalization transformations", () => {
 
   it("opens the generated transformation diagram directly and moves focus to it", async () => {
     const user = userEvent.setup();
-    render(<SchemaWorkspace api={apiWith()} legacyTransformationHarness />);
+    render(<SchemaWorkspace api={apiWith()} />);
     await analyzeExample(user);
     await user.click(screen.getByRole("button", { name: "Generate 3NF synthesis" }));
     const result = await screen.findByRole("region", { name: "Synthesis result" });
     await user.click(within(result).getByRole("button", { name: "View diagram" }));
     const diagram = await screen.findByRole("region", { name: "3NF synthesis diagram" });
     await waitFor(() => expect(document.activeElement).toBe(diagram));
-    expect(screen.getByRole("button", { name: "Transformations" }).getAttribute("aria-pressed")).toBe("true");
+    expect(screen.getByRole("link", { name: "Transform" }).getAttribute("aria-current")).toBe("page");
   });
 
   it("announces synthesis loading and retains its previous result after failure", async () => {
@@ -151,7 +247,7 @@ describe("normalization transformations", () => {
     const retry = deferred<ThirdNormalFormSynthesisResponseDto>();
     let calls = 0;
     const api = apiWith({ synthesizeThirdNormalForm: vi.fn(async (input) => ++calls === 1 ? synthesisFor(input) : retry.promise) });
-    render(<SchemaWorkspace api={api} legacyTransformationHarness />);
+    render(<SchemaWorkspace api={api} />);
     await analyzeExample(user);
     await user.click(screen.getByRole("button", { name: "Generate 3NF synthesis" }));
     await screen.findByRole("heading", { name: "Synthesis result" });
@@ -168,7 +264,7 @@ describe("normalization transformations", () => {
   it("renders BCNF leaves, formatted steps and distinct guarantees", async () => {
     const user = userEvent.setup();
     const api = apiWith();
-    render(<SchemaWorkspace api={api} legacyTransformationHarness />);
+    render(<SchemaWorkspace api={api} />);
     await analyzeExample(user);
     await user.click(screen.getByRole("button", { name: "Generate BCNF decomposition" }));
     const section = await screen.findByRole("region", { name: "Decomposition result" });
@@ -186,7 +282,7 @@ describe("normalization transformations", () => {
 
   it("explains a BCNF violation and its contractual lossless split without claiming preservation", async () => {
     const user = userEvent.setup();
-    render(<SchemaWorkspace api={apiWith()} legacyTransformationHarness />);
+    render(<SchemaWorkspace api={apiWith()} />);
     await analyzeExample(user);
     await user.click(screen.getByRole("button", { name: "Generate BCNF decomposition" }));
     const section = await screen.findByRole("region", { name: "Decomposition result" });
@@ -204,7 +300,7 @@ describe("normalization transformations", () => {
   it("keeps multi-step BCNF decomposition in DTO order", async () => {
     const user = userEvent.setup();
     const api = apiWith({ decomposeBoyceCodd: vi.fn(async (input) => multiStepBcnfFor(input)) });
-    render(<SchemaWorkspace api={api} legacyTransformationHarness />);
+    render(<SchemaWorkspace api={api} />);
     await analyzeExample(user);
     await user.click(screen.getByRole("button", { name: "Generate BCNF decomposition" }));
     const section = await screen.findByRole("region", { name: "Decomposition result" });
@@ -217,7 +313,7 @@ describe("normalization transformations", () => {
   it("uses BCNF leaf relations for an explicit preservation request and renders preserved", async () => {
     const user = userEvent.setup();
     const api = apiWith();
-    render(<SchemaWorkspace api={api} legacyTransformationHarness />);
+    render(<SchemaWorkspace api={api} />);
     await analyzeExample(user);
     await user.click(screen.getByRole("button", { name: "Generate BCNF decomposition" }));
     await user.click(await screen.findByRole("button", { name: "Check dependency preservation" }));
@@ -237,11 +333,11 @@ describe("normalization transformations", () => {
       const [a, b, c] = input.relation.attributes.map((attribute) => attribute.id) as [string, string, string];
       return { preserved: false, lostDependencies: [{ left: [a, b], right: [c] }], preservedDependencies: [{ left: [b], right: [c] }] };
     }) });
-    render(<SchemaWorkspace api={api} legacyTransformationHarness />);
+    render(<SchemaWorkspace api={api} />);
     await analyzeExample(user);
     await user.click(screen.getByRole("button", { name: "Generate BCNF decomposition" }));
     await user.click(await screen.findByRole("button", { name: "Check dependency preservation" }));
-    const heading = await screen.findByRole("heading", { name: "Dependency preservation" });
+    const heading = await screen.findByRole("heading", { name: "Preservation result" });
     const section = heading.closest("section")!;
     expect(within(section).getByText("× Not preserved")).toBeTruthy();
     expect(within(section).getByText("Lost dependencies")).toBeTruthy();
@@ -261,7 +357,7 @@ describe("normalization transformations", () => {
   it("keeps old snapshot results visible when stale and disables every new transformation", async () => {
     const user = userEvent.setup();
     const api = apiWith();
-    render(<SchemaWorkspace api={api} legacyTransformationHarness />);
+    render(<SchemaWorkspace api={api} />);
     await analyzeExample(user);
     await user.click(screen.getByRole("button", { name: "Generate 3NF synthesis" }));
     await user.click(screen.getByRole("button", { name: "Generate BCNF decomposition" }));
@@ -270,9 +366,9 @@ describe("normalization transformations", () => {
     await user.click(screen.getByRole("link", { name: "Edit schema" }));
     await user.clear(screen.getByRole("textbox", { name: "Attribute 1 name" }));
     await user.type(screen.getByRole("textbox", { name: "Attribute 1 name" }), "Changed");
-    await user.click(screen.getByRole("link", { name: "Analysis" }));
+    await user.click(screen.getByRole("link", { name: "Transform" }));
 
-    expect(screen.getByText("Analyze the updated schema before generating a transformation.")).toBeTruthy();
+    expect(screen.getByText(/Analyze the updated schema before generating a transformation/)).toBeTruthy();
     for (const name of [/Run again: 3NF synthesis/, /Run again: BCNF decomposition/, /Check again: dependency preservation/]) {
       expect((screen.getByRole("button", { name }) as HTMLButtonElement).disabled).toBe(true);
     }
@@ -287,7 +383,7 @@ describe("normalization transformations", () => {
   it("clears all transformation resources after successful analysis of a new revision", async () => {
     const user = userEvent.setup();
     const api = apiWith();
-    render(<SchemaWorkspace api={api} legacyTransformationHarness />);
+    render(<SchemaWorkspace api={api} />);
     await analyzeExample(user);
     await user.click(screen.getByRole("button", { name: "Generate 3NF synthesis" }));
     await user.click(screen.getByRole("button", { name: "Generate BCNF decomposition" }));
@@ -299,6 +395,7 @@ describe("normalization transformations", () => {
     await user.type(name, "Updated");
     await user.click(screen.getByRole("button", { name: "Analyze again" }));
     await screen.findByRole("heading", { name: "Updated(A, B, C)" });
+    await user.click(screen.getByRole("link", { name: "Explore transformations" }));
     expect(screen.queryByRole("heading", { name: "Synthesis result" })).toBeNull();
     expect(screen.queryByRole("heading", { name: "Decomposition result" })).toBeNull();
     expect(screen.queryByRole("heading", { name: "Dependency preservation" })).toBeNull();
@@ -314,7 +411,7 @@ describe("normalization transformations", () => {
       decomposeBoyceCodd: vi.fn(async (input) => ++bcnfCalls === 1 ? bcnfFor(input) : bcnfRetry.promise),
       analyzeDependencyPreservation: vi.fn(() => preservationPending.promise),
     });
-    render(<SchemaWorkspace api={api} legacyTransformationHarness />);
+    render(<SchemaWorkspace api={api} />);
     await analyzeExample(user);
     await user.click(screen.getByRole("button", { name: "Generate BCNF decomposition" }));
     await screen.findByRole("heading", { name: "Decomposition result" });
@@ -341,7 +438,7 @@ describe("normalization transformations", () => {
       firstSignal = signal;
       return new Promise<ThirdNormalFormSynthesisResponseDto>((_resolve, reject) => signal?.addEventListener("abort", () => reject(new SchemaWiseApiError({ kind: "aborted", message: "aborted" }))));
     }) });
-    render(<SchemaWorkspace api={api} legacyTransformationHarness />);
+    render(<SchemaWorkspace api={api} />);
     await analyzeExample(user);
     await user.click(screen.getByRole("button", { name: "Generate 3NF synthesis" }));
     await user.click(screen.getByRole("button", { name: "Generating 3NF synthesis…" }));

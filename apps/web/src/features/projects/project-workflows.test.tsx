@@ -6,6 +6,7 @@ import type { AuthApi } from "../../api/auth-api";
 import { HttpApiError } from "../../api/http-api";
 import type { ProjectApi } from "../../api/project-api";
 import type { ProjectDto, ProjectSummaryDto } from "../../api/schemawise-contracts";
+import type { SchemaWiseApi } from "../../api/schemawise-api";
 import { AuthProvider } from "../auth/auth-context";
 import { AppRoutes } from "../../App";
 
@@ -19,11 +20,11 @@ function authApi(overrides: Partial<AuthApi> = {}): AuthApi { return { me: vi.fn
 function projectsApi(overrides: Partial<ProjectApi> = {}): ProjectApi {
   return { createProject: vi.fn(async (input) => ({ ...project(input.name), schema: input.schema })), listProjects: vi.fn(async () => ({ projects: [summary()], total: 1, limit: 20, offset: 0 })), getProject: vi.fn(async () => project()), updateProject: vi.fn(async (_id, input) => ({ ...project(input.name, input.expectedRevision + 1), schema: input.schema })), deleteProject: vi.fn(async () => undefined), ...overrides };
 }
-async function renderAuthenticated(client = projectsApi(), auth = authApi(), initialEntries: string[] = ["/"], initialIndex = initialEntries.length - 1) {
+async function renderAuthenticated(client = projectsApi(), auth = authApi(), initialEntries: string[] = ["/"], initialIndex = initialEntries.length - 1, computations?: SchemaWiseApi) {
   const user = userEvent.setup();
   const router = createMemoryRouter([{
     path: "*",
-    element: <AuthProvider api={auth}><AppRoutes projectsApi={client} /></AuthProvider>,
+    element: <AuthProvider api={auth}><AppRoutes projectsApi={client} {...(computations ? { api: computations } : {})} /></AuthProvider>,
   }], { initialEntries, initialIndex });
   render(<RouterProvider router={router} />);
   await screen.findByText("person@example.com");
@@ -196,9 +197,15 @@ describe("project persistence UX", () => {
   });
 
   it("resets root identity, draft, and derived state only after a committed New navigation", async () => {
-    const { user, router } = await renderAuthenticated();
+    const computations: SchemaWiseApi = {
+      analyzeSchema: vi.fn(async (input) => ({ relation: input.relation, candidateKeys: [[input.relation.attributes[0]!.id]], primeAttributes: [input.relation.attributes[0]!.id], minimalCover: input.functionalDependencies, normalForms: { second: { satisfied: true, violations: [] }, third: { satisfied: false, violations: [{ determinant: [input.relation.attributes[1]!.id], dependent: input.relation.attributes[2]!.id }] }, bcnf: { satisfied: false, violations: [{ determinant: [input.relation.attributes[1]!.id], dependent: input.relation.attributes[2]!.id }] } } })),
+      calculateClosure: vi.fn(), synthesizeThirdNormalForm: vi.fn(), decomposeBoyceCodd: vi.fn(), analyzeDependencyPreservation: vi.fn(),
+    };
+    const { user, router } = await renderAuthenticated(projectsApi(), authApi(), ["/"], 0, computations);
     await user.click(screen.getByRole("button", { name: "Load example" }));
     await user.click(screen.getByRole("button", { name: "Analyze schema" }));
+    await screen.findByRole("heading", { name: "Analysis", level: 1 });
+    await user.click(screen.getByRole("link", { name: "Edit schema" }));
     await user.click(screen.getByRole("button", { name: "New project" }));
     expect(screen.getByRole("heading", { name: "Unsaved changes" })).toBeTruthy();
     expect(screen.getByDisplayValue("R")).toBeTruthy();

@@ -32,12 +32,6 @@ function renderResult(value: AnalysisResponseDto = result()) {
       result={value}
       analyzedSnapshot={snapshot}
       outOfDate={false}
-      synthesis={{ status: "idle" }}
-      bcnf={{ status: "idle" }}
-      preservation={{ status: "idle" }}
-      onGenerateSynthesis={() => undefined}
-      onGenerateBcnf={() => undefined}
-      onCheckPreservation={() => undefined}
     />,
   );
 }
@@ -115,9 +109,7 @@ describe("candidate key education", () => {
     expect(section.textContent).toContain("empty-set candidate key");
 
     rerender(
-      <AnalysisResults result={result({ candidateKeys: [], primeAttributes: [] })} analyzedSnapshot={snapshot} outOfDate={false}
-        synthesis={{ status: "idle" }} bcnf={{ status: "idle" }} preservation={{ status: "idle" }}
-        onGenerateSynthesis={() => undefined} onGenerateBcnf={() => undefined} onCheckPreservation={() => undefined} />,
+      <AnalysisResults result={result({ candidateKeys: [], primeAttributes: [] })} analyzedSnapshot={snapshot} outOfDate={false} />,
     );
     section = sectionFor("Candidate keys");
     expect(section.textContent).toContain("No candidate keys were returned");
@@ -172,9 +164,7 @@ describe("minimal cover education", () => {
     expect(section.textContent).toContain("no non-trivial dependencies remain");
 
     rerender(
-      <AnalysisResults result={result({ minimalCover: [{ left: [], right: ["a"] }] })} analyzedSnapshot={snapshot} outOfDate={false}
-        synthesis={{ status: "idle" }} bcnf={{ status: "idle" }} preservation={{ status: "idle" }}
-        onGenerateSynthesis={() => undefined} onGenerateBcnf={() => undefined} onCheckPreservation={() => undefined} />,
+      <AnalysisResults result={result({ minimalCover: [{ left: [], right: ["a"] }] })} analyzedSnapshot={snapshot} outOfDate={false} />,
     );
     section = screen.getByRole("heading", { name: "Minimal cover" }).closest("section")!;
     expect(section.querySelector(".notation-list")?.textContent).toContain("∅ → A");
