@@ -40,7 +40,8 @@ button { min-height: 2.75rem; }
 .workspace-page { flex: 1; }
 .site-footer { margin-top: var(--space-8); border-top: 1px solid var(--border-default); }
 .site-footer__inner { padding-block: var(--space-4) var(--space-6); color: var(--text-secondary); font-size: 0.78rem; text-align: center; }
-.site-footer__inner strong { color: var(--text-primary); font-weight: 700; }
+.site-footer__link { color: var(--accent); font-weight: 700; text-decoration: underline; text-decoration-thickness: 0.08em; text-underline-offset: 0.16em; }
+.site-footer__link:hover { color: var(--accent-strong); }
 .route-state { max-width: 42rem; padding-block: clamp(1rem, 4vw, 3rem); }
 .route-state p { color: var(--text-secondary); }
 .route-state .button { margin-top: var(--space-3); }
