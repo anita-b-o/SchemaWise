@@ -21,7 +21,6 @@ import { createInitialWorkspaceState, draftToSchemaRequest, workspaceReducer } f
 import { validateDraft } from "../workspace-validation";
 import { WorkspaceViewProvider, useWorkspaceView } from "../workspace-view-navigation";
 import { setWorkspaceView, type WorkspaceView } from "../workspace-view";
-import schemawiseBirds from "../../../assets/schemawise-birds.webp";
 
 interface SchemaWorkspaceProps {
   readonly api?: SchemaWiseApi;
@@ -459,8 +458,7 @@ function SchemaWorkspaceContent({ api = schemawiseApi, projectsApi = defaultProj
       {!navigation?.blocked && conflict ? <section className="conflict-panel" aria-labelledby="conflict-heading"><h2 ref={conflictHeadingRef} tabIndex={-1} id="conflict-heading">This project was updated elsewhere.</h2><p>The saved version changed since you opened this project. Your changes have not been overwritten. Reloading will permanently discard your unsaved local changes.</p>{confirmConflictReload ? <div className="inline-confirmation" role="alert"><p>Discard local changes and reload the saved version?</p><div className="button-row"><button ref={conflictKeepRef} className="button button--secondary" type="button" onClick={() => { setConfirmConflictReload(false); setTimeout(() => conflictHeadingRef.current?.focus()); }}>Keep local changes</button><button className="button button--danger-solid" type="button" disabled={routeHydrating} onClick={() => route?.rehydrateCurrentRoute()}>Reload and discard</button></div></div> : <div className="button-row"><button className="button button--primary" type="button" onClick={() => setConfirmConflictReload(true)}>Reload saved version</button><button className="button button--secondary" type="button" onClick={() => { setConflict(false); setTimeout(() => saveButtonRef.current?.focus()); }}>Cancel</button></div>}</section> : null}
       {activeView === "schema" ? <>
       <div className="page-introduction">
-        <div className="page-introduction__copy"><p className="eyebrow">Schema</p><h1 ref={surfaceHeadingRef} tabIndex={-1}>Define a relation and its dependencies.</h1><p>Model the facts your relation stores. SchemaWise will use this input to explain normalization step by step.</p></div>
-        <img className="page-introduction__illustration" src={schemawiseBirds} width="600" height="600" alt="" aria-hidden="true" decoding="async" fetchPriority="high" />
+        <p className="eyebrow">Schema</p><h1 ref={surfaceHeadingRef} tabIndex={-1}>Define a relation and its dependencies.</h1><p>Model the facts your relation stores. SchemaWise will use this input to explain normalization step by step.</p>
       </div>
       <section className="schema-editor" aria-label="Schema editor">
         <div className="editor-toolbar">

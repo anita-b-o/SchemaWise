@@ -91,7 +91,7 @@ vulnerabilities. No push or deployment was performed.
 Tranche 2 makes the URL-derived view visible without changing the Tranche 1 resource, hydration, dirty-state, or recovery contracts. `SchemaWorkspace` remains the sole owner of draft and computed in-memory state; it conditionally composes one product surface at a time.
 
 - The shared compact shell identifies the local schema or project, relation, attribute/FD counts, project save state, and Analysis currency. Its labelled `Workspace` navigation uses ordinary links for Schema, Analysis, and Transform, with `aria-current="page"` on the active link. Query parameters and history are preserved by the existing view model.
-- Schema contains the birds/intro, editor, Analyze action, and Closure only. The former desktop sticky input/results layout is removed; the editor is centered and allowed a useful reading width.
+- Schema contains the typographic intro, editor, Analyze action, and Closure only. The former desktop sticky input/results layout is removed; the editor is centered and allowed a useful reading width.
 - Analyze stays on Schema while pending or failing. A successful response pushes Analysis and moves focus to its `h1`. A direct/refresh Analysis URL with no in-memory computation presents a calm session-empty state and never redirects or recomputes.
 - Analysis contains the historical snapshot, currency notice, educational results, and diagram. `Edit schema` is an URL link back to Schema. Current and stale snapshots remain readable; stale copy explicitly says that results describe the earlier schema version.
 - Transform remains an addressable, deliberately temporary surface. It never accidentally exposes the old combined result page. Analysis offers `Explore transformations`; Tranche 3 will move the existing generation UI there without duplicating result state.
@@ -201,7 +201,7 @@ Mobile, including 320 px:
 └──────────────────────────────┘
 ```
 
-The navigation labels are short enough to fit at 320 px without a fixed sidebar. Use ordinary links in a labeled local navigation landmark with `aria-current="page"`, not an ARIA tab widget unless full tab keyboard behavior is implemented. The shell follows DOM order. The birds appear only in the Schema entry introduction; the existing global Pampa Software footer and link remain.
+The navigation labels are short enough to fit at 320 px without a fixed sidebar. Use ordinary links in a labeled local navigation landmark with `aria-current="page"`, not an ARIA tab widget unless full tab keyboard behavior is implemented. The shell follows DOM order. Schema keeps a restrained typographic introduction; the existing global Pampa Software footer and link remain.
 
 ## FlowMind principles and limits
 

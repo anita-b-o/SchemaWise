@@ -131,7 +131,7 @@ describe("workspace view navigation", () => {
     expect(links.filter((link) => link.getAttribute("aria-current") === "page")).toEqual([links[0]]);
     expect(screen.getAllByRole("region", { name: "Project controls" })).toHaveLength(1);
     expect(screen.getByRole("heading", { name: "Define a relation and its dependencies.", level: 1 })).toBeTruthy();
-    expect(document.querySelector('.page-introduction__illustration')).toBeTruthy();
+    expect(document.querySelector('.page-introduction__illustration')).toBeNull();
     for (const name of ["Relation", "Attributes", "Functional dependencies", "Attribute closure"]) expect(screen.getByRole("heading", { name })).toBeTruthy();
     expect(screen.getByRole("button", { name: "Analyze schema" })).toBeTruthy();
     expect(screen.queryByRole("heading", { name: "Issues" })).toBeNull();
@@ -142,7 +142,6 @@ describe("workspace view navigation", () => {
     expect(document.activeElement).toBe(screen.getByRole("heading", { name: "Analysis", level: 1 }));
     expect(screen.getByText("No analysis is available yet. Go to Schema to analyze it.")).toBeTruthy();
     expect(screen.queryByRole("textbox", { name: "Relation name" })).toBeNull();
-    expect(document.querySelector('.page-introduction__illustration')).toBeNull();
     expect(screen.queryByRole("heading", { name: "Attribute closure" })).toBeNull();
     expect(screen.getAllByRole("region", { name: "Project controls" })).toHaveLength(1);
     await user.click(links[2]!);
