@@ -1,8 +1,25 @@
 # SchemaWise Demo v1 — contratos formales
 
-Estado: **TRANCHE 1 IMPLEMENTADO — contratos Demo pendientes de host**
+Estado: **TRANCHE 2 IMPLEMENTADO — contratos de ejemplos pendientes (Tranche 3)**
 
 Documento complementario de `demo-mode-v1.md`.
+
+## Contrato vigente en Tranche 2
+
+La ruta exacta `/demo` monta `DemoWorkspaceHost` fuera de `AuthProvider` y
+`ProjectRoute`. `workspaceResourceIdentity("/demo")` devuelve
+`DEMO WORKSPACE`; `view` no altera esa identidad. El host sólo entrega
+`SchemaWiseApi` al núcleo compartido y no acepta `ProjectApi`, sesión, CSRF,
+`projectId`, revisión ni callbacks Save/Open/New/Delete. El draft inicial y el
+baseline dirty son ambos vacíos. Dirty se define por relación no vacía, algún
+atributo o alguna dependencia. Las superficies y resultados viven sólo en la
+instancia React; refresh y reentrada crean instancias nuevas. La navegación
+entre superficies conserva la misma instancia y no calcula. La salida dirty
+usa `useBlocker` y `beforeunload`; Stay devuelve foco al enlace de salida.
+
+Los contratos de selección, fixtures y reemplazo de más abajo son el diseño de
+**Tranche 3**. No se implementaron en Tranche 2 y sus referencias a Basic como
+draft inicial no se aplican aún.
 
 ## Invariantes
 
@@ -50,8 +67,8 @@ interface SharedWorkspaceCore {
 `ProjectWorkspaceHost` consume esa interfaz y conserva explícitamente Auth,
 `ProjectApi`, sesión, Save/Open/New/Delete, Recovery y OCC. `SchemaWorkspace`
 queda sólo como alias de compatibilidad de pruebas. La variante discriminada
-de Demo siguiente permanece propuesta: no se añadió `/demo`, fixtures ni un
-host Demo en este tranche.
+de Demo con `fixtureId` sigue propuesta para Tranche 3. La ruta y el host Demo
+ya existen; el selector y los fixtures no.
 
 `WorkspaceSurfaces` recibe el núcleo, la vista actual y callbacks mínimos de
 chrome (navegación/foco y confirmación de ejemplo). Es la única composición de

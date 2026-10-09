@@ -1,6 +1,6 @@
 # SchemaWise Demo v1 — plan de pruebas
 
-Estado: **TRANCHE 1 CERRADO — pruebas de Demo Host pendientes**
+Estado: **TRANCHE 2 IMPLEMENTADO — gates aprobados; casos de ejemplos pendientes de Tranche 3**
 
 Alcance: Demo `/demo`, no despliegue. Las regresiones de `/` y
 `/projects/:projectId` siguen siendo gates obligatorios.
@@ -13,8 +13,38 @@ persistencia, y verifica que el draft sigue siendo propiedad del único reducer
 del núcleo. Las suites existentes de navegación de superficie, snapshots,
 Project Recovery y OCC permanecen como regresión del host persistente.
 
-No se añadieron pruebas de `/demo`: la ruta, Demo Host, fixtures y aislamiento
-de Auth/Projects para esa ruta corresponden a Tranche 2 y aún no existen.
+La suite `demo-route.test.tsx` cubre la ruta pública bajo StrictMode, identidad,
+aislamiento de Auth/Projects, direct links, fallback de `view`, historial,
+baseline vacío, confirmación de salida y reentrada limpia. Los fixtures y el
+selector corresponden a Tranche 3.
+
+## Resultado de Tranche 2 (2026-10-08)
+
+- Typecheck, build y `git diff --check`: PASS.
+- Suite completa: API 142, Web 227, Engine 173; 542 tests, todos PASS.
+- `npm audit --omit=dev`: 0 vulnerabilidades.
+- Chromium local con `createServer` matemático real: un POST cada uno a
+  `/closure`, `/analysis`, `/synthesis/3nf`, `/decomposition/bcnf` y
+  `/analysis/dependency-preservation`. Cambiar superficies y usar Back/Forward
+  emitió 0 requests nuevos. Mientras Demo estuvo montada hubo 0 requests Auth
+  y 0 Projects. El GET `/auth/me` se observó sólo tras salir a `/`.
+- Navegador: Analyze llevó a Analysis; Transform ejecutó tres operaciones;
+  editar tras Analyze conservó el snapshot y mostró `Out of date`; salir dirty
+  mostró confirmación; volver creó una instancia vacía sin resultados; refresh
+  conservó `view` y descartó el draft. Direct links a Analysis y Transform
+  mostraron empty states sin red.
+- Chromium: `scrollWidth - innerWidth = 0` en 320×720, 390×844, 768×1024 y
+  1440×900. Axe WCAG 2 A/AA y 2.1 A/AA: 0 violaciones en Demo Schema,
+  Analysis vacío, Transform vacío y confirmación de salida. Sin page errors.
+- Project Recovery: pasaron las 24 pruebas de `project-workflows.test.tsx`, las
+  12 de `project-route.test.tsx` y las demás regresiones Web existentes.
+
+La matriz inferior describe el objetivo completo de Demo v1. D-08 a D-14 y
+los casos de selector/reemplazo de D-26 a D-28 siguen pendientes de Tranche 3;
+sus referencias a Basic no son criterio de aceptación de Tranche 2. En
+Tranche 2 el baseline es el draft vacío. La cobertura matemática de la ruta
+Demo se verificó en Chromium contra el servidor local real; las suites comunes
+siguen cubriendo snapshots, errores y Project Recovery.
 
 ## Estrategia y harness
 
