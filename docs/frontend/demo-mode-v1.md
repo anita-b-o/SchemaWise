@@ -1,28 +1,28 @@
 # SchemaWise Demo v1 — arquitectura propuesta
 
-Estado: **TRANCHE 2 IMPLEMENTADO — biblioteca de ejemplos pendiente (Tranche 3)**
+Estado: **TRANCHE 3 IMPLEMENTADO — auditoría integral pendiente (Tranche 4)**
 
 Fecha: 2026-10-08
 Alcance: experiencia temporal e independiente en `/demo`. La implementación
-actual se limita a ruta, host y aislamiento; no hubo cambios de backend,
+actual incluye ruta, host, aislamiento y biblioteca de ejemplos; no hubo cambios de backend,
 migraciones, push ni despliegue.
 
-## Estado implementado en Tranche 2
+## Estado implementado en Tranche 3
 
 `/demo` es una ruta hermana del árbol productivo. Monta `DemoWorkspaceHost`,
 `WorkspaceViewProvider` y el núcleo matemático compartido sin `AuthProvider`,
 `ProjectRoute`, sesión ni capacidades de persistencia. La identidad es
-`DEMO WORKSPACE`. Schema inicia con un draft vacío; ese draft vacío es el
-baseline temporal de dirty. Editar y restaurar exactamente el vacío vuelve a
-limpio. Analyze no se ejecuta al entrar, al refrescar ni al cambiar `view`.
+`DEMO WORKSPACE`. Schema inicia con un clon de Basic normalization; ese clon
+es el baseline temporal de dirty. El selector permite cargar los cuatro
+ejemplos documentados o empezar vacío, sin persistencia ni cálculo automático.
+Editar y restaurar exactamente el baseline vuelve a limpio. Analyze no se
+ejecuta al entrar, al refrescar ni al cambiar `view`.
 Analysis y Transform directos muestran sus estados vacíos. Refresh conserva
 la superficie de la URL y reinicia el recurso. Salir dirty requiere confirmar;
 volver mediante historial monta un recurso nuevo sin resultados anteriores.
 
-Las secciones que describen fixtures, selector, reemplazo y Basic como valor
-inicial documentan **Tranche 3 pendiente** y no describen el comportamiento
-actual. Para Tranche 2, cualquier referencia a entrada o refresh con Basic se
-lee como entrada o refresh con draft vacío, sin selector. El footer, las cinco
+El reemplazo de un draft modificado requiere confirmación inline y aborta las
+operaciones en vuelo antes de instalar un clon nuevo. El footer, las cinco
 operaciones matemáticas y Project Recovery conservan sus implementaciones.
 
 ## 1. Architecture audit

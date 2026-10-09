@@ -1,25 +1,25 @@
 # SchemaWise Demo v1 — contratos formales
 
-Estado: **TRANCHE 2 IMPLEMENTADO — contratos de ejemplos pendientes (Tranche 3)**
+Estado: **TRANCHE 3 IMPLEMENTADO — auditoría integral pendiente (Tranche 4)**
 
 Documento complementario de `demo-mode-v1.md`.
 
-## Contrato vigente en Tranche 2
+## Contrato vigente en Tranche 3
 
 La ruta exacta `/demo` monta `DemoWorkspaceHost` fuera de `AuthProvider` y
 `ProjectRoute`. `workspaceResourceIdentity("/demo")` devuelve
 `DEMO WORKSPACE`; `view` no altera esa identidad. El host sólo entrega
 `SchemaWiseApi` al núcleo compartido y no acepta `ProjectApi`, sesión, CSRF,
 `projectId`, revisión ni callbacks Save/Open/New/Delete. El draft inicial y el
-baseline dirty son ambos vacíos. Dirty se define por relación no vacía, algún
-atributo o alguna dependencia. Las superficies y resultados viven sólo en la
+baseline dirty son clones de `basic-normalization`. `DemoSelection` mantiene
+fixture/blank, baseline y sustitución pendiente; dirty se define por igualdad
+semántica ordenada de input. Las superficies y resultados viven sólo en la
 instancia React; refresh y reentrada crean instancias nuevas. La navegación
 entre superficies conserva la misma instancia y no calcula. La salida dirty
 usa `useBlocker` y `beforeunload`; Stay devuelve foco al enlace de salida.
 
-Los contratos de selección, fixtures y reemplazo de más abajo son el diseño de
-**Tranche 3**. No se implementaron en Tranche 2 y sus referencias a Basic como
-draft inicial no se aplican aún.
+Los contratos de selección, fixtures y reemplazo de más abajo están
+implementados. No hay estado de fixture en URL, storage ni identidad de recurso.
 
 ## Invariantes
 

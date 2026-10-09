@@ -1,6 +1,6 @@
 # SchemaWise Demo v1 — plan de pruebas
 
-Estado: **TRANCHE 2 IMPLEMENTADO — gates aprobados; casos de ejemplos pendientes de Tranche 3**
+Estado: **TRANCHE 3 IMPLEMENTADO — auditoría integral pendiente (Tranche 4)**
 
 Alcance: Demo `/demo`, no despliegue. Las regresiones de `/` y
 `/projects/:projectId` siguen siendo gates obligatorios.
@@ -13,15 +13,16 @@ persistencia, y verifica que el draft sigue siendo propiedad del único reducer
 del núcleo. Las suites existentes de navegación de superficie, snapshots,
 Project Recovery y OCC permanecen como regresión del host persistente.
 
-La suite `demo-route.test.tsx` cubre la ruta pública bajo StrictMode, identidad,
-aislamiento de Auth/Projects, direct links, fallback de `view`, historial,
-baseline vacío, confirmación de salida y reentrada limpia. Los fixtures y el
-selector corresponden a Tranche 3.
+Las suites `demo-fixtures.test.ts` y `demo-route.test.tsx` cubren fixtures
+inmutables, IDs deterministas, Basic inicial bajo StrictMode, aislamiento de
+Auth/Projects, direct links, historial, selector, blank, reemplazo
+confirmado/cancelado, misma selección, abort y dirty frente a stale.
 
-## Resultado de Tranche 2 (2026-10-08)
+## Resultado de Tranche 3 (2026-10-08)
 
-- Typecheck, build y `git diff --check`: PASS.
-- Suite completa: API 142, Web 227, Engine 173; 542 tests, todos PASS.
+- Typecheck, build y `git diff --check` son gates requeridos de Tranche 3.
+- La suite añade siete casos Web de Demo sin debilitar regresiones de API,
+  engine ni Project Recovery.
 - `npm audit --omit=dev`: 0 vulnerabilidades.
 - Chromium local con `createServer` matemático real: un POST cada uno a
   `/closure`, `/analysis`, `/synthesis/3nf`, `/decomposition/bcnf` y
@@ -40,11 +41,10 @@ selector corresponden a Tranche 3.
   12 de `project-route.test.tsx` y las demás regresiones Web existentes.
 
 La matriz inferior describe el objetivo completo de Demo v1. D-08 a D-14 y
-los casos de selector/reemplazo de D-26 a D-28 siguen pendientes de Tranche 3;
-sus referencias a Basic no son criterio de aceptación de Tranche 2. En
-Tranche 2 el baseline es el draft vacío. La cobertura matemática de la ruta
-Demo se verificó en Chromium contra el servidor local real; las suites comunes
-siguen cubriendo snapshots, errores y Project Recovery.
+D-26 están cubiertos por las suites Demo; D-16 a D-19 siguen reutilizando el
+núcleo matemático y sus contratos comunes. La auditoría integral de navegador,
+axe y regresión cruzada queda expresamente para Tranche 4 y no se marca aquí
+como completada.
 
 ## Estrategia y harness
 
