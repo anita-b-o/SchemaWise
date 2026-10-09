@@ -60,6 +60,7 @@ h1 { max-width: 38rem; margin-bottom: var(--space-3); font-size: clamp(2rem, 5vw
 .workspace-navigation__link { min-height: 2.25rem; padding: .45rem .6rem; color: var(--text-secondary); border-radius: var(--radius-sm); font-size: .82rem; font-weight: 750; text-decoration: none; }
 .workspace-navigation__link:hover { color: var(--text-primary); background: #fff; }
 .workspace-navigation__link[aria-current="page"] { color: #fff; background: var(--accent); }
+.demo-exit { display: flex; justify-content: flex-end; margin-block: var(--space-2); }
 .analysis-surface { max-width: 64rem; margin-inline: auto; }
 .surface-heading { display: flex; justify-content: space-between; align-items: end; gap: var(--space-6); margin-bottom: var(--space-6); }
 .surface-heading > div { min-width: 0; }

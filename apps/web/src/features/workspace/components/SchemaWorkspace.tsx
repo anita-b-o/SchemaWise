@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from "react";
-import { Link, MemoryRouter, useInRouterContext, useLocation } from "react-router-dom";
+import { MemoryRouter, useInRouterContext, useLocation } from "react-router-dom";
 import type { SchemaWiseApi } from "../../../api/schemawise-api";
 import { projectApi as defaultProjectApi, type ProjectApi } from "../../../api/project-api";
 import { HttpApiError } from "../../../api/http-api";
@@ -12,7 +12,7 @@ import { useProjectRouteCoordination } from "../../projects/project-route-contex
 import { draftToPersistedSchema, initialProjectSession, isProjectDirty, isRouteLoadedProjectCoherent, persistedSchemaToDraft, sessionFromProject, type ProjectSession } from "../../projects/project-session";
 import { useSharedWorkspaceCore } from "../shared-workspace-core";
 import { WorkspaceViewProvider, useWorkspaceView } from "../workspace-view-navigation";
-import { setWorkspaceView, type WorkspaceView } from "../workspace-view";
+import { WorkspaceNavigation } from "./WorkspaceNavigation";
 import { WorkspaceSurfaces } from "./WorkspaceSurfaces";
 
 interface SchemaWorkspaceProps {
@@ -20,14 +20,6 @@ interface SchemaWorkspaceProps {
   readonly projectsApi?: ProjectApi;
   readonly initialProject?: ProjectDto;
   readonly focusAfterHydration?: boolean;
-}
-
-function WorkspaceNavigation({ activeView, onNavigate }: { readonly activeView: WorkspaceView; readonly onNavigate: (view: WorkspaceView) => void }) {
-  const location = useLocation();
-  const href = (view: WorkspaceView) => `${location.pathname}${(() => { const params = setWorkspaceView(new URLSearchParams(location.search), view); const search = params.toString(); return search ? `?${search}` : ""; })()}`;
-  return <nav className="workspace-navigation" aria-label="Workspace">
-    {(["schema", "analysis", "transform"] as const).map((view) => <Link key={view} className="workspace-navigation__link" to={href(view)} aria-current={activeView === view ? "page" : undefined} onClick={() => onNavigate(view)}>{view === "schema" ? "Schema" : view === "analysis" ? "Analysis" : "Transform"}</Link>)}
-  </nav>;
 }
 
 function focusFirstIssue(field: string) {
