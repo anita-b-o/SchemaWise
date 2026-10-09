@@ -1,4 +1,4 @@
-import type { RefObject } from "react";
+import type { ReactNode, RefObject } from "react";
 import { Link, useLocation } from "react-router-dom";
 import { DelayedAsyncHint } from "../../../components/DelayedAsyncHint";
 import { SchemaWiseApiError } from "../../../api/schemawise-api";
@@ -34,7 +34,7 @@ function transformationErrorMessage(error: unknown): string {
   return "SchemaWise couldn't complete this operation. Try again.";
 }
 
-export function WorkspaceSurfaces({ core, activeView, navigationBlocked, confirmExample, onRequestExample, onCancelExample, onLoadExample, surfaceHeadingRef, onNavigate, emptyAnalysisMessage }: {
+export function WorkspaceSurfaces({ core, activeView, navigationBlocked, confirmExample, onRequestExample, onCancelExample, onLoadExample, schemaToolbarAccessory, schemaEditorNotice, surfaceHeadingRef, onNavigate, emptyAnalysisMessage }: {
   readonly core: SharedWorkspaceCore;
   readonly activeView: WorkspaceView;
   readonly navigationBlocked: boolean;
@@ -42,6 +42,8 @@ export function WorkspaceSurfaces({ core, activeView, navigationBlocked, confirm
   readonly onRequestExample?: () => void;
   readonly onCancelExample?: () => void;
   readonly onLoadExample?: () => void;
+  readonly schemaToolbarAccessory?: ReactNode;
+  readonly schemaEditorNotice?: ReactNode;
   readonly surfaceHeadingRef: RefObject<HTMLHeadingElement | null>;
   readonly onNavigate: () => void;
   readonly emptyAnalysisMessage: string;
@@ -59,7 +61,8 @@ export function WorkspaceSurfaces({ core, activeView, navigationBlocked, confirm
     {activeView === "schema" ? <>
       <div className="page-introduction"><p className="eyebrow">Schema</p><h1 ref={surfaceHeadingRef} tabIndex={-1}>Define a relation and its dependencies.</h1><p>Model the facts your relation stores. SchemaWise will use this input to explain normalization step by step.</p></div>
       <section className="schema-editor" aria-label="Schema editor">
-        <div className="editor-toolbar"><div><p className="eyebrow">Input</p><p className="editor-toolbar__note">Your draft stays in this browser tab.</p></div>{onRequestExample ? <button className="button button--quiet" type="button" onClick={onRequestExample}>Load example</button> : null}</div>
+        <div className="editor-toolbar"><div><p className="eyebrow">Input</p><p className="editor-toolbar__note">Your draft stays in this browser tab.</p></div>{schemaToolbarAccessory}{onRequestExample ? <button className="button button--quiet" type="button" onClick={onRequestExample}>Load example</button> : null}</div>
+        {schemaEditorNotice}
         {!navigationBlocked && confirmExample && onCancelExample && onLoadExample ? <div className="inline-confirmation example-confirmation" role="alert"><p>Loading the example will replace your current schema.</p><div className="button-row"><button className="button button--secondary" type="button" onClick={onCancelExample}>Keep current schema</button><button className="button button--danger-solid" type="button" onClick={onLoadExample}>Replace with example</button></div></div> : null}
         <RelationEditor name={state.draft.relationName} issues={issues} onChange={(name) => dispatch({ type: "changeRelationName", name })} />
         <AttributeList attributes={state.draft.attributes} dependencyReferenceCounts={referenceCounts} issues={issues} onAdd={(attribute) => dispatch({ type: "addAttribute", attribute })} onRename={(id, name) => dispatch({ type: "renameAttribute", id, name })} onRemove={(id) => dispatch({ type: "removeAttribute", id })} />
