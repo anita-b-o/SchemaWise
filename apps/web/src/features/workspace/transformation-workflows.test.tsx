@@ -85,7 +85,8 @@ async function analyzeExample(user: ReturnType<typeof userEvent.setup>) {
 describe("normalization transformations", () => {
   it("completes the core surface and transformation flow with keyboard activation", async () => {
     const user = userEvent.setup();
-    const api = apiWith();
+    const analysis = deferred<AnalysisResponseDto>();
+    const api = apiWith({ analyzeSchema: vi.fn(() => analysis.promise) });
     render(<SchemaWorkspace api={api} />);
 
     screen.getByRole("textbox", { name: "Project name" }).focus();
@@ -98,6 +99,8 @@ describe("normalization transformations", () => {
     await user.keyboard("{Enter}");
     screen.getByRole("button", { name: "Analyze schema" }).focus();
     await user.keyboard(" ");
+    expect(api.analyzeSchema).toHaveBeenCalledTimes(1);
+    analysis.resolve(analysisFor(vi.mocked(api.analyzeSchema).mock.calls[0]![0]));
     await screen.findByRole("heading", { name: "Analysis", level: 1 });
 
     const explain = screen.getByText("Explain candidate keys");
