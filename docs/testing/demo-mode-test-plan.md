@@ -1,6 +1,6 @@
 # SchemaWise Demo v1 — plan de pruebas
 
-Estado: **TRANCHE 3 IMPLEMENTADO — auditoría integral pendiente (Tranche 4)**
+Estado: **SCHEMAWISE DEMO V1: FROZEN — Tranche 4 aprobada (2026-10-10)**
 
 Alcance: Demo `/demo`, no despliegue. Las regresiones de `/` y
 `/projects/:projectId` siguen siendo gates obligatorios.
@@ -145,3 +145,10 @@ Demo inicia Basic sin GET de proyecto adicional.
 Un fallo de cero Auth/Projects, persistencia, aislamiento de estado, request
 count, Project Recovery o accesibilidad bloquea el tranche; no se compensa
 ocultando controles ni ajustando expectativas de prueba.
+
+## Cierre de Tranche 4
+
+Se añadió cobertura de respuesta Analyze tardía tras replace y de activación
+duplicada de Demo. La suite final es 552 tests: API 142, Web 237 y engine 173;
+todas las validaciones y audit de dependencias pasan. El registro detallado es
+[demo-mode-v1-audit.md](./demo-mode-v1-audit.md).

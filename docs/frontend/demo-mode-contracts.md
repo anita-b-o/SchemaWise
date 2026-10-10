@@ -1,6 +1,6 @@
 # SchemaWise Demo v1 — contratos formales
 
-Estado: **TRANCHE 3 IMPLEMENTADO — auditoría integral pendiente (Tranche 4)**
+Estado: **SCHEMAWISE DEMO V1: FROZEN — Tranche 4 aprobada (2026-10-10)**
 
 Documento complementario de `demo-mode-v1.md`.
 
@@ -66,9 +66,8 @@ interface SharedWorkspaceCore {
 
 `ProjectWorkspaceHost` consume esa interfaz y conserva explícitamente Auth,
 `ProjectApi`, sesión, Save/Open/New/Delete, Recovery y OCC. `SchemaWorkspace`
-queda sólo como alias de compatibilidad de pruebas. La variante discriminada
-de Demo con `fixtureId` sigue propuesta para Tranche 3. La ruta y el host Demo
-ya existen; el selector y los fixtures no.
+queda sólo como alias de compatibilidad de pruebas. Demo ya tiene ruta, host,
+selector y fixtures; no recibe capacidades persistentes.
 
 `WorkspaceSurfaces` recibe el núcleo, la vista actual y callbacks mínimos de
 chrome (navegación/foco y confirmación de ejemplo). Es la única composición de
@@ -171,6 +170,10 @@ replace fixture/blank -> estado inicial; nada histórico queda visible
 `replaceDraft` sólo se despacha después de la confirmación, nunca al abrir el
 selector. Todo Abort ocurre antes del reemplazo y también en cleanup de
 desmontaje. Respuestas tardías se ignoran por el request ID vigente del reducer.
+Además, cada operación exige que su `AbortController` siga siendo el activo
+antes de despachar éxito/error o invocar `onAnalyzeSuccess`; abortar vacía los
+cinco canales. Un cliente no cooperativo ya no puede alterar fixture, foco o
+URL después de un reemplazo.
 
 ## Operaciones y conteos
 

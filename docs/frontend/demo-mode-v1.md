@@ -1,6 +1,6 @@
 # SchemaWise Demo v1 — arquitectura propuesta
 
-Estado: **TRANCHE 3 IMPLEMENTADO — auditoría integral pendiente (Tranche 4)**
+Estado: **SCHEMAWISE DEMO V1: FROZEN — auditoría integral Tranche 4 aprobada (2026-10-10)**
 
 Fecha: 2026-10-08
 Alcance: experiencia temporal e independiente en `/demo`. La implementación
@@ -425,3 +425,17 @@ medible.
 Revisar y aprobar esta arquitectura definitiva —en especial la separación del
 árbol de providers, el baseline de dirty y el comportamiento POP/refresh— antes
 de modificar código.
+
+## 27. Cierre de Tranche 4
+
+La auditoría final confirmó una sola implementación matemática por instancia:
+`useSharedWorkspaceCore` posee el único reducer; Demo no crea motor, reducer ni
+snapshot paralelo. `/demo` sigue fuera de Auth y Projects aun con sesión previa.
+
+Se corrigió una carrera real: una promesa que resolvía tras abortar/reemplazar
+podía ejecutar el callback de navegación aunque el reducer descartase sus datos.
+Ahora cada respuesta requiere seguir siendo propietaria de su controlador activo
+antes de despachar o ejecutar callbacks. Demo también evita activaciones
+duplicadas sin alterar el reintento explícito de Projects.
+
+La evidencia completa está en [demo-mode-v1-audit.md](../testing/demo-mode-v1-audit.md).
