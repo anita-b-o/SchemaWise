@@ -156,6 +156,28 @@ describe("isolated demo route", () => {
     expect((screen.getByRole("combobox", { name: "Example" }) as HTMLSelectElement).value).toBe("composite-key");
   });
 
+  it("keeps a late successful analysis from an replaced example out of the new surface", async () => {
+    const { user, api } = mount();
+    let resolveAnalysis: (() => void) | undefined;
+    (api.analyzeSchema as ReturnType<typeof vi.fn>).mockImplementation((input: SchemaAnalysisRequestDto) => new Promise<AnalysisResponseDto>((resolve) => { resolveAnalysis = () => resolve(analysisFor(input)); }));
+    await user.click(screen.getByRole("button", { name: "Analyze schema" }));
+    await user.selectOptions(screen.getByRole("combobox", { name: "Example" }), "composite-key");
+    await act(async () => { resolveAnalysis?.(); });
+    expect(screen.getByRole("heading", { name: "Define a relation and its dependencies." })).toBeTruthy();
+    expect((screen.getByRole("combobox", { name: "Example" }) as HTMLSelectElement).value).toBe("composite-key");
+    expect(screen.queryByText("Candidate keys")).toBeNull();
+  });
+
+  it("does not start duplicate analysis requests while the explicit operation is pending", async () => {
+    const { user, api } = mount();
+    (api.analyzeSchema as ReturnType<typeof vi.fn>).mockImplementation(() => new Promise<AnalysisResponseDto>(() => undefined));
+    const analyze = screen.getByRole("button", { name: "Analyze schema" });
+    await user.click(analyze);
+    expect((screen.getByRole("button", { name: "Analyzing…" }) as HTMLButtonElement).disabled).toBe(true);
+    await user.click(screen.getByRole("button", { name: "Analyzing…" }));
+    expect(api.analyzeSchema).toHaveBeenCalledTimes(1);
+  });
+
   it("keeps dirty and stale distinct after a real analysis", async () => {
     const { user, api } = mount();
     (api.analyzeSchema as ReturnType<typeof vi.fn>).mockImplementation(async (input: SchemaAnalysisRequestDto) => analysisFor(input));

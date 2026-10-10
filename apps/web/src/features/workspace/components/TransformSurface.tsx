@@ -27,9 +27,10 @@ interface TransformSurfaceProps {
   readonly onGenerateBcnf: () => void;
   readonly onCheckPreservation: () => void;
   readonly headingRef: React.Ref<HTMLHeadingElement>;
+  readonly preventDuplicateOperations?: boolean;
 }
 
-export function TransformSurface({ analysis, snapshot, outOfDate, synthesis, bcnf, preservation, synthesisError, bcnfError, preservationError, analysisHref, schemaHref, onNavigate, onGenerateSynthesis, onGenerateBcnf, onCheckPreservation, headingRef }: TransformSurfaceProps) {
+export function TransformSurface({ analysis, snapshot, outOfDate, synthesis, bcnf, preservation, synthesisError, bcnfError, preservationError, analysisHref, schemaHref, onNavigate, onGenerateSynthesis, onGenerateBcnf, onCheckPreservation, headingRef, preventDuplicateOperations = false }: TransformSurfaceProps) {
   const [diagramOpen, setDiagramOpen] = useState(false);
   const diagramId = useId();
   const diagramsRef = useRef<HTMLDivElement>(null);
@@ -60,7 +61,7 @@ export function TransformSurface({ analysis, snapshot, outOfDate, synthesis, bcn
       <div className="transform-sequence">
         <section className="transform-stage" aria-labelledby="synthesis-stage-heading" aria-busy={synthesis.status === "loading"}>
           <div className="transformation-action-row"><div><p className="eyebrow">01 / Preserve dependencies</p><h2 id="synthesis-stage-heading">3NF Synthesis</h2><p>{canSynthesize ? "Generate a dependency-preserving, lossless 3NF decomposition." : "This analyzed relation already satisfies 3NF; synthesis is unnecessary."}</p></div>
-            {canSynthesize && (!outOfDate || synthesis.data) ? <button className={`button ${synthesis.data ? "button--quiet" : "button--primary"}`} type="button" onClick={onGenerateSynthesis} disabled={outOfDate} aria-describedby={outOfDate ? "stale-transformation-help" : undefined}>{synthesis.status === "loading" ? "Generating 3NF synthesis…" : synthesis.data ? <>Run again<span className="visually-hidden">: 3NF synthesis</span></> : "Generate 3NF synthesis"}</button> : null}
+            {canSynthesize && (!outOfDate || synthesis.data) ? <button className={`button ${synthesis.data ? "button--quiet" : "button--primary"}`} type="button" onClick={onGenerateSynthesis} disabled={outOfDate || (preventDuplicateOperations && synthesis.status === "loading")} aria-describedby={outOfDate ? "stale-transformation-help" : undefined}>{synthesis.status === "loading" ? "Generating 3NF synthesis…" : synthesis.data ? <>Run again<span className="visually-hidden">: 3NF synthesis</span></> : "Generate 3NF synthesis"}</button> : null}
           </div>
           <div className="transformation-live-status" role="status" aria-live="polite">{synthesis.status === "loading" ? (synthesis.data ? "Updating synthesis…" : "Generating 3NF synthesis…") : synthesis.status === "success" ? "3NF synthesis complete." : ""}</div>
           <DelayedAsyncHint active={synthesis.status === "loading"} requestKey={synthesis.requestId} />
@@ -70,7 +71,7 @@ export function TransformSurface({ analysis, snapshot, outOfDate, synthesis, bcn
 
         <section className="transform-stage" aria-labelledby="bcnf-stage-heading" aria-busy={bcnf.status === "loading"}>
           <div className="transformation-action-row"><div><p className="eyebrow">02 / Stronger normal form</p><h2 id="bcnf-stage-heading">BCNF Decomposition</h2><p>{canDecompose ? "BCNF is stricter than 3NF. Its lossless decomposition may not preserve every dependency." : "This analyzed relation already satisfies BCNF; no decomposition is needed."}</p></div>
-            {canDecompose && (!outOfDate || bcnf.data) ? <button className={`button ${bcnf.data ? "button--quiet" : "button--primary"}`} type="button" onClick={onGenerateBcnf} disabled={outOfDate} aria-describedby={outOfDate ? "stale-transformation-help" : undefined}>{bcnf.status === "loading" ? "Generating BCNF decomposition…" : bcnf.data ? <>Run again<span className="visually-hidden">: BCNF decomposition</span></> : "Generate BCNF decomposition"}</button> : null}
+            {canDecompose && (!outOfDate || bcnf.data) ? <button className={`button ${bcnf.data ? "button--quiet" : "button--primary"}`} type="button" onClick={onGenerateBcnf} disabled={outOfDate || (preventDuplicateOperations && bcnf.status === "loading")} aria-describedby={outOfDate ? "stale-transformation-help" : undefined}>{bcnf.status === "loading" ? "Generating BCNF decomposition…" : bcnf.data ? <>Run again<span className="visually-hidden">: BCNF decomposition</span></> : "Generate BCNF decomposition"}</button> : null}
           </div>
           <div className="transformation-live-status" role="status" aria-live="polite">{bcnf.status === "loading" ? (bcnf.data ? "Updating decomposition…" : "Generating BCNF decomposition…") : bcnf.status === "success" ? "BCNF decomposition complete." : ""}</div>
           <DelayedAsyncHint active={bcnf.status === "loading"} requestKey={bcnf.requestId} />
@@ -80,7 +81,7 @@ export function TransformSurface({ analysis, snapshot, outOfDate, synthesis, bcn
 
         <section className="transform-stage" aria-labelledby="preservation-stage-heading" aria-busy={preservation.status === "loading"}>
           <div className="transformation-action-row"><div><p className="eyebrow">03 / Check the trade-off</p><h2 id="preservation-stage-heading">Dependency Preservation</h2><p>{bcnf.data ? "Check whether the BCNF relations preserve the original functional dependencies. Lossless join is a separate property." : analysis.normalForms.bcnf.satisfied ? "The relation already satisfies BCNF, so there is no decomposition to check." : "Generate a BCNF decomposition to make this check available."}</p></div>
-            {bcnf.data && (!outOfDate || preservation.data) ? <button className={`button ${preservation.data ? "button--quiet" : "button--secondary"}`} type="button" onClick={onCheckPreservation} disabled={outOfDate} aria-describedby={outOfDate ? "stale-transformation-help" : undefined}>{preservation.status === "loading" ? "Checking dependency preservation…" : preservation.data ? <>Check again<span className="visually-hidden">: dependency preservation</span></> : "Check dependency preservation"}</button> : null}
+            {bcnf.data && (!outOfDate || preservation.data) ? <button className={`button ${preservation.data ? "button--quiet" : "button--secondary"}`} type="button" onClick={onCheckPreservation} disabled={outOfDate || (preventDuplicateOperations && preservation.status === "loading")} aria-describedby={outOfDate ? "stale-transformation-help" : undefined}>{preservation.status === "loading" ? "Checking dependency preservation…" : preservation.data ? <>Check again<span className="visually-hidden">: dependency preservation</span></> : "Check dependency preservation"}</button> : null}
           </div>
           <div className="transformation-live-status" role="status" aria-live="polite">{preservation.status === "loading" ? (preservation.data ? "Updating dependency preservation…" : "Checking dependency preservation…") : preservation.status === "success" ? "Dependency preservation check complete." : ""}</div>
           <DelayedAsyncHint active={preservation.status === "loading"} requestKey={preservation.requestId} />

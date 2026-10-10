@@ -46,6 +46,9 @@ export function useSharedWorkspaceCore({ api = schemawiseApi, initialDraft, onAn
 
   function abortOperations() {
     Object.values(active.current).forEach((controller) => controller?.abort());
+    // AbortController is cooperative: a client or test double may still settle
+    // after abort. Clearing ownership makes every such late completion inert.
+    active.current = { analysis: undefined, closure: undefined, synthesis: undefined, bcnf: undefined, preservation: undefined };
   }
 
   useEffect(() => () => abortOperations(), []);
@@ -61,8 +64,9 @@ export function useSharedWorkspaceCore({ api = schemawiseApi, initialDraft, onAn
     dispatch({ type: "closureRequestStart", requestId, inputRevision: current.revision, inputSnapshot, selectedAttributes });
     try {
       const data = await api.calculateClosure({ ...inputSnapshot, attributes: [...selectedAttributes] }, controller.signal);
-      dispatch({ type: "closureSuccess", requestId, data });
+      if (active.current.closure === controller) dispatch({ type: "closureSuccess", requestId, data });
     } catch (error) {
+      if (active.current.closure !== controller) return;
       if (error instanceof SchemaWiseApiError && error.kind === "aborted") dispatch({ type: "closureAborted", requestId });
       else dispatch({ type: "closureError", requestId, error });
     } finally {
@@ -86,9 +90,11 @@ export function useSharedWorkspaceCore({ api = schemawiseApi, initialDraft, onAn
     dispatch({ type: "analysisRequestStart", requestId, inputRevision: current.revision, inputSnapshot });
     try {
       const data = await api.analyzeSchema(inputSnapshot, controller.signal);
+      if (active.current.analysis !== controller) return;
       dispatch({ type: "analysisSuccess", requestId, data });
       callbacks.current.onAnalyzeSuccess?.();
     } catch (error) {
+      if (active.current.analysis !== controller) return;
       if (error instanceof SchemaWiseApiError && error.kind === "aborted") dispatch({ type: "analysisAborted", requestId });
       else dispatch({ type: "analysisError", requestId, error });
     } finally {
@@ -106,8 +112,10 @@ export function useSharedWorkspaceCore({ api = schemawiseApi, initialDraft, onAn
     const inputSnapshot = current.analysis.inputSnapshot;
     dispatch({ type: "synthesisRequestStart", requestId });
     try {
-      dispatch({ type: "synthesisSuccess", requestId, data: await api.synthesizeThirdNormalForm(inputSnapshot, controller.signal) });
+      const data = await api.synthesizeThirdNormalForm(inputSnapshot, controller.signal);
+      if (active.current.synthesis === controller) dispatch({ type: "synthesisSuccess", requestId, data });
     } catch (error) {
+      if (active.current.synthesis !== controller) return;
       const aborted = error instanceof SchemaWiseApiError && error.kind === "aborted";
       if (aborted) dispatch({ type: "synthesisAborted", requestId });
       else dispatch({ type: "synthesisError", requestId, error });
@@ -126,8 +134,10 @@ export function useSharedWorkspaceCore({ api = schemawiseApi, initialDraft, onAn
     const inputSnapshot = current.analysis.inputSnapshot;
     dispatch({ type: "bcnfRequestStart", requestId });
     try {
-      dispatch({ type: "bcnfSuccess", requestId, data: await api.decomposeBoyceCodd(inputSnapshot, controller.signal) });
+      const data = await api.decomposeBoyceCodd(inputSnapshot, controller.signal);
+      if (active.current.bcnf === controller) dispatch({ type: "bcnfSuccess", requestId, data });
     } catch (error) {
+      if (active.current.bcnf !== controller) return;
       if (error instanceof SchemaWiseApiError && error.kind === "aborted") dispatch({ type: "bcnfAborted", requestId });
       else dispatch({ type: "bcnfError", requestId, error });
     } finally {
@@ -146,8 +156,9 @@ export function useSharedWorkspaceCore({ api = schemawiseApi, initialDraft, onAn
     dispatch({ type: "preservationRequestStart", requestId });
     try {
       const data = await api.analyzeDependencyPreservation(request, controller.signal);
-      dispatch({ type: "preservationSuccess", requestId, data });
+      if (active.current.preservation === controller) dispatch({ type: "preservationSuccess", requestId, data });
     } catch (error) {
+      if (active.current.preservation !== controller) return;
       if (error instanceof SchemaWiseApiError && error.kind === "aborted") dispatch({ type: "preservationAborted", requestId });
       else dispatch({ type: "preservationError", requestId, error });
     } finally {

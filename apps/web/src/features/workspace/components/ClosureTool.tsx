@@ -12,6 +12,7 @@ interface ClosureToolProps {
   readonly issues: readonly ValidationIssue[];
   readonly state: ClosureState;
   readonly onCalculate: (selectedAttributes: readonly string[]) => void;
+  readonly preventDuplicateOperations?: boolean;
 }
 
 function ClosureExplanation({ model, selected, closure, lookup }: {
@@ -54,7 +55,7 @@ function ClosureExplanation({ model, selected, closure, lookup }: {
   );
 }
 
-export function ClosureTool({ attributes, issues, state, onCalculate }: ClosureToolProps) {
+export function ClosureTool({ attributes, issues, state, onCalculate, preventDuplicateOperations = false }: ClosureToolProps) {
   const [selected, setSelected] = useState<readonly string[]>([]);
   const knownIds = new Set(attributes.map((attribute) => attribute.id));
   const currentSelected = selected.filter((id) => knownIds.has(id));
@@ -103,7 +104,7 @@ export function ClosureTool({ attributes, issues, state, onCalculate }: ClosureT
             </div>
             {attributes.length === 0 ? <p className="empty-note">Add attributes to choose a starting set.</p> : null}
           </fieldset>
-          <button className="button button--primary" type="button" onClick={() => onCalculate(currentSelected)} disabled={issues.length > 0}>
+          <button className="button button--primary" type="button" onClick={() => onCalculate(currentSelected)} disabled={issues.length > 0 || (preventDuplicateOperations && isLoading)}>
             {isLoading ? "Calculating…" : hasResult ? "Calculate again" : "Calculate closure"}
           </button>
           {issues.length > 0 ? <p className="closure-help">Resolve the schema issues before calculating closure. A prior analysis is not required.</p> : null}
