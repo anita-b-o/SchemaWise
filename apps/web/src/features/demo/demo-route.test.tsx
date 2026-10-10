@@ -39,8 +39,9 @@ describe("isolated demo route", () => {
     expect(workspaceResourceIdentity("/demo")).toBe("DEMO WORKSPACE");
     expect(workspaceResourceIdentity("/demo")).not.toBe(workspaceResourceIdentity("/"));
     expect(workspaceResourceIdentity("/projects/11111111-1111-4111-8111-111111111111")).not.toBe("DEMO WORKSPACE");
-    expect(screen.getByRole("heading", { name: "Define a relation and its dependencies." })).toBeTruthy();
+    expect(screen.getByRole("heading", { name: "A schema is ready." })).toBeTruthy();
     expect(screen.getByText(/Your work is temporary/)).toBeTruthy();
+    expect(screen.getByText(/Basic normalization is loaded. Edit it or switch examples. Analyze schema runs a real analysis./)).toBeTruthy();
     expect(screen.getByText(/Pampa Software/)).toBeTruthy();
     expect(screen.queryByRole("button", { name: "Save" })).toBeNull();
     expect(screen.queryByRole("button", { name: "Sign in" })).toBeNull();
@@ -52,7 +53,7 @@ describe("isolated demo route", () => {
 
   it.each(["/demo?view=analysis", "/demo?view=transform", "/demo?view=unknown"])("opens %s without computing or session recovery", (path) => {
     const { authApi, projectsApi, api } = mount(path);
-    const expected = path.endsWith("analysis") ? "Analysis" : path.endsWith("transform") ? "Transformations" : "Define a relation and its dependencies.";
+    const expected = path.endsWith("analysis") ? "Analysis" : path.endsWith("transform") ? "Transformations" : "A schema is ready.";
     expect(screen.getByRole("heading", { name: expected, level: 1 })).toBeTruthy();
     expect(authApi.me).not.toHaveBeenCalled();
     for (const operation of Object.values(projectsApi)) expect(operation).not.toHaveBeenCalled();
@@ -106,10 +107,10 @@ describe("isolated demo route", () => {
     await user.selectOptions(picker, "composite-key");
     expect((screen.getByRole("textbox", { name: "Relation name" }) as HTMLInputElement).value).toBe("R");
     expect((screen.getByRole("textbox", { name: "Attribute 1 name" }) as HTMLInputElement).value).toBe("A");
-    expect(screen.getByText(/Explore how a dependency on part of a composite key/)).toBeTruthy();
+    expect(screen.getByText("Choose another example to replace this editable draft.")).toBeTruthy();
     await user.selectOptions(picker, "blank");
     expect((screen.getByRole("textbox", { name: "Relation name" }) as HTMLInputElement).value).toBe("");
-    expect(screen.getByText("Build a relation from an empty schema.")).toBeTruthy();
+    expect(screen.getByText("Build a relation from scratch, then run a real analysis when you are ready.")).toBeTruthy();
     for (const operation of Object.values(api)) expect(operation).not.toHaveBeenCalled();
     expect(authApi.me).not.toHaveBeenCalled();
     for (const operation of Object.values(projectsApi)) expect(operation).not.toHaveBeenCalled();
@@ -152,7 +153,7 @@ describe("isolated demo route", () => {
     expect(api.analyzeSchema).toHaveBeenCalledTimes(1);
     await user.selectOptions(screen.getByRole("combobox", { name: "Example" }), "composite-key");
     expect(capturedSignal?.aborted).toBe(true);
-    expect(screen.getByRole("heading", { name: "Define a relation and its dependencies." })).toBeTruthy();
+    expect(screen.getByRole("heading", { name: "A schema is ready." })).toBeTruthy();
     expect((screen.getByRole("combobox", { name: "Example" }) as HTMLSelectElement).value).toBe("composite-key");
   });
 
@@ -163,7 +164,7 @@ describe("isolated demo route", () => {
     await user.click(screen.getByRole("button", { name: "Analyze schema" }));
     await user.selectOptions(screen.getByRole("combobox", { name: "Example" }), "composite-key");
     await act(async () => { resolveAnalysis?.(); });
-    expect(screen.getByRole("heading", { name: "Define a relation and its dependencies." })).toBeTruthy();
+    expect(screen.getByRole("heading", { name: "A schema is ready." })).toBeTruthy();
     expect((screen.getByRole("combobox", { name: "Example" }) as HTMLSelectElement).value).toBe("composite-key");
     expect(screen.queryByText("Candidate keys")).toBeNull();
   });

@@ -34,7 +34,7 @@ function transformationErrorMessage(error: unknown): string {
   return "SchemaWise couldn't complete this operation. Try again.";
 }
 
-export function WorkspaceSurfaces({ core, activeView, navigationBlocked, confirmExample, onRequestExample, onCancelExample, onLoadExample, schemaToolbarAccessory, schemaEditorNotice, surfaceHeadingRef, onNavigate, emptyAnalysisMessage, preventDuplicateOperations = false }: {
+export function WorkspaceSurfaces({ core, activeView, navigationBlocked, confirmExample, onRequestExample, onCancelExample, onLoadExample, schemaIntroduction, schemaToolbarAccessory, schemaEditorNotice, surfaceHeadingRef, onNavigate, emptyAnalysisMessage, preventDuplicateOperations = false }: {
   readonly core: SharedWorkspaceCore;
   readonly activeView: WorkspaceView;
   readonly navigationBlocked: boolean;
@@ -42,6 +42,8 @@ export function WorkspaceSurfaces({ core, activeView, navigationBlocked, confirm
   readonly onRequestExample?: () => void;
   readonly onCancelExample?: () => void;
   readonly onLoadExample?: () => void;
+  /** Optional route-specific framing; the editor and actions remain shared. */
+  readonly schemaIntroduction?: ReactNode;
   readonly schemaToolbarAccessory?: ReactNode;
   readonly schemaEditorNotice?: ReactNode;
   readonly surfaceHeadingRef: RefObject<HTMLHeadingElement | null>;
@@ -61,7 +63,7 @@ export function WorkspaceSurfaces({ core, activeView, navigationBlocked, confirm
   const href = (view: WorkspaceView) => { const params = setWorkspaceView(new URLSearchParams(location.search), view); return `${location.pathname}${params.toString() ? `?${params}` : ""}`; };
   return <>
     {activeView === "schema" ? <>
-      <div className="page-introduction"><p className="eyebrow">Schema</p><h1 ref={surfaceHeadingRef} tabIndex={-1}>Define a relation and its dependencies.</h1><p>Model the facts your relation stores. SchemaWise will use this input to explain normalization step by step.</p></div>
+      {schemaIntroduction ?? <div className="page-introduction"><p className="eyebrow">Schema</p><h1 ref={surfaceHeadingRef} tabIndex={-1}>Define a relation and its dependencies.</h1><p>Model the facts your relation stores. SchemaWise will use this input to explain normalization step by step.</p></div>}
       <section className="schema-editor" aria-label="Schema editor">
         <div className="editor-toolbar"><div><p className="eyebrow">Input</p><p className="editor-toolbar__note">Your draft stays in this browser tab.</p></div>{schemaToolbarAccessory}{onRequestExample ? <button className="button button--quiet" type="button" onClick={onRequestExample}>Load example</button> : null}</div>
         {schemaEditorNotice}
