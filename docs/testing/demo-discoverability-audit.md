@@ -297,3 +297,29 @@ No residual product defect was found. The remaining risk is normal browser and
 React scheduler variation outside jsdom; the test now waits on the required
 observable focus contract rather than assuming the DOM commit also completed
 the passive focus effect.
+
+## Public release verification — 2026-10-11
+
+Status: **SCHEMAWISE TRY DEMO PUBLIC: PASS**
+
+### Release identity
+
+- Functional SHA: `0ea27a2df25f5d05fcf5dc710bfd01679a8aa7e8`.
+- GitHub CI `38191738042`: completed/success; Typecheck, Test, Build, and Audit all succeeded.
+- Vercel `dpl_HMfGECaNo2tQMrBkACFsAn1o4PN6`: production `READY` from the functional SHA.
+- Alias: `https://schemawise.vercel.app` is assigned to that deployment.
+
+### Evidence
+
+- Clean preflight on `master`; exactly the four approved commits were pending and the diff remained web/tests/documentation only.
+- One normal local pass succeeded: typecheck, 554 tests (API 142 / Web 239 / engine 173), build, Web suite, diff check, and 0 runtime audit vulnerabilities.
+- Public `/` and `/demo` returned HTTP 200. Anonymous `/api/v1/auth/me` returned expected JSON 401. `/demo` rendered as the SPA rather than a server 404.
+- Public Basic-normalization analysis POST returned HTTP 200 JSON with key `A`, 2NF satisfied, and 3NF/BCNF unsatisfied. This was the one intentional smoke operation and created no project.
+- Chrome-rendered DOM confirmed `Try Demo` points to `/demo`, while Schema, Analysis, Transform, Save, Open projects, and Sign in remain intact. Demo exposes `Open Workspace`, Basic normalization, four examples, temporary-work copy, and the Pampa Software footer; Auth and Project controls are absent.
+- Responsive captures/audit cover 320×720, 390×844, 768×1024, and 1440×900: the entry/return controls remain visible without horizontal overflow or header collisions. Passing Demo/navigation tests cover dirty Confirm/Cancel, history, focus restoration, new Demo state, and Schema → Analysis → Transform.
+- `axe-core` 4.13.0 is available; existing rendered-surface axe tests passed with zero violations and no incomplete results. The known jsdom canvas notice is non-failing.
+- Strict-mode Demo tests confirm zero Auth API, Project API, and persistence calls while Demo is mounted. No automatic math request is made by navigation; the only public analysis request was the explicit smoke action.
+
+### Issues and deferred work
+
+No Critical, High, Medium, or Low defects were found. Informational only: the existing jsdom canvas notice is unrelated to product accessibility checks. No deferred product work is required.
