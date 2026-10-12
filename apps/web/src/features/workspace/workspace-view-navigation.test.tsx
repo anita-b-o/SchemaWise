@@ -56,15 +56,24 @@ function url(router: ReturnType<typeof setup>["router"]) { return router.state.l
 
 describe("workspace view navigation", () => {
   it("pushes Analysis to Transform from the exploration link with focus and zero new requests", async () => {
-    const analyzeSchema = vi.fn<SchemaWiseApi["analyzeSchema"]>(async (input) => ({
-      relation: input.relation, candidateKeys: [[input.relation.attributes[0]!.id]], primeAttributes: [input.relation.attributes[0]!.id], minimalCover: input.functionalDependencies,
-      normalForms: { second: { satisfied: true, violations: [] }, third: { satisfied: false, violations: [{ determinant: [input.relation.attributes[1]!.id], dependent: input.relation.attributes[2]!.id }] }, bcnf: { satisfied: false, violations: [{ determinant: [input.relation.attributes[1]!.id], dependent: input.relation.attributes[2]!.id }] } },
-    }));
+    let resolve!: (value: Awaited<ReturnType<SchemaWiseApi["analyzeSchema"]>>) => void;
+    const analyzeSchema = vi.fn<SchemaWiseApi["analyzeSchema"]>(() => new Promise((done) => { resolve = done; }));
     const api = { ...computations(), analyzeSchema };
     const { user, router, client } = setup("/", { computations: api, strict: true });
     await user.click(screen.getByRole("button", { name: "Load example" }));
     await user.click(screen.getByRole("button", { name: "Analyze schema" }));
-    await screen.findByRole("link", { name: "Explore transformations" });
+    expect(analyzeSchema).toHaveBeenCalledTimes(1);
+    expect(url(router)).toBe("/");
+    expect(screen.getByRole("heading", { name: "Define a relation and its dependencies.", level: 1 })).toBeTruthy();
+    expect(screen.getByText("Analyzing schema…").textContent).toContain("Analyzing schema");
+    expect(screen.queryByRole("link", { name: "Explore transformations" })).toBeNull();
+    const input = vi.mocked(analyzeSchema).mock.calls[0]![0];
+    await act(async () => resolve({
+      relation: input.relation, candidateKeys: [[input.relation.attributes[0]!.id]], primeAttributes: [input.relation.attributes[0]!.id], minimalCover: input.functionalDependencies,
+      normalForms: { second: { satisfied: true, violations: [] }, third: { satisfied: false, violations: [{ determinant: [input.relation.attributes[1]!.id], dependent: input.relation.attributes[2]!.id }] }, bcnf: { satisfied: false, violations: [{ determinant: [input.relation.attributes[1]!.id], dependent: input.relation.attributes[2]!.id }] } },
+    }));
+    expect(await screen.findByRole("heading", { name: "Analysis", level: 1 })).toBeTruthy();
+    expect(await screen.findByRole("link", { name: "Explore transformations" })).toBeTruthy();
     const fetchSpy = vi.spyOn(globalThis, "fetch");
     await user.click(screen.getByRole("link", { name: "Explore transformations" }));
     expect(url(router)).toBe("/?view=transform");

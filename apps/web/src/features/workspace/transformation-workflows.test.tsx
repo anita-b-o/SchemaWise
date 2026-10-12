@@ -1,4 +1,4 @@
-import { render, screen, waitFor, within } from "@testing-library/react";
+import { act, render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { describe, expect, it, vi } from "vitest";
 import { SchemaWiseApiError, type SchemaWiseApi } from "../../api/schemawise-api";
@@ -138,6 +138,7 @@ describe("normalization transformations", () => {
 
   it("renders the Enrollment 3/44/44 gate and exact 3NF, BCNF, and lost-dependency outcomes", async () => {
     const user = userEvent.setup();
+    const analysis = deferred<AnalysisResponseDto>();
     const enrollment: SchemaInputDto = {
       relation: { name: "Enrollment", attributes: [
         { id: "d", name: "Student" }, { id: "c", name: "Course" }, { id: "a", name: "Professor" },
@@ -149,13 +150,16 @@ describe("normalization transformations", () => {
       ],
     };
     const api = apiWith({
-      analyzeSchema: vi.fn(async (input) => analyzeSchema(input)),
+      analyzeSchema: vi.fn(() => analysis.promise),
       synthesizeThirdNormalForm: vi.fn(async (input) => synthesizeThirdNormalForm(input)),
       decomposeBoyceCodd: vi.fn(async (input) => decomposeBoyceCodd(input)),
       analyzeDependencyPreservation: vi.fn(async (input) => analyzeDependencyPreservationUseCase(input)),
     });
     render(<SchemaWorkspace api={api} initialProject={{ id: "11111111-1111-4111-8111-111111111111", name: "Enrollment", revision: 1, schema: { schemaVersion: 1, ...enrollment }, createdAt: "2026-09-21T00:00:00Z", updatedAt: "2026-09-21T00:00:00Z" }} />);
     await user.click(screen.getByRole("button", { name: "Analyze schema" }));
+    expect(api.analyzeSchema).toHaveBeenCalledTimes(1);
+    const input = vi.mocked(api.analyzeSchema).mock.calls[0]![0];
+    await act(async () => analysis.resolve(analyzeSchema(input)));
     await screen.findByRole("heading", { name: "Enrollment(Student, Course, Professor, Department, Grade, Office)" }, { timeout: 3000 });
     expect([...document.querySelectorAll(".normal-form-count")].map((node) => node.textContent)).toEqual(["3 violations", "44 violations", "44 violations"]);
     await user.click(screen.getByRole("link", { name: "Explore transformations" }));

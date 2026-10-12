@@ -1,4 +1,4 @@
-import { render, screen, waitFor, within } from "@testing-library/react";
+import { act, render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { describe, expect, it, vi } from "vitest";
 import { SchemaWiseApiError, type SchemaWiseApi } from "../../api/schemawise-api";
@@ -45,9 +45,14 @@ function deferred<T>() {
 describe("schema analysis interactions", () => {
   it("keeps the essential analysis visible while every depth control stays closed", async () => {
     const user = userEvent.setup();
-    render(<SchemaWorkspace api={apiWith(async (input) => analysisFor(input))} />);
+    const analysis = deferred<AnalysisResponseDto>();
+    const api = apiWith(() => analysis.promise);
+    render(<SchemaWorkspace api={api} />);
     await loadExample(user);
     await user.click(screen.getByRole("button", { name: "Analyze schema" }));
+    expect(api.analyzeSchema).toHaveBeenCalledTimes(1);
+    const input = vi.mocked(api.analyzeSchema).mock.calls[0]![0];
+    await act(async () => analysis.resolve(analysisFor(input)));
     const article = (await screen.findByRole("heading", { name: "R(A, B, C)" })).closest("article")!;
     for (const heading of ["Candidate keys", "Prime attributes", "Normal forms", "Issues", "Minimal cover"]) {
       const element = within(article).getByRole("heading", { name: heading });
@@ -61,12 +66,15 @@ describe("schema analysis interactions", () => {
 
   it("submits a valid snapshot once and renders the ordered analysis content", async () => {
     const user = userEvent.setup();
-    const api = apiWith(async (input) => analysisFor(input));
+    const analysis = deferred<AnalysisResponseDto>();
+    const api = apiWith(() => analysis.promise);
     render(<SchemaWorkspace api={api} />);
     await loadExample(user);
     await user.click(screen.getByRole("button", { name: "Analyze schema" }));
 
     expect(api.analyzeSchema).toHaveBeenCalledTimes(1);
+    const input = vi.mocked(api.analyzeSchema).mock.calls[0]![0];
+    await act(async () => analysis.resolve(analysisFor(input)));
     expect(await screen.findByRole("heading", { name: "R(A, B, C)" })).toBeTruthy();
     const candidateKeys = screen.getByRole("heading", { name: "Candidate keys" }).parentElement?.querySelector(".notation-list");
     if (!candidateKeys) throw new Error("Candidate key results were not found");
