@@ -33,6 +33,9 @@ export function AppRoutes({ api, projectsApi }: { readonly api?: SchemaWiseApi; 
             <div className="shell site-header__inner">
               <Link className="wordmark" to="/" aria-label="SchemaWise home">SchemaWise</Link>
               <span className="site-header__context">Relational normalization</span>
+              <nav className="site-header__navigation" aria-label="Product">
+                <Link className="site-header__link" to="/demo">Try Demo</Link>
+              </nav>
             </div>
           </header>
           <main className="shell workspace-page">

@@ -97,6 +97,8 @@ describe("project routes and hydration", () => {
 
   it("renders a new root workspace and the base title", async () => {
     renderRoute("/");
+    expect(await screen.findByText("person@example.com")).toBeTruthy();
+    expect(screen.getByRole("link", { name: "Try Demo" }).getAttribute("href")).toBe("/demo");
     expect(screen.getByDisplayValue("Untitled project")).toBeTruthy();
     expect((screen.getByRole("textbox", { name: "Relation name" }) as HTMLInputElement).value).toBe("");
     await waitFor(() => expect(document.title).toBe("SchemaWise"));

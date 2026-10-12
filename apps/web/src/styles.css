@@ -36,6 +36,9 @@ button { min-height: 2.75rem; }
 .site-header__inner { min-height: 4rem; display: flex; align-items: center; gap: var(--space-3); }
 .wordmark { color: var(--text-primary); font-size: 1.05rem; font-weight: 760; letter-spacing: -0.02em; text-decoration: none; }
 .site-header__context { padding-left: var(--space-3); border-left: 1px solid var(--border-default); color: var(--text-secondary); font-size: 0.85rem; }
+.site-header__navigation { display: flex; align-items: center; margin-left: auto; }
+.site-header__link { min-height: 2.25rem; padding: .45rem .6rem; color: var(--accent); border-radius: var(--radius-sm); font-size: .82rem; font-weight: 750; text-decoration: none; }
+.site-header__link:hover { color: var(--accent-strong); background: var(--surface-subtle); }
 .workspace-page { padding-block: clamp(2rem, 5vw, 4rem); }
 .workspace-page { flex: 1; }
 .site-footer { margin-top: var(--space-8); border-top: 1px solid var(--border-default); }
@@ -456,6 +459,7 @@ summary { width: fit-content; min-height: 2.75rem; padding-block: 0.7rem; cursor
 @media (max-width: 35rem) {
   .shell { width: min(100% - 1.25rem, 90rem); }
   .site-header__context { display: none; }
+  .site-header__link { padding-inline: var(--space-2); }
   .workspace-page { padding-block: var(--space-8); }
   .editor-toolbar, .editor-section { padding-inline: var(--space-4); }
   .editor-toolbar { align-items: start; }

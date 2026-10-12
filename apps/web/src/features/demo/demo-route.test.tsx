@@ -34,6 +34,26 @@ function mount(path = "/demo") {
 afterEach(() => { window.history.replaceState(null, "", "/"); vi.restoreAllMocks(); });
 
 describe("isolated demo route", () => {
+  it("makes Demo discoverable from the anonymous workspace", async () => {
+    const { user } = mount("/");
+    const demoLink = screen.getByRole("link", { name: "Try Demo" });
+    expect(demoLink.getAttribute("href")).toBe("/demo");
+    await user.click(demoLink);
+    expect(screen.getByRole("heading", { name: "A schema is ready." })).toBeTruthy();
+  });
+
+  it("keeps the workspace dirty-navigation confirmation when entering Demo", async () => {
+    const { user } = mount("/");
+    await user.type(screen.getByRole("textbox", { name: "Relation name" }), "Local");
+    await user.click(screen.getByRole("link", { name: "Try Demo" }));
+    expect(screen.getByRole("heading", { name: "Unsaved changes" })).toBeTruthy();
+    await user.click(screen.getByRole("button", { name: "Stay" }));
+    expect((screen.getByRole("textbox", { name: "Relation name" }) as HTMLInputElement).value).toBe("Local");
+    await user.click(screen.getByRole("link", { name: "Try Demo" }));
+    await user.click(screen.getByRole("button", { name: "Discard and continue" }));
+    await waitFor(() => expect(screen.getByRole("heading", { name: "A schema is ready." })).toBeTruthy());
+  });
+
   it("keeps a distinct identity and mounts no Auth or Project capabilities in StrictMode", async () => {
     const { authApi, projectsApi, api } = mount();
     expect(workspaceResourceIdentity("/demo")).toBe("DEMO WORKSPACE");
@@ -89,11 +109,11 @@ describe("isolated demo route", () => {
   it("blocks dirty exit, then discards state before a new Demo entry", async () => {
     const { user, authApi } = mount();
     await user.type(screen.getByRole("textbox", { name: "Relation name" }), "Discard me");
-    await user.click(screen.getByRole("link", { name: "Exit demo" }));
+    await user.click(screen.getByRole("link", { name: "Open Workspace" }));
     expect(screen.getByRole("heading", { name: "Discard Demo changes?" })).toBe(document.activeElement);
     await user.click(screen.getByRole("button", { name: "Stay" }));
     expect(screen.getByRole("textbox", { name: "Relation name" }).getAttribute("value")).toBe("RDiscard me");
-    await user.click(screen.getByRole("link", { name: "Exit demo" }));
+    await user.click(screen.getByRole("link", { name: "Open Workspace" }));
     await user.click(screen.getByRole("button", { name: "Discard and continue" }));
     await waitFor(() => expect(screen.getByRole("button", { name: "Sign in" })).toBeTruthy());
     expect(authApi.me).toHaveBeenCalled();
