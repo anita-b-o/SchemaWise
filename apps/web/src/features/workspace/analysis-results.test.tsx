@@ -134,13 +134,17 @@ describe("schema analysis interactions", () => {
 
   it("uses the analyzed snapshot for labels and marks edits out of date", async () => {
     const user = userEvent.setup();
-    const api = apiWith(async (input) => analysisFor(input));
+    const analysis = deferred<AnalysisResponseDto>();
+    const api = apiWith(() => analysis.promise);
     render(<SchemaWorkspace api={api} />);
     await loadExample(user);
     const first = screen.getByRole("textbox", { name: "Attribute 1 name" });
     await user.clear(first);
     await user.type(first, "Customer");
     await user.click(screen.getByRole("button", { name: "Analyze schema" }));
+    expect(api.analyzeSchema).toHaveBeenCalledTimes(1);
+    const input = vi.mocked(api.analyzeSchema).mock.calls[0]![0];
+    await act(async () => analysis.resolve(analysisFor(input)));
     await screen.findByRole("heading", { name: "R(Customer, B, C)" });
     await user.click(screen.getByRole("link", { name: "Edit schema" }));
     const editFirst = screen.getByRole("textbox", { name: "Attribute 1 name" });

@@ -135,3 +135,93 @@ Chrome smoke at 320, 390, and 1440 px remains the product browser evidence.
 The directed Demo route suite passed 16/16, and the Project workflow suite
 passed 24/24. No publication, push, deploy, provider access, or secret access
 was performed.
+
+## Analysis Test Reliability Audit — 2026-10-11
+
+### Scope and inventory
+
+This audit covers the Schema → Analyze → Analysis → Transform boundary. The
+web tests that activate Analyze or depend on the resulting Analysis navigation
+are in `analysis-results.test.tsx`, `transformation-workflows.test.tsx`,
+`workspace-view-navigation.test.tsx`, `demo-route.test.tsx`,
+`project-workflows.test.tsx`, `closure-tool.test.tsx`,
+`DelayedAsyncHint.test.tsx`, and `shared-workspace-core.test.tsx`.
+
+- **A, controlled response:** the first two Analysis-result cases, the core
+  keyboard transformation flow, and navigation's request/focus transition own
+  a deferred mathematical response, observe one call, resolve it in `act`,
+  and await a rendered heading.
+- **B, immediate response:** the remaining happy-path Analysis, transform,
+  Demo, Project, and closure scenarios use a resolved per-test mock only when
+  their assertion is not the request-to-navigation hand-off.
+- **C/D, loading or heading:** loading and abort cases assert `Analyzing…` or
+  the status before settlement; result, stale-snapshot, navigation, and
+  transform cases wait for the Analysis/result heading.
+- **E, derived state:** stale-snapshot, historical-results, dirty blocker,
+  transformation eligibility, `aria-current`, focus, Back/Forward, deep-link,
+  and Demo-isolation cases assert reducer-derived observable state.
+- **F, time:** no audited Analysis transition uses a sleep, retry, fake timer,
+  or an increased timeout as synchronization. `DelayedAsyncHint` alone owns
+  fake-clock behavior for its separate delayed-hint contract.
+
+### Lifecycle and async contract
+
+`WorkspaceSurfaces` binds the real Analyze interaction to
+`useSharedWorkspaceCore.analyze`. That hook captures the current draft and
+revision, creates an `AbortController` and request id, then dispatches
+`analysisRequestStart`. The mathematical API promise is the first real async
+boundary. A matching active controller dispatches `analysisSuccess`; the
+reducer accepts only the matching request id, installs the captured snapshot,
+and calculates `outOfDate` against the current draft revision. Only after that
+dispatch does `onAnalyzeSuccess` navigate through the host's workspace-view
+provider. The Analysis surface then mounts, the host focus effect targets its
+heading, and `AnalysisResults` renders from `inputSnapshot`, not the mutable
+draft. Navigation, React commit/effects, and focus are the remaining async
+boundaries. `ProjectWorkspaceHost` and `DemoWorkspaceHost` use the same core;
+Demo adds only its local dirty-navigation blocker.
+
+### Evidence, cause, and correction
+
+The requested Customer test did not fail during isolated reproduction (20/20
+passes before the edit), so no failing DOM dump is claimed. Historical audit
+evidence in this document recorded the same Schema-surface DOM before the
+response-to-navigation continuation completed: Schema was current,
+`Define a relation and its dependencies.` was present, and the Analysis
+heading/link were absent. The Customer test was the remaining relevant case
+with an immediate async mock and no explicit request settlement boundary.
+
+It now uses the established controlled-response contract: mount; interact;
+assert exactly one `analyzeSchema` call; resolve the captured input response
+inside `act`; await `R(Customer, B, C)`; then assert the edit, stale notice,
+historical Customer labels, and absence of Client labels. This does not bypass
+the reducer, navigation, or rendering. It removes the demonstrated scheduling
+assumption without changing production behavior. No shared helper was added:
+the four local lines match the existing file idiom and a generic utility would
+not reduce enough duplication to justify another abstraction.
+
+There is no evidence of a reducer request-id race, incorrect stale condition,
+aborted valid request, shared mock leakage, fake-timer interaction, or
+StrictMode product defect. The directed navigation coverage exercises the
+transition under `StrictMode`; its deferred request/focus/`aria-current` path
+passed unchanged.
+
+### Stability and remaining work
+
+- Customer test: 20/20 sequential passes after the correction; individual
+  runs ranged from 2.59 s to 4.05 s.
+- `analysis-results.test.tsx`: 5/5 sequential passes, 13 tests each, 3.85–4.23 s.
+- Related Analysis/Transform/navigation set: 3/3 passes, 52 tests each,
+  7.50 s, 8.03 s, and 10.49 s.
+- Web suite: 5 successful normal-worker runs, 25 files / 239 tests each,
+  13.36–16.29 s. One earlier full-suite attempt terminated with a truncated
+  failure report; it was immediately rerun verbosely (239/239) and followed by
+  three more successful normal-worker runs. No repeatable failure or related
+  Analysis defect was observed. The expected jsdom canvas warnings from axe
+  checks remain non-failing.
+
+Final gates passed: `npm run typecheck` (8.5 s), `npm run build` (12.6 s),
+`npm run test --workspace @schemawise/web` (included in the five Web runs),
+`npm test` twice sequentially (API 142 + Web 239 + engine 173 = 554 each),
+`git diff --check`, and `npm audit --omit=dev` (0 runtime vulnerabilities).
+Only `analysis-results.test.tsx` changed in code. Browser smoke is not needed
+because production code did not change. No push or deploy is authorized.
