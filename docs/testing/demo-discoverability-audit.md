@@ -225,3 +225,75 @@ Final gates passed: `npm run typecheck` (8.5 s), `npm run build` (12.6 s),
 `git diff --check`, and `npm audit --omit=dev` (0 runtime vulnerabilities).
 Only `analysis-results.test.tsx` changed in code. Browser smoke is not needed
 because production code did not change. No push or deploy is authorized.
+
+## Project Recovery Focus Reliability — 2026-10-11
+
+### Evidence and focus contract
+
+The Project Recovery route owns a request with an `AbortController`, a unique
+request id, and the current route id. A response may install a project only
+when all three identities still match. On a successful install of a different
+project, `ProjectRoute` supplies `focusAfterHydration`; the newly mounted
+`ProjectWorkspaceHost` then focuses the active surface `h1`. This is the
+intentional announcement for an explicit resource transition such as Go A →
+Go B. Route loading remains announced with `role=status`.
+
+The route deliberately does not request that focus for a same-resource reload,
+an adopted Save New project, or URL-only workspace-view restoration. A
+Back/Forward transition to a different project is a normal resource hydration
+and receives the same one-time heading focus, never a later stale-response
+focus. The workspace navigation tests also verify that Back/Forward and
+URL-only view changes do not manufacture focus. Error and unavailable route
+states own their separate heading-focus policy.
+
+### Diagnosis and correction
+
+The reported failure was not reproducible in this audit's isolated test,
+complete route file, or initial Web-suite run. Historical evidence above
+records the same failure under severe suite contention: Project B's name,
+title, and route had updated while `document.activeElement` was still the Go B
+button. That is the interval between the committed hydrated DOM and the
+passive focus effect; it is not evidence that B hydration was incomplete or
+that stale A changed focus.
+
+The A/B race test already owned deferred responses. It now additionally waits
+for B's GET and committed URL, resolves B inside React `act`, observes Project
+B and its surface heading, and waits for the heading-focus effect. It then
+settles A inside `act` and confirms B's draft, title, and focus remain intact.
+This keeps the real router, request guards, hydration state, title effect, and
+focus effect in the test. No retry, sleep, timeout, skipped test, weakened
+assertion, mock shortcut, or product-code change was introduced.
+
+### Race and regression scope
+
+A's abort signal is asserted after the B navigation. Its late resolution is
+discarded before state mutation because its controller is aborted and its
+request id no longer matches the active request. Consequently it cannot
+replace B's draft, URL, title, server revision, dirty state, or focus. The
+adjacent route coverage retains late-error and reconnect races; Project
+workflow coverage retains Save New, existing saves, OCC, deletion/detach,
+auth/reconnect, Back/Forward, deep links, and dirty blockers. Demo route
+coverage retains isolation, Try Demo, and Open Workspace; workspace suites
+retain Schema, Analysis, and Transform behavior.
+
+Because this correction changes tests and documentation only, no new browser
+verification is required. The existing real-browser Demo audit remains valid.
+
+### Repetitions and gates
+
+- A/B late-success test: 20/20 sequential passes, 1.99–2.44 s wall time.
+- `project-route.test.tsx`: 5/5 sequential passes, 12 tests each,
+  2.83–2.94 s wall time.
+- Web suite with normal workers: 3/3 passes, 25 files / 239 tests each,
+  13.71–14.54 s wall time.
+- Root suite: 2/2 passes, API 142 + Web 239 + engine 173 = 554 tests each,
+  17.70 s and 18.13 s wall time.
+- `npm run typecheck`: pass, 6.84 s. `npm run build`: pass, 9.25 s.
+  `git diff --check`: pass. `npm audit --omit=dev`: 0 runtime
+  vulnerabilities.
+
+The non-failing jsdom canvas notices emitted by axe tests are unchanged.
+No residual product defect was found. The remaining risk is normal browser and
+React scheduler variation outside jsdom; the test now waits on the required
+observable focus contract rather than assuming the DOM commit also completed
+the passive focus effect.
